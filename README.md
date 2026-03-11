@@ -46,10 +46,19 @@ Observação: o Electron em modo desktop (`electron:serve`/`electron:build`) dev
 
 ## Backend (NestJS + Prisma)
 
+Se fores correr localmente fora do Docker, garante primeiro que tens uma base de dados PostgreSQL ativa.
+
+Podes subir só a base de dados com Docker:
+
+```bash
+docker compose up -d db
+```
+
 ```bash
 cd backend
 npm install
 npx prisma generate
+npx prisma db push
 npm run start:dev
 ```
 
@@ -61,8 +70,17 @@ npm run build
 
 ## Frontend (Vue + Electron)
 
+Modo web (Vue CLI):
+
 ```bash
 cd frontend
+npm install
+npm run serve
+```
+
+Modo desktop (Electron):
+
+```bash
 npm install
 npm run electron:serve
 ```
