@@ -12,3 +12,400 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum TenantUserRole {
+  ADMIN
+  STAFF
+  DEV
+}
+
+enum CustomerType {
+  REGISTERED
+  NO_LOGIN
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  RESERVED
+  RENTED
+  MAINTENANCE
+  INACTIVE
+}
+
+enum TransmissionType {
+  MANUAL
+  AUTOMATIC
+}
+
+enum FuelType {
+  GASOLINE
+  DIESEL
+  ELECTRIC
+  HYBRID
+}
+
+enum ReservationStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum RentalStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+  FAILED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  MBWAY
+}
+
+enum MaintenanceStatus {
+  SCHEDULED
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum VehicleTransferStatus {
+  PENDING
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+}
+
+enum VehicleImproType {
+  DAMAGE
+  BREAKDOWN
+  ACCIDENT
+  THEFT
+  OTHER
+}
+
+enum VehicleImproStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CANCELLED
+}
+
+model Tenant {
+  id               String              @id @default(cuid())
+  name             String
+  slug             String              @unique
+  taxNumber        String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  users            TenantUser[]
+  customerProfiles CustomerProfile[]
+  stations         Station[]
+  vehicles         Vehicle[]
+  reservations     Reservation[]
+  rentals          Rental[]
+  payments         Payment[]
+  maintenances     VehicleMaintenance[]
+  vehicleTransfers VehicleTransfer[]
+  vehicleImpros    VehicleImpro[]
+}
+
+model User {
+  id                  String            @id @default(cuid())
+  email               String            @unique
+  passwordHash        String?
+  fullName            String
+  phone               String?
+  isActive            Boolean           @default(true)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  memberships         TenantUser[]
+  customerProfiles    CustomerProfile[]
+  createdReservations Reservation[]     @relation("ReservationCreatedBy")
+  createdRentals      Rental[]          @relation("RentalCreatedBy")
+  createdTransfers    VehicleTransfer[] @relation("TransferCreatedBy")
+  drivenTransfers     VehicleTransfer[] @relation("TransferDriver")
+  openedImpros        VehicleImpro[]    @relation("ImproOpenedBy")
+  closedImpros        VehicleImpro[]    @relation("ImproClosedBy")
+}
+
+model TenantUser {
+  id         String         @id @default(cuid())
+  tenantId   String
+  userId     String
+  role       TenantUserRole
+  isActive   Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, role])
+  @@index([userId])
+}
+
+model CustomerProfile {
+  id                 String          @id @default(cuid())
+  tenantId           String
+  userId             String?
+  customerType       CustomerType    @default(NO_LOGIN)
+  firstName          String
+  lastName           String
+  email              String?
+  phone              String?
+  taxNumber          String?
+  documentNumber     String?
+  driverLicenseNo    String?
+  driverLicenseUntil DateTime?
+  birthDate          DateTime?
+  notes              String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  tenant             Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user               User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  reservations       Reservation[]
+  rentals            Rental[]
+
+  @@index([tenantId])
+  @@index([tenantId, customerType])
+  @@index([tenantId, email])
+  @@unique([tenantId, userId])
+}
+
+model Station {
+  id                  String            @id @default(cuid())
+  tenantId            String
+  name                String
+  code                String?
+  addressLine1        String
+  addressLine2        String?
+  city                String
+  postalCode          String?
+  country             String
+  isActive            Boolean           @default(true)
+  isPickupPoint       Boolean           @default(true)
+  isReturnPoint       Boolean           @default(true)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicles            Vehicle[]
+  pickupReservations  Reservation[]     @relation("PickupStation")
+  dropoffReservations Reservation[]     @relation("DropoffStation")
+  transfersFrom       VehicleTransfer[] @relation("TransferFromStation")
+  transfersTo         VehicleTransfer[] @relation("TransferToStation")
+  improsOpened        VehicleImpro[]    @relation("ImproOpenedAtStation")
+  improsClosed        VehicleImpro[]    @relation("ImproClosedAtStation")
+
+  @@index([tenantId])
+  @@unique([tenantId, name])
+  @@unique([tenantId, code])
+}
+
+model Vehicle {
+  id            String               @id @default(cuid())
+  tenantId      String
+  stationId     String
+  plateNumber   String
+  vin           String?
+  brand         String
+  model         String
+  category      String?
+  year          Int?
+  seats         Int?
+  transmission  TransmissionType?
+  fuelType      FuelType?
+  odometerKm    Int                  @default(0)
+  dailyRate     Decimal              @db.Decimal(10, 2)
+  status        VehicleStatus        @default(AVAILABLE)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  station       Station              @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  reservations  Reservation[]
+  rentals       Rental[]
+  maintenances  VehicleMaintenance[]
+  transfers     VehicleTransfer[]
+  impros        VehicleImpro[]
+
+  @@index([tenantId])
+  @@index([tenantId, stationId])
+  @@index([tenantId, status])
+  @@unique([tenantId, plateNumber])
+  @@unique([tenantId, vin])
+}
+
+model Reservation {
+  id                String            @id @default(cuid())
+  tenantId          String
+  customerProfileId String
+  vehicleId         String?
+  pickupStationId   String
+  dropoffStationId  String
+  pickupAt          DateTime
+  dropoffAt         DateTime
+  status            ReservationStatus @default(DRAFT)
+  quotedTotal       Decimal?          @db.Decimal(10, 2)
+  notes             String?
+  createdById       String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerProfile   CustomerProfile   @relation(fields: [customerProfileId], references: [id], onDelete: Restrict)
+  vehicle           Vehicle?          @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  pickupStation     Station           @relation("PickupStation", fields: [pickupStationId], references: [id], onDelete: Restrict)
+  dropoffStation    Station           @relation("DropoffStation", fields: [dropoffStationId], references: [id], onDelete: Restrict)
+  createdBy         User?             @relation("ReservationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  rental            Rental?
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, customerProfileId])
+  @@index([tenantId, pickupAt])
+  @@index([vehicleId])
+}
+
+model Rental {
+  id                 String        @id @default(cuid())
+  tenantId           String
+  reservationId      String?       @unique
+  customerProfileId  String
+  vehicleId          String
+  pickupAt           DateTime
+  expectedReturnAt   DateTime
+  returnedAt         DateTime?
+  pickupOdometerKm   Int
+  returnOdometerKm   Int?
+  status             RentalStatus  @default(OPEN)
+  totalAmount        Decimal?      @db.Decimal(10, 2)
+  depositAmount      Decimal?      @db.Decimal(10, 2)
+  paymentStatus      PaymentStatus @default(PENDING)
+  notes              String?
+  createdById        String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  tenant             Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservation        Reservation?  @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  customerProfile    CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Restrict)
+  vehicle            Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  createdBy          User?         @relation("RentalCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  payments           Payment[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, customerProfileId])
+  @@index([tenantId, vehicleId])
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  tenantId        String
+  rentalId        String
+  amount          Decimal       @db.Decimal(10, 2)
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  externalRef     String?
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rental          Rental        @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, rentalId])
+  @@index([tenantId, status])
+}
+
+model VehicleMaintenance {
+  id             String            @id @default(cuid())
+  tenantId       String
+  vehicleId      String
+  status         MaintenanceStatus @default(SCHEDULED)
+  description    String
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  cost           Decimal?          @db.Decimal(10, 2)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicle        Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, vehicleId])
+  @@index([tenantId, status])
+}
+
+model VehicleTransfer {
+  id               String                @id @default(cuid())
+  tenantId         String
+  vehicleId        String
+  fromStationId    String
+  toStationId      String
+  driverId         String?
+  status           VehicleTransferStatus @default(PENDING)
+  scheduledAt      DateTime
+  departedAt       DateTime?
+  arrivedAt        DateTime?
+  odometerAtStart  Int?
+  odometerAtEnd    Int?
+  reason           String?
+  notes            String?
+  createdById      String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  tenant           Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicle          Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  fromStation      Station               @relation("TransferFromStation", fields: [fromStationId], references: [id], onDelete: Restrict)
+  toStation        Station               @relation("TransferToStation", fields: [toStationId], references: [id], onDelete: Restrict)
+  driver           User?                 @relation("TransferDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  createdBy        User?                 @relation("TransferCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, vehicleId])
+  @@index([tenantId, scheduledAt])
+}
+
+model VehicleImpro {
+  id                String            @id @default(cuid())
+  tenantId          String
+  vehicleId         String
+  openedAtStationId String
+  closedAtStationId String?
+  type              VehicleImproType
+  status            VehicleImproStatus @default(OPEN)
+  title             String
+  description       String?
+  openedById        String?
+  closedById        String?
+  openedAt          DateTime           @default(now())
+  closedAt          DateTime?
+  estimatedCost     Decimal?           @db.Decimal(10, 2)
+  actualCost        Decimal?           @db.Decimal(10, 2)
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicle           Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  openedAtStation   Station            @relation("ImproOpenedAtStation", fields: [openedAtStationId], references: [id], onDelete: Restrict)
+  closedAtStation   Station?           @relation("ImproClosedAtStation", fields: [closedAtStationId], references: [id], onDelete: SetNull)
+  openedBy          User?              @relation("ImproOpenedBy", fields: [openedById], references: [id], onDelete: SetNull)
+  closedBy          User?              @relation("ImproClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, vehicleId])
+  @@index([tenantId, type])
+}
