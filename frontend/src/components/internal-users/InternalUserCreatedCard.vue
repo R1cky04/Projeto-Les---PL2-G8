@@ -42,6 +42,7 @@
 </template>
 
 <script>
+// Renders the success payload returned by the API.
 import {
   formatInternalPermission,
   getInternalUserRoleLabel,

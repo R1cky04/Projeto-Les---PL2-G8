@@ -25,6 +25,7 @@
 </template>
 
 <script>
+// Read-only role guide driven by the shared role catalog.
 export default {
   name: 'InternalUserRoleGuide',
   props: {

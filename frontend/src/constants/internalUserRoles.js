@@ -1,3 +1,4 @@
+// Shared role catalog. `value` must stay aligned with the backend enum.
 export const ROLE_OPTIONS = [
   {
     value: 'STAFF',

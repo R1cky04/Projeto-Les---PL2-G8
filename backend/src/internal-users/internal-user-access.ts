@@ -4,6 +4,7 @@ import {
   InternalUserStatus,
 } from '@prisma/client';
 
+// Centralized role policy for internal accounts.
 const ROLE_PERMISSIONS: Record<InternalUserRole, InternalPermission[]> = {
   [InternalUserRole.STAFF]: [
     InternalPermission.RESERVATION_READ,
@@ -32,6 +33,7 @@ const ROLE_PERMISSIONS: Record<InternalUserRole, InternalPermission[]> = {
   ],
 };
 
+// Restricted roles require explicit IT activation after creation.
 const RESTRICTED_ROLES = new Set<InternalUserRole>([
   InternalUserRole.STAFF,
   InternalUserRole.FLEET,
@@ -40,6 +42,7 @@ const RESTRICTED_ROLES = new Set<InternalUserRole>([
 export function getPermissionsForRole(
   role: InternalUserRole,
 ): InternalPermission[] {
+  // Return a defensive copy so callers cannot mutate the policy table.
   return [...ROLE_PERMISSIONS[role]];
 }
 

@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { InternalUsersService } from './internal-users.service';
 import { PasswordHasherService } from './password-hasher.service';
 
+// Service tests covering policy derivation, activation state and validation boundaries.
 describe('InternalUsersService', () => {
   let service: InternalUsersService;
   let prisma: {

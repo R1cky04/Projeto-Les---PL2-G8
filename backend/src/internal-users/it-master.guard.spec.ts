@@ -1,6 +1,7 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { ItMasterGuard } from './it-master.guard';
 
+// Guard tests for the temporary IT-only authorization rule.
 describe('ItMasterGuard', () => {
   const guard = new ItMasterGuard();
 

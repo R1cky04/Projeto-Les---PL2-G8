@@ -81,6 +81,7 @@
 </template>
 
 <script>
+// Stateless form component. The parent owns all state and side effects.
 export default {
   name: 'InternalUserFormPanel',
   props: {

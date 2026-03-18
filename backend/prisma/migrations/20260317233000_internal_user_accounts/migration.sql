@@ -1,3 +1,4 @@
+-- Internal account support for the user-provisioning sprint.
 -- CreateEnum
 CREATE TYPE "InternalUserRole" AS ENUM ('ADMIN', 'STAFF', 'FLEET');
 

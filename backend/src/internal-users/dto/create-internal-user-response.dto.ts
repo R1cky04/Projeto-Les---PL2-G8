@@ -4,6 +4,7 @@ import {
   InternalUserStatus,
 } from '@prisma/client';
 
+// Success payload returned by the create-internal-user endpoint.
 export interface CreatedInternalUserDto {
   id: string;
   userId: string;

@@ -1,3 +1,5 @@
+// Thin API client for internal user creation. Authorization is temporarily
+// simulated via header until the auth flow exists.
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:3000';
 
 export async function createInternalUser(payload) {
@@ -5,6 +7,7 @@ export async function createInternalUser(payload) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      // Temporary contract for the sprint. Replace with real auth context later.
       'x-actor-role': 'IT',
     },
     body: JSON.stringify(payload),
@@ -19,6 +22,7 @@ export async function createInternalUser(payload) {
         : 'Nao foi possivel criar o utilizador.',
     );
 
+    // Preserve the server error shape so the view can render field and global errors.
     error.status = response.status;
     error.errors = Array.isArray(body?.errors) ? body.errors : [];
     error.code = body?.code;

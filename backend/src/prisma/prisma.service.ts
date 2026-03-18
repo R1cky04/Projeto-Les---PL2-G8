@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
+// Prisma bootstrap for Prisma 7 + PostgreSQL driver adapters.
 @Injectable()
 export class PrismaService
   extends PrismaClient

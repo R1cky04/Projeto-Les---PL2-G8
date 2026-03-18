@@ -5,6 +5,7 @@ import {
   FieldValidationError,
 } from './dto/create-internal-user.dto';
 
+// Input normalization and validation for internal user creation.
 const USER_ID_PATTERN = /^[a-z0-9._-]{4,30}$/;
 
 export interface NormalizedCreateInternalUserInput {
@@ -18,6 +19,7 @@ export function normalizeCreateInternalUserInput(
 ): NormalizedCreateInternalUserInput {
   const errors: FieldValidationError[] = [];
 
+  // Normalize first so every downstream rule operates on a stable shape.
   const normalizedUserId =
     typeof payload?.userId === 'string'
       ? payload.userId.trim().toLowerCase()
@@ -103,6 +105,7 @@ export function normalizeCreateInternalUserInput(
 }
 
 function parseRole(role: unknown): InternalUserRole | null {
+  // Accept transport strings and map them to the persisted enum values.
   if (typeof role !== 'string') {
     return null;
   }

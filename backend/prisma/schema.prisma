@@ -4,6 +4,8 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// Internal account support added for the user-provisioning sprint.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,17 +14,20 @@ datasource db {
   provider = "postgresql"
 }
 
+// Roles supported by the internal account provisioning flow.
 enum InternalUserRole {
   ADMIN
   STAFF
   FLEET
 }
 
+// Roles that require manual IT activation start in the pending state.
 enum InternalUserStatus {
   ACTIVE
   PENDING_IT_VALIDATION
 }
 
+// Explicit permission surface inherited from each internal role.
 enum InternalPermission {
   RESERVATION_READ
   RENTAL_READ
@@ -146,11 +151,13 @@ model Tenant {
 
 model User {
   id                   String               @id @default(cuid())
+  // userId becomes the primary internal login identifier.
   userId               String?              @unique
   email                String?              @unique
   passwordHash         String?
   fullName             String?
   phone                String?
+  // Internal account metadata is kept separate from tenant membership.
   isInternal           Boolean              @default(false)
   internalRole         InternalUserRole?
   internalStatus       InternalUserStatus   @default(ACTIVE)

@@ -11,6 +11,7 @@ import {
 import { normalizeCreateInternalUserInput } from './internal-user-validation';
 import { PasswordHasherService } from './password-hasher.service';
 
+// Application service for internal user provisioning.
 @Injectable()
 export class InternalUsersService {
   constructor(
@@ -33,6 +34,7 @@ export class InternalUsersService {
       data: {
         userId: input.userId,
         passwordHash,
+        // The flow does not collect a display name yet; keep a stable placeholder.
         fullName: input.userId,
         isInternal: true,
         internalRole: input.role,
@@ -69,6 +71,7 @@ export class InternalUsersService {
   }
 
   private async ensureUserIdIsUnique(userId: string) {
+    // Keep the failure deterministic and user-friendly before hitting the unique index.
     const existingUser = await this.prisma.user.findUnique({
       where: { userId },
       select: { id: true },

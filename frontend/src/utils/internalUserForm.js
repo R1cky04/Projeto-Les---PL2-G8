@@ -1,3 +1,5 @@
+// Frontend copy of the form rules. Keep aligned with
+// backend/src/internal-users/internal-user-validation.ts.
 const USER_ID_PATTERN = /^[a-z0-9._-]{4,30}$/
 
 export function createInternalUserForm(defaultRole) {
@@ -34,6 +36,7 @@ export function validateInternalUserForm(form) {
       'Usa entre 4 e 30 caracteres com letras minusculas, numeros, ponto, underscore ou hifen.'
   }
 
+  // Fail fast in the UI, but keep server-side validation authoritative.
   if (!password) {
     errors.password = 'A password e obrigatoria.'
   } else if (password.length < 8) {
@@ -64,6 +67,7 @@ export function validateInternalUserForm(form) {
 }
 
 export function mapInternalUserApiErrors(errors) {
+  // Nest-style validation errors arrive as a list; the form expects a field map.
   if (!Array.isArray(errors)) {
     return {}
   }

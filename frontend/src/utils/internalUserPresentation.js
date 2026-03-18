@@ -1,3 +1,4 @@
+// Presentation-only helpers for API enums.
 export function getInternalUserRoleLabel(roleOptions, role) {
   const normalizedRoleOptions = Array.isArray(roleOptions) ? roleOptions : []
   const foundRole = normalizedRoleOptions.find((entry) => entry.value === role)
@@ -10,6 +11,7 @@ export function formatInternalPermission(permission) {
     return ''
   }
 
+  // USER_CREATE -> User Create
   return permission
     .toLowerCase()
     .split('_')

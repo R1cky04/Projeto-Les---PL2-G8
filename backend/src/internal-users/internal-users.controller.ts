@@ -4,6 +4,7 @@ import { CreateInternalUserResponseDto } from './dto/create-internal-user-respon
 import { InternalUsersService } from './internal-users.service';
 import { ItMasterGuard } from './it-master.guard';
 
+// Thin transport layer for internal user creation.
 @Controller('internal-users')
 @UseGuards(ItMasterGuard)
 export class InternalUsersController {

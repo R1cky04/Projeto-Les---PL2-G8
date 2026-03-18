@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { InternalUsersModule } from './internal-users/internal-users.module';
 import { PrismaModule } from './prisma/prisma.module';
 
+// Root module wiring shared infrastructure and feature modules.
 @Module({
   imports: [PrismaModule, InternalUsersModule],
   controllers: [AppController],

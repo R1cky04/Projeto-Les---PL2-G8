@@ -48,6 +48,8 @@
 </template>
 
 <script>
+// Container view for the feature. Child components stay presentational;
+// this view owns page state, validation and API coordination.
 import InternalUserCreatedCard from '../components/internal-users/InternalUserCreatedCard.vue'
 import InternalUserFormPanel from '../components/internal-users/InternalUserFormPanel.vue'
 import InternalUserRoleGuide from '../components/internal-users/InternalUserRoleGuide.vue'
@@ -104,6 +106,7 @@ export default {
         this.successMessage = response.message
         this.form = createInternalUserForm(DEFAULT_ROLE)
       } catch (error) {
+        // Keep the form contract stable even if the API returns a richer error shape.
         this.fieldErrors = mapInternalUserApiErrors(error.errors)
         this.submitError = error.message || 'Nao foi possivel criar o utilizador.'
       } finally {

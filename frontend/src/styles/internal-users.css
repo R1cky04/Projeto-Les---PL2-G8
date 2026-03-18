@@ -1,3 +1,5 @@
+/* Feature-level styles for the internal user creation flow. Namespaced under
+   .internal-users-page to avoid leaking into the rest of the app. */
 body {
   margin: 0;
 }
@@ -7,6 +9,7 @@ body {
 }
 
 .internal-users-page {
+  /* Local design tokens for this screen. */
   --paper: #f4ede3;
   --ink: #1f1d1a;
   --muted: #6c655d;
