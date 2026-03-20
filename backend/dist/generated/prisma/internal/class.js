@@ -40,7 +40,7 @@ const config = {
     "clientVersion": "7.4.1",
     "engineVersion": "55ae170b1ced7fc6ed07a15f110549408c501bb3",
     "activeProvider": "postgresql",
-    "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n",
+    "inlineSchema": "generator client {\n  provider = \"prisma-client\"\n  output   = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\n// Modelo para Estação da Rent-a-Car\nmodel Station {\n  id        Int      @id @default(autoincrement())\n  name      String   @unique // Nome único da estação\n  location  String // Endereço/localização da estação\n  capacity  Int // Capacidade máxima de veículos\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n  createdBy String? // ID do usuário IT que criou (opcional para auditoria)\n}\n",
     "runtimeDataModel": {
         "models": {},
         "enums": {},
@@ -51,20 +51,20 @@ const config = {
         "graph": ""
     }
 };
-config.runtimeDataModel = JSON.parse("{\"models\":{},\"enums\":{},\"types\":{}}");
+config.runtimeDataModel = JSON.parse("{\"models\":{\"Station\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"location\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"capacity\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdBy\",\"kind\":\"scalar\",\"type\":\"String\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}");
 config.parameterizationSchema = {
-    strings: JSON.parse("[]"),
-    graph: "AAAA"
+    strings: JSON.parse("[\"where\",\"Station.findUnique\",\"Station.findUniqueOrThrow\",\"orderBy\",\"cursor\",\"Station.findFirst\",\"Station.findFirstOrThrow\",\"Station.findMany\",\"data\",\"Station.createOne\",\"Station.createMany\",\"Station.createManyAndReturn\",\"Station.updateOne\",\"Station.updateMany\",\"Station.updateManyAndReturn\",\"create\",\"update\",\"Station.upsertOne\",\"Station.deleteOne\",\"Station.deleteMany\",\"having\",\"_count\",\"_avg\",\"_sum\",\"_min\",\"_max\",\"Station.groupBy\",\"Station.aggregate\",\"AND\",\"OR\",\"NOT\",\"id\",\"name\",\"location\",\"capacity\",\"createdAt\",\"updatedAt\",\"createdBy\",\"equals\",\"in\",\"notIn\",\"lt\",\"lte\",\"gt\",\"gte\",\"contains\",\"startsWith\",\"endsWith\",\"not\",\"set\",\"increment\",\"decrement\",\"multiply\",\"divide\"]"),
+    graph: "NwsQChwAACkAMB0AAAQAEB4AACkAMB8CAAAAASABAAAAASEBACsAISICACoAISNAACwAISRAACwAISUBAC0AIQEAAAABACABAAAAAQAgChwAACkAMB0AAAQAEB4AACkAMB8CACoAISABACsAISEBACsAISICACoAISNAACwAISRAACwAISUBAC0AIQElAAAuACADAAAABAAgAwAABQAwBAAAAQAgAwAAAAQAIAMAAAUAMAQAAAEAIAMAAAAEACADAAAFADAEAAABACAHHwIAAAABIAEAAAABIQEAAAABIgIAAAABI0AAAAABJEAAAAABJQEAAAABAQgAAAkAIAcfAgAAAAEgAQAAAAEhAQAAAAEiAgAAAAEjQAAAAAEkQAAAAAElAQAAAAEBCAAACwAwAQgAAAsAMAcfAgA1ACEgAQA0ACEhAQA0ACEiAgA1ACEjQAA2ACEkQAA2ACElAQA3ACECAAAAAQAgCAAADgAgBx8CADUAISABADQAISEBADQAISICADUAISNAADYAISRAADYAISUBADcAIQIAAAAEACAIAAAQACACAAAABAAgCAAAEAAgAwAAAAEAIA8AAAkAIBAAAA4AIAEAAAABACABAAAABAAgBhUAAC8AIBYAADAAIBcAADMAIBgAADIAIBkAADEAICUAAC4AIAocAAAaADAdAAAXABAeAAAaADAfAgAbACEgAQAcACEhAQAcACEiAgAbACEjQAAdACEkQAAdACElAQAeACEDAAAABAAgAwAAFgAwFAAAFwAgAwAAAAQAIAMAAAUAMAQAAAEAIAocAAAaADAdAAAXABAeAAAaADAfAgAbACEgAQAcACEhAQAcACEiAgAbACEjQAAdACEkQAAdACElAQAeACENFQAAIwAgFgAAKAAgFwAAIwAgGAAAIwAgGQAAIwAgJgIAAAABJwIAAAAEKAIAAAAEKQIAAAABKgIAAAABKwIAAAABLAIAAAABMAIAJwAhDhUAACMAIBgAACYAIBkAACYAICYBAAAAAScBAAAABCgBAAAABCkBAAAAASoBAAAAASsBAAAAASwBAAAAAS0BAAAAAS4BAAAAAS8BAAAAATABACUAIQsVAAAjACAYAAAkACAZAAAkACAmQAAAAAEnQAAAAAQoQAAAAAQpQAAAAAEqQAAAAAErQAAAAAEsQAAAAAEwQAAiACEOFQAAIAAgGAAAIQAgGQAAIQAgJgEAAAABJwEAAAAFKAEAAAAFKQEAAAABKgEAAAABKwEAAAABLAEAAAABLQEAAAABLgEAAAABLwEAAAABMAEAHwAhDhUAACAAIBgAACEAIBkAACEAICYBAAAAAScBAAAABSgBAAAABSkBAAAAASoBAAAAASsBAAAAASwBAAAAAS0BAAAAAS4BAAAAAS8BAAAAATABAB8AIQgmAgAAAAEnAgAAAAUoAgAAAAUpAgAAAAEqAgAAAAErAgAAAAEsAgAAAAEwAgAgACELJgEAAAABJwEAAAAFKAEAAAAFKQEAAAABKgEAAAABKwEAAAABLAEAAAABLQEAAAABLgEAAAABLwEAAAABMAEAIQAhCxUAACMAIBgAACQAIBkAACQAICZAAAAAASdAAAAABChAAAAABClAAAAAASpAAAAAAStAAAAAASxAAAAAATBAACIAIQgmAgAAAAEnAgAAAAQoAgAAAAQpAgAAAAEqAgAAAAErAgAAAAEsAgAAAAEwAgAjACEIJkAAAAABJ0AAAAAEKEAAAAAEKUAAAAABKkAAAAABK0AAAAABLEAAAAABMEAAJAAhDhUAACMAIBgAACYAIBkAACYAICYBAAAAAScBAAAABCgBAAAABCkBAAAAASoBAAAAASsBAAAAASwBAAAAAS0BAAAAAS4BAAAAAS8BAAAAATABACUAIQsmAQAAAAEnAQAAAAQoAQAAAAQpAQAAAAEqAQAAAAErAQAAAAEsAQAAAAEtAQAAAAEuAQAAAAEvAQAAAAEwAQAmACENFQAAIwAgFgAAKAAgFwAAIwAgGAAAIwAgGQAAIwAgJgIAAAABJwIAAAAEKAIAAAAEKQIAAAABKgIAAAABKwIAAAABLAIAAAABMAIAJwAhCCYIAAAAAScIAAAABCgIAAAABCkIAAAAASoIAAAAASsIAAAAASwIAAAAATAIACgAIQocAAApADAdAAAEABAeAAApADAfAgAqACEgAQArACEhAQArACEiAgAqACEjQAAsACEkQAAsACElAQAtACEIJgIAAAABJwIAAAAEKAIAAAAEKQIAAAABKgIAAAABKwIAAAABLAIAAAABMAIAIwAhCyYBAAAAAScBAAAABCgBAAAABCkBAAAAASoBAAAAASsBAAAAASwBAAAAAS0BAAAAAS4BAAAAAS8BAAAAATABACYAIQgmQAAAAAEnQAAAAAQoQAAAAAQpQAAAAAEqQAAAAAErQAAAAAEsQAAAAAEwQAAkACELJgEAAAABJwEAAAAFKAEAAAAFKQEAAAABKgEAAAABKwEAAAABLAEAAAABLQEAAAABLgEAAAABLwEAAAABMAEAIQAhAAAAAAAAATEBAAAAAQUxAgAAAAEyAgAAAAEzAgAAAAE0AgAAAAE1AgAAAAEBMUAAAAABATEBAAAAAQAAAAAFFQAGFgAHFwAIGAAJGQAKAAAAAAAFFQAGFgAHFwAIGAAJGQAKAQIBAgMBBQYBBgcBBwgBCQoBCgwCCw0DDA8BDRECDhIEERMBEhQBExUCGhgFGxkL"
 };
 async function decodeBase64AsWasm(wasmBase64) {
-    const { Buffer } = await import('node:buffer');
+    const { Buffer } = await Promise.resolve().then(() => __importStar(require('node:buffer')));
     const wasmArray = Buffer.from(wasmBase64, 'base64');
     return new WebAssembly.Module(wasmArray);
 }
 config.compilerWasm = {
-    getRuntime: async () => await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.mjs"),
+    getRuntime: async () => await Promise.resolve().then(() => __importStar(require("@prisma/client/runtime/query_compiler_fast_bg.postgresql.mjs"))),
     getQueryCompilerWasmModule: async () => {
-        const { wasm } = await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs");
+        const { wasm } = await Promise.resolve().then(() => __importStar(require("@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs")));
         return await decodeBase64AsWasm(wasm);
     },
     importName: "./query_compiler_fast_bg.js"

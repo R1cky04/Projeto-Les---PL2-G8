@@ -7,6 +7,7 @@ RUN apt-get update -y \
 	&& rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
+COPY .env.docker ./
 
 RUN npm install
 

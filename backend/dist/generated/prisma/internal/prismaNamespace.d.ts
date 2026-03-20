@@ -1,29 +1,30 @@
 import * as runtime from "@prisma/client/runtime/client";
+import type * as Prisma from "../models.js";
 import { type PrismaClient } from "./class.js";
 export type * from '../models.js';
 export type DMMF = typeof runtime.DMMF;
 export type PrismaPromise<T> = runtime.Types.Public.PrismaPromise<T>;
-export declare const PrismaClientKnownRequestError: typeof runtime.PrismaClientKnownRequestError;
+export declare const PrismaClientKnownRequestError: any;
 export type PrismaClientKnownRequestError = runtime.PrismaClientKnownRequestError;
-export declare const PrismaClientUnknownRequestError: typeof runtime.PrismaClientUnknownRequestError;
+export declare const PrismaClientUnknownRequestError: any;
 export type PrismaClientUnknownRequestError = runtime.PrismaClientUnknownRequestError;
-export declare const PrismaClientRustPanicError: typeof runtime.PrismaClientRustPanicError;
+export declare const PrismaClientRustPanicError: any;
 export type PrismaClientRustPanicError = runtime.PrismaClientRustPanicError;
-export declare const PrismaClientInitializationError: typeof runtime.PrismaClientInitializationError;
+export declare const PrismaClientInitializationError: any;
 export type PrismaClientInitializationError = runtime.PrismaClientInitializationError;
-export declare const PrismaClientValidationError: typeof runtime.PrismaClientValidationError;
+export declare const PrismaClientValidationError: any;
 export type PrismaClientValidationError = runtime.PrismaClientValidationError;
-export declare const sql: typeof runtime.sqltag;
-export declare const empty: runtime.Sql;
-export declare const join: typeof runtime.join;
-export declare const raw: typeof runtime.raw;
-export declare const Sql: typeof runtime.Sql;
+export declare const sql: any;
+export declare const empty: any;
+export declare const join: any;
+export declare const raw: any;
+export declare const Sql: any;
 export type Sql = runtime.Sql;
-export declare const Decimal: typeof runtime.Decimal;
+export declare const Decimal: any;
 export type Decimal = runtime.Decimal;
 export type DecimalJsLike = runtime.DecimalJsLike;
 export type Extension = runtime.Types.Extensions.UserArgs;
-export declare const getExtensionContext: typeof runtime.Extensions.getExtensionContext;
+export declare const getExtensionContext: any;
 export type Args<T, F extends runtime.Operation> = runtime.Types.Public.Args<T, F>;
 export type Payload<T, F extends runtime.Operation = never> = runtime.Types.Public.Payload<T, F>;
 export type Result<T, A, F extends runtime.Operation> = runtime.Types.Public.Result<T, A, F>;
@@ -45,9 +46,9 @@ export declare const NullTypes: {
     JsonNull: (new (secret: never) => typeof runtime.JsonNull);
     AnyNull: (new (secret: never) => typeof runtime.AnyNull);
 };
-export declare const DbNull: runtime.DbNullClass;
-export declare const JsonNull: runtime.JsonNullClass;
-export declare const AnyNull: runtime.AnyNullClass;
+export declare const DbNull: any;
+export declare const JsonNull: any;
+export declare const AnyNull: any;
 type SelectAndInclude = {
     select: any;
     include: any;
@@ -154,7 +155,10 @@ export type MaybeTupleToUnion<T> = T extends any[] ? TupleToUnion<T> : T;
 export type PickEnumerable<T, K extends Enumerable<keyof T> | keyof T> = Prisma__Pick<T, MaybeTupleToUnion<K>>;
 export type ExcludeUnderscoreKeys<T extends string> = T extends `_${string}` ? never : T;
 export type FieldRef<Model, FieldType> = runtime.FieldRef<Model, FieldType>;
-export declare const ModelName: {};
+type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRef<Model, FieldType>;
+export declare const ModelName: {
+    readonly Station: "Station";
+};
 export type ModelName = (typeof ModelName)[keyof typeof ModelName];
 export interface TypeMapCb<GlobalOmitOptions = {}> extends runtime.Types.Utils.Fn<{
     extArgs: runtime.Types.Extensions.InternalArgs;
@@ -166,10 +170,85 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         omit: GlobalOmitOptions;
     };
     meta: {
-        modelProps: never;
+        modelProps: "station";
         txIsolationLevel: TransactionIsolationLevel;
     };
-    model: {};
+    model: {
+        Station: {
+            payload: Prisma.$StationPayload<ExtArgs>;
+            fields: Prisma.StationFieldRefs;
+            operations: {
+                findUnique: {
+                    args: Prisma.StationFindUniqueArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload> | null;
+                };
+                findUniqueOrThrow: {
+                    args: Prisma.StationFindUniqueOrThrowArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
+                };
+                findFirst: {
+                    args: Prisma.StationFindFirstArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload> | null;
+                };
+                findFirstOrThrow: {
+                    args: Prisma.StationFindFirstOrThrowArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
+                };
+                findMany: {
+                    args: Prisma.StationFindManyArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>[];
+                };
+                create: {
+                    args: Prisma.StationCreateArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
+                };
+                createMany: {
+                    args: Prisma.StationCreateManyArgs<ExtArgs>;
+                    result: BatchPayload;
+                };
+                createManyAndReturn: {
+                    args: Prisma.StationCreateManyAndReturnArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>[];
+                };
+                delete: {
+                    args: Prisma.StationDeleteArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
+                };
+                update: {
+                    args: Prisma.StationUpdateArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
+                };
+                deleteMany: {
+                    args: Prisma.StationDeleteManyArgs<ExtArgs>;
+                    result: BatchPayload;
+                };
+                updateMany: {
+                    args: Prisma.StationUpdateManyArgs<ExtArgs>;
+                    result: BatchPayload;
+                };
+                updateManyAndReturn: {
+                    args: Prisma.StationUpdateManyAndReturnArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>[];
+                };
+                upsert: {
+                    args: Prisma.StationUpsertArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
+                };
+                aggregate: {
+                    args: Prisma.StationAggregateArgs<ExtArgs>;
+                    result: runtime.Types.Utils.Optional<Prisma.AggregateStation>;
+                };
+                groupBy: {
+                    args: Prisma.StationGroupByArgs<ExtArgs>;
+                    result: runtime.Types.Utils.Optional<Prisma.StationGroupByOutputType>[];
+                };
+                count: {
+                    args: Prisma.StationCountArgs<ExtArgs>;
+                    result: runtime.Types.Utils.Optional<Prisma.StationCountAggregateOutputType> | number;
+                };
+            };
+        };
+    };
 } & {
     other: {
         payload: any;
@@ -193,13 +272,41 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         };
     };
 };
-export declare const TransactionIsolationLevel: {
-    readonly ReadUncommitted: "ReadUncommitted";
-    readonly ReadCommitted: "ReadCommitted";
-    readonly RepeatableRead: "RepeatableRead";
-    readonly Serializable: "Serializable";
-};
+export declare const TransactionIsolationLevel: any;
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel];
+export declare const StationScalarFieldEnum: {
+    readonly id: "id";
+    readonly name: "name";
+    readonly location: "location";
+    readonly capacity: "capacity";
+    readonly createdAt: "createdAt";
+    readonly updatedAt: "updatedAt";
+    readonly createdBy: "createdBy";
+};
+export type StationScalarFieldEnum = (typeof StationScalarFieldEnum)[keyof typeof StationScalarFieldEnum];
+export declare const SortOrder: {
+    readonly asc: "asc";
+    readonly desc: "desc";
+};
+export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder];
+export declare const QueryMode: {
+    readonly default: "default";
+    readonly insensitive: "insensitive";
+};
+export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode];
+export declare const NullsOrder: {
+    readonly first: "first";
+    readonly last: "last";
+};
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder];
+export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>;
+export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>;
+export type StringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String'>;
+export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String[]'>;
+export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>;
+export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>;
+export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>;
+export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>;
 export type BatchPayload = {
     count: number;
 };
@@ -223,7 +330,9 @@ export type PrismaClientOptions = ({
     omit?: GlobalOmitConfig;
     comments?: runtime.SqlCommenterPlugin[];
 };
-export type GlobalOmitConfig = {};
+export type GlobalOmitConfig = {
+    station?: Prisma.StationOmit;
+};
 export type LogLevel = 'info' | 'query' | 'warn' | 'error';
 export type LogDefinition = {
     level: LogLevel;

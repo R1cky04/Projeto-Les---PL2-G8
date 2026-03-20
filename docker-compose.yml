@@ -37,7 +37,7 @@ services:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
     command: >
-      sh -c "npm install && npx prisma generate && npx prisma db push && npm run start:dev"
+      sh -c "npm install && export DATABASE_URL=postgresql://postgres:postgres@db:5432/pl2g8?schema=public && npm run start:dev"
 
   frontend:
     build:
