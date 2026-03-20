@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo para Estação da Rent-a-Car
+model Station {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique // Nome único da estação
+  location  String   // Endereço/localização da estação
+  capacity  Int      // Capacidade máxima de veículos
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?  // ID do usuário IT que criou (opcional para auditoria)
+}

@@ -9,29 +9,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaService = void 0;
 const common_1 = require("@nestjs/common");
 let PrismaService = class PrismaService {
-    stations = [];
-    nextId = 1;
-    station = {
-        findUnique: async ({ where }) => {
-            if (where.name)
-                return this.stations.find((s) => s.name === where.name) ?? null;
-            if (where.id)
-                return this.stations.find((s) => s.id === where.id) ?? null;
-            return null;
-        },
-        findMany: async () => this.stations,
-        create: async ({ data }) => {
-            const now = new Date();
-            const station = {
-                id: this.nextId++,
-                createdAt: now,
-                updatedAt: now,
-                ...data,
-            };
-            this.stations.push(station);
-            return station;
-        },
-    };
 };
 exports.PrismaService = PrismaService;
 exports.PrismaService = PrismaService = __decorate([

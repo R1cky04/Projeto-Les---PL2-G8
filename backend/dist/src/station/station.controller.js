@@ -16,6 +16,7 @@ exports.StationController = void 0;
 const common_1 = require("@nestjs/common");
 const station_service_1 = require("./station.service");
 const create_station_dto_1 = require("./dto/create-station.dto");
+const update_station_dto_1 = require("./dto/update-station.dto");
 let StationController = class StationController {
     stationService;
     constructor(stationService) {
@@ -25,11 +26,22 @@ let StationController = class StationController {
         const createdBy = 'IT-User';
         return this.stationService.create(createStationDto, createdBy);
     }
-    async findAll() {
-        return this.stationService.findAll();
+    async search(searchTerm) {
+        return this.stationService.search(searchTerm);
     }
     async findOne(id) {
         return this.stationService.findOne(id);
+    }
+    async findAll() {
+        return this.stationService.findAll();
+    }
+    async update(id, updateStationDto) {
+        const updatedBy = 'IT-User';
+        return this.stationService.update(id, updateStationDto, updatedBy);
+    }
+    async delete(id) {
+        const deletedBy = 'IT-User';
+        return this.stationService.delete(id, deletedBy);
     }
 };
 exports.StationController = StationController;
@@ -41,11 +53,12 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StationController.prototype, "create", null);
 __decorate([
-    (0, common_1.Get)(),
+    (0, common_1.Get)('search/:searchTerm'),
+    __param(0, (0, common_1.Param)('searchTerm')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
-], StationController.prototype, "findAll", null);
+], StationController.prototype, "search", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
@@ -53,6 +66,27 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], StationController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Get)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], StationController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, update_station_dto_1.UpdateStationDto]),
+    __metadata("design:returntype", Promise)
+], StationController.prototype, "update", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], StationController.prototype, "delete", null);
 exports.StationController = StationController = __decorate([
     (0, common_1.Controller)('stations'),
     __metadata("design:paramtypes", [station_service_1.StationService])

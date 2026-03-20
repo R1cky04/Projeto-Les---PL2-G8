@@ -1,37 +1,55 @@
-import { Controller, Post, Body, Get, Param, ParseIntPipe } from '@nestjs/common';
-import { StationService } from './station.service';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  ParseIntPipe,
+  Put,
+  Delete,
+} from '@nestjs/common';
+// Importamos o Service e a Interface Station que agora está exportada
+import { StationService, Station } from './station.service';
 import { CreateStationDto } from './dto/create-station.dto';
+import { UpdateStationDto } from './dto/update-station.dto';
 
 @Controller('stations')
 export class StationController {
   constructor(private readonly stationService: StationService) {}
 
-  /**
-   * Endpoint para criar uma nova estação.
-   * Requer autenticação e permissões de IT (não implementado aqui, assumir middleware).
-   * @param createStationDto Dados da estação a criar
-   * @returns A estação criada
-   */
   @Post()
-  async create(@Body() createStationDto: CreateStationDto) {
-    // TODO: Obter createdBy do contexto de autenticação (ex: req.user.id)
-    const createdBy = 'IT-User'; // Placeholder
+  async create(@Body() createStationDto: CreateStationDto): Promise<Station> {
+    const createdBy = 'IT-User'; 
     return this.stationService.create(createStationDto, createdBy);
   }
 
-  /**
-   * Endpoint para listar todas as estações.
-   */
+  @Get('search/:searchTerm')
+  async search(@Param('searchTerm') searchTerm: string): Promise<Station[]> {
+    return this.stationService.search(searchTerm);
+  }
+
+  @Get(':id')
+  async findOne(@Param('id', ParseIntPipe) id: number): Promise<Station> {
+    return this.stationService.findOne(id);
+  }
+
   @Get()
-  async findAll() {
+  async findAll(): Promise<Station[]> {
     return this.stationService.findAll();
   }
 
-  /**
-   * Endpoint para obter uma estação por ID.
-   */
-  @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.stationService.findOne(id);
+  @Put(':id')
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateStationDto: UpdateStationDto,
+  ): Promise<Station> {
+    const updatedBy = 'IT-User'; 
+    return this.stationService.update(id, updateStationDto, updatedBy);
+  }
+
+  @Delete(':id')
+  async delete(@Param('id', ParseIntPipe) id: number): Promise<Station> {
+    const deletedBy = 'IT-User'; 
+    return this.stationService.delete(id, deletedBy);
   }
 }

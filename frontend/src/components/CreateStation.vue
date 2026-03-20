@@ -1,59 +1,68 @@
 <template>
-  <div class="create-station">
-    <h2>Criar Nova Estação</h2>
-    <form @submit.prevent="submitForm">
-      <div class="form-group">
-        <label for="name">Nome da Estação:</label>
-        <input
-          id="name"
-          v-model="form.name"
-          type="text"
-          required
-          placeholder="Ex: Estação Central"
-        />
-      </div>
+  <div class="super-modern-wrapper">
+    <div class="glass-card">
+      <header class="card-header">
+        <div class="icon-wrap">
+          <span class="icon">🏢</span>
+        </div>
+        <h2>Nova Estação</h2>
+        <p>Expanda a rede de mobilidade Rent-a-Car.</p>
+      </header>
 
-      <div class="form-group">
-        <label for="location">Localização/Endereço:</label>
-        <input
-          id="location"
-          v-model="form.location"
-          type="text"
-          required
-          placeholder="Ex: Rua Principal, 123, Cidade"
-        />
-      </div>
+      <form @submit.prevent="submitForm" class="modern-form">
+        <div class="input-group">
+          <input 
+            id="name"
+            v-model="form.name" 
+            type="text" 
+            required 
+            placeholder=" "
+          />
+          <label for="name">Nome da Estação</label>
+          <span class="highlight"></span>
+        </div>
 
-      <div class="form-group">
-        <label for="capacity">Capacidade Máxima:</label>
-        <input
-          id="capacity"
-          v-model.number="form.capacity"
-          type="number"
-          min="1"
-          required
-          placeholder="Ex: 50"
-        />
-      </div>
+        <div class="input-group">
+          <input 
+            id="location"
+            v-model="form.location" 
+            type="text" 
+            required 
+            placeholder=" "
+          />
+          <label for="location">Localização / Morada</label>
+          <span class="highlight"></span>
+        </div>
 
-      <button type="submit" :disabled="loading">
-        {{ loading ? 'Criando...' : 'Criar Estação' }}
-      </button>
-    </form>
+        <div class="input-group capacity-group">
+          <input 
+            id="capacity"
+            v-model.number="form.capacity" 
+            type="number" 
+            min="1" 
+            required 
+            placeholder=" "
+          />
+          <label for="capacity">Capacidade Máxima</label>
+          <span class="highlight"></span>
+          <div class="cap-visual" v-if="form.capacity > 0">
+            <span>🚘</span>
+            <span class="cap-count">{{ form.capacity }}</span>
+          </div>
+        </div>
 
-    <!-- Mensagens de feedback -->
-    <div v-if="message" :class="messageType" class="message">
-      {{ message }}
-    </div>
+        <button type="submit" class="btn-gradient" :disabled="loading">
+          <span v-if="!loading">Registar Estação</span>
+          <div v-else class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+        </button>
+      </form>
 
-    <!-- Lista de estações existentes (opcional) -->
-    <div v-if="stations.length > 0" class="stations-list">
-      <h3>Estações Existentes</h3>
-      <ul>
-        <li v-for="station in stations" :key="station.id">
-          {{ station.name }} - {{ station.location }} (Cap: {{ station.capacity }})
-        </li>
-      </ul>
+      <transition name="slide-fade">
+        <div v-if="message" :class="['modern-alert', messageType]">
+          <span class="alert-icon">{{ messageType === 'success' ? '✅' : '⚠️' }}</span>
+          {{ message }}
+        </div>
+      </transition>
     </div>
   </div>
 </template>
@@ -65,127 +74,208 @@ export default {
   name: 'CreateStation',
   data() {
     return {
-      form: {
-        name: '',
-        location: '',
-        capacity: null,
-      },
+      form: { name: '', location: '', capacity: null },
       loading: false,
       message: '',
-      messageType: '', // 'success' ou 'error'
-      stations: [], // Para listar estações existentes
+      messageType: ''
     };
-  },
-  mounted() {
-    this.loadStations(); // Carregar estações existentes ao montar
   },
   methods: {
     async submitForm() {
+      if (this.form.capacity <= 0) {
+        this.showFeedback('A capacidade deve ser positiva.', 'error');
+        return;
+      }
       this.loading = true;
-      this.message = '';
       try {
         await axios.post('http://localhost:3000/stations', this.form);
-        this.message = 'Estação criada com sucesso!';
-        this.messageType = 'success';
+        this.showFeedback('Estação registada com sucesso!', 'success');
         this.resetForm();
-        this.loadStations(); // Recarregar lista
-      } catch (error) {
-        this.messageType = 'error';
-        if (error.response && error.response.data && error.response.data.message) {
-          this.message = error.response.data.message;
-        } else {
-          this.message = 'Erro ao criar estação. Tente novamente.';
-        }
+      } catch (err) {
+        this.showFeedback('Erro ao comunicar com o servidor.', 'error');
       } finally {
         this.loading = false;
       }
     },
+    showFeedback(text, type) {
+      this.message = text;
+      this.messageType = type;
+      setTimeout(() => this.message = '', 4000);
+    },
     resetForm() {
-      this.form.name = '';
-      this.form.location = '';
-      this.form.capacity = null;
-    },
-    async loadStations() {
-      try {
-        const response = await axios.get('http://localhost:3000/stations');
-        this.stations = response.data;
-      } catch (error) {
-        console.error('Erro ao carregar estações:', error);
-      }
-    },
-  },
+      this.form = { name: '', location: '', capacity: null };
+    }
+  }
 };
 </script>
 
 <style scoped>
-.create-station {
-  max-width: 600px;
-  margin: 0 auto;
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+.super-modern-wrapper {
+  font-family: 'Poppins', sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  /* Gradiente estático de alta performance */
+  background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+  margin: 0;
   padding: 20px;
 }
 
-.form-group {
-  margin-bottom: 15px;
-}
-
-label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-input {
+.glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  padding: 40px;
   width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  max-width: 450px;
+  position: relative;
+  z-index: 10;
 }
 
-button {
-  background-color: #007bff;
-  color: white;
-  padding: 10px 15px;
+.card-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.icon-wrap {
+  width: 70px;
+  height: 70px;
+  background: rgba(56, 189, 248, 0.1);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 15px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.icon { font-size: 2.2rem; }
+.card-header h2 { color: #fff; margin: 0; font-size: 1.6rem; font-weight: 700; }
+.card-header p { color: #94a3b8; font-size: 0.95rem; margin-top: 8px; }
+
+.modern-form {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.input-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 10px 0;
+  background: transparent;
   border: none;
-  border-radius: 4px;
+  border-bottom: 2px solid #334155;
+  color: #f8fafc;
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.input-group label {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  color: #64748b;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+/* Lógica da Label Flutuante corrigida para não empurrar o texto */
+.input-group input:focus ~ label,
+.input-group input:not(:placeholder-shown) ~ label {
+  transform: translateY(-28px);
+  font-size: 0.8rem;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.highlight {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #38bdf8;
+  transition: 0.3s ease;
+}
+
+.input-group input:focus ~ .highlight {
+  width: 100%;
+}
+
+.capacity-group {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cap-visual {
+  background: rgba(56, 189, 248, 0.1);
+  padding: 6px 14px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.cap-count { color: #38bdf8; font-weight: 700; font-size: 0.95rem; }
+
+.btn-gradient {
+  background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+  color: #fff;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
   cursor: pointer;
-}
-
-button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-.message {
+  transition: 0.3s;
   margin-top: 15px;
-  padding: 10px;
-  border-radius: 4px;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
 }
 
-.success {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+.btn-gradient:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.5);
 }
 
-.error {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+.btn-gradient:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.modern-alert {
+  margin-top: 25px;
+  padding: 15px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
-.stations-list {
-  margin-top: 30px;
-}
+.modern-alert.success { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
+.modern-alert.error { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
 
-ul {
-  list-style-type: none;
-  padding: 0;
-}
+/* Spinner */
+.lds-ellipsis { display: inline-block; position: relative; width: 64px; height: 20px; }
+.lds-ellipsis div { position: absolute; top: 0; width: 10px; height: 10px; border-radius: 50%; background: #fff; animation: lds-ellipsis 0.6s infinite; }
+.lds-ellipsis div:nth-child(1) { left: 8px; animation-delay: -0.24s; }
+.lds-ellipsis div:nth-child(2) { left: 8px; animation-delay: -0.12s; }
+.lds-ellipsis div:nth-child(3) { left: 32px; animation-delay: 0s; }
+.lds-ellipsis div:nth-child(4) { left: 56px; animation-delay: 0.12s; }
 
-li {
-  background-color: #f8f9fa;
-  margin-bottom: 5px;
-  padding: 10px;
-  border-radius: 4px;
-}
+@keyframes lds-ellipsis { 0% { transform: scale(0); opacity: 0; } 50% { opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
+
+.slide-fade-enter-active { transition: all 0.3s ease; }
+.slide-fade-enter { transform: translateY(10px); opacity: 0; }
 </style>
