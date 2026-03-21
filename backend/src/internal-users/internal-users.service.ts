@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   InternalUserDeletionAuditMode,
+  Prisma,
   InternalUserRole,
 } from '@prisma/client';
 import { AuthenticatedUserDto } from '../auth/auth.types';
@@ -11,6 +12,7 @@ import {
   DeleteInternalUserResponseDto,
   InternalUserDeletionMode,
 } from './dto/delete-internal-user-response.dto';
+import { ListInternalUsersResponseDto } from './dto/list-internal-users-response.dto';
 import {
   getInitialStatusForRole,
   getPermissionsForRole,
@@ -22,6 +24,9 @@ import { PasswordHasherService } from './password-hasher.service';
 // Application service for internal-user provisioning and lifecycle actions.
 @Injectable()
 export class InternalUsersService {
+  private static readonly DEFAULT_PAGE = 1;
+  private static readonly DEFAULT_PAGE_SIZE = 10;
+  private static readonly MAX_PAGE_SIZE = 20;
   private readonly logger = new Logger(InternalUsersService.name);
 
   constructor(
@@ -97,23 +102,68 @@ export class InternalUsersService {
     }
   }
 
-  async findAll() {
-    const users = await this.prisma.user.findMany({
-      where: { isInternal: true },
-      select: {
-        id: true,
-        userId: true,
-        internalRole: true,
-        internalStatus: true,
-        permissions: true,
-        requiresItValidation: true,
-        isActive: true,
-        createdAt: true,
+  async findAll(
+    pageInput?: number | string,
+    pageSizeInput?: number | string,
+    searchInput?: string,
+  ): Promise<ListInternalUsersResponseDto> {
+    const page = normalizePositiveInteger(
+      pageInput,
+      InternalUsersService.DEFAULT_PAGE,
+    );
+    const pageSize = Math.min(
+      normalizePositiveInteger(
+        pageSizeInput,
+        InternalUsersService.DEFAULT_PAGE_SIZE,
+      ),
+      InternalUsersService.MAX_PAGE_SIZE,
+    );
+    const searchTerm = normalizeSearchTerm(searchInput);
+    const skip = (page - 1) * pageSize;
+    const where = buildInternalUserDirectoryWhere(searchTerm);
+
+    // The IT directory can grow large, so the API returns both the current slice
+    // and enough metadata for the client to page or search without loading
+    // every account into the browser first.
+    const [totalItems, items] = await this.prisma.$transaction([
+      this.prisma.user.count({
+        where,
+      }),
+      this.prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          userId: true,
+          internalRole: true,
+          internalStatus: true,
+          permissions: true,
+          requiresItValidation: true,
+          isActive: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+    this.logger.log(
+      `Found ${items.length} internal users on page ${page} of ${totalPages}${searchTerm ? ` for search "${searchTerm}"` : ''}.`,
+    );
+
+    return {
+      items,
+      pagination: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+        hasPreviousPage: page > 1,
+        hasNextPage: page < totalPages,
       },
-      orderBy: { createdAt: 'desc' },
-    });
-    this.logger.log(`Found ${users.length} internal users.`);
-    return users;
+    };
   }
 
   async remove(
@@ -280,4 +330,50 @@ function toDeletionAuditMode(
   return mode === 'DEACTIVATED'
     ? InternalUserDeletionAuditMode.DEACTIVATED
     : InternalUserDeletionAuditMode.DELETED;
+}
+
+function normalizePositiveInteger(
+  input: number | string | undefined,
+  fallback: number,
+): number {
+  const normalizedValue =
+    typeof input === 'string' ? Number.parseInt(input, 10) : input;
+
+  if (
+    typeof normalizedValue === 'number' &&
+    Number.isInteger(normalizedValue) &&
+    normalizedValue > 0
+  ) {
+    return normalizedValue;
+  }
+
+  return fallback;
+}
+
+function normalizeSearchTerm(input: string | undefined): string | undefined {
+  if (typeof input !== 'string') {
+    return undefined;
+  }
+
+  const normalizedValue = input.trim();
+
+  return normalizedValue ? normalizedValue : undefined;
+}
+
+function buildInternalUserDirectoryWhere(
+  searchTerm?: string,
+): Prisma.UserWhereInput {
+  if (!searchTerm) {
+    return {
+      isInternal: true,
+    };
+  }
+
+  return {
+    isInternal: true,
+    userId: {
+      contains: searchTerm,
+      mode: 'insensitive',
+    },
+  };
 }

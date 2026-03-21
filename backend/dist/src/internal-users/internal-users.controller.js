@@ -26,8 +26,8 @@ let InternalUsersController = class InternalUsersController {
     create(payload) {
         return this.internalUsersService.create(payload);
     }
-    findAll() {
-        return this.internalUsersService.findAll();
+    findAll(page, pageSize, search) {
+        return this.internalUsersService.findAll(page, pageSize, search);
     }
     remove(id, request) {
         return this.internalUsersService.remove(id, request.auth.user);
@@ -43,9 +43,12 @@ __decorate([
 ], InternalUsersController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('pageSize')),
+    __param(2, (0, common_1.Query)('search')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
 ], InternalUsersController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Delete)(':id'),

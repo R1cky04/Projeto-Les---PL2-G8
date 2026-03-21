@@ -9,7 +9,14 @@
           :users="users"
           :loading="loadingUsers"
           :deleting-user-id="deletingUserId"
+          :pagination="pagination"
+          :search-draft="searchDraft"
+          :active-search-term="searchTerm"
           @delete="confirmDeleteUser"
+          @page-change="loadUsers"
+          @search="applySearch"
+          @clear-search="clearSearch"
+          @update:search-draft="searchDraft = $event"
         />
 
         <InternalUserFormPanel
@@ -61,6 +68,20 @@ import {
 } from '../utils/internalUserPresentation'
 
 const DEFAULT_ROLE = ROLE_OPTIONS[0]?.value || ''
+const USERS_PAGE_SIZE = 10
+
+function createUsersPagination() {
+  // Keep pagination state explicit so create/delete flows can reset or step back
+  // without inferring values from the rendered list.
+  return {
+    page: 1,
+    pageSize: USERS_PAGE_SIZE,
+    totalItems: 0,
+    totalPages: 1,
+    hasPreviousPage: false,
+    hasNextPage: false,
+  }
+}
 
 // IT workspace for provisioning and deletion. The parent owns authentication;
 // this view owns module-local state and feedback.
@@ -94,26 +115,55 @@ export default {
       submitError: '',
       successMessage: '',
       createdUser: null,
+      searchDraft: '',
+      searchTerm: '',
       users: [],
       loadingUsers: false,
       deletingUserId: null,
+      pagination: createUsersPagination(),
     }
   },
   async created() {
-    await this.loadUsers()
+    await this.loadUsers(1)
   },
   methods: {
-    async loadUsers() {
+    async loadUsers(
+      page = this.pagination.page,
+      search = this.searchTerm,
+    ) {
       this.loadingUsers = true
 
       try {
-        this.users = await fetchInternalUsers(this.sessionToken)
+        const response = await fetchInternalUsers(this.sessionToken, {
+          page,
+          pageSize: USERS_PAGE_SIZE,
+          search,
+        })
+
+        this.users = response.items
+        this.pagination = response.pagination
       } catch (error) {
         this.submitError =
           error.message || 'Nao foi possivel carregar a lista de utilizadores.'
       } finally {
         this.loadingUsers = false
       }
+    },
+
+    async applySearch() {
+      this.searchTerm = this.searchDraft.trim()
+      await this.loadUsers(1, this.searchTerm)
+    },
+
+    async clearSearch() {
+      this.searchDraft = ''
+
+      if (!this.searchTerm) {
+        return
+      }
+
+      this.searchTerm = ''
+      await this.loadUsers(1, this.searchTerm)
     },
 
     async submitForm() {
@@ -139,7 +189,7 @@ export default {
         this.createdUser = response.user
         this.successMessage = response.message
         this.form = createInternalUserForm(DEFAULT_ROLE)
-        await this.loadUsers()
+        await this.loadUsers(1)
       } catch (error) {
         this.fieldErrors = mapInternalUserApiErrors(error.errors)
         this.submitError = error.message || 'Nao foi possivel criar o utilizador.'
@@ -159,10 +209,16 @@ export default {
 
       try {
         const response = await deleteInternalUser(user.id, this.sessionToken)
+        // If the last row on the current page disappears, move back one page so
+        // the list never leaves the user stranded on an empty slice.
+        const targetPage =
+          this.users.length === 1 && this.pagination.page > 1
+            ? this.pagination.page - 1
+            : this.pagination.page
 
         this.createdUser = null
         this.successMessage = getInternalUserDeletionResultMessage(response.mode)
-        await this.loadUsers()
+        await this.loadUsers(targetPage)
       } catch (error) {
         this.submitError = error.message || 'Erro ao eliminar utilizador.'
       } finally {

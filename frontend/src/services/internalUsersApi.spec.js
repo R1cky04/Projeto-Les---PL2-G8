@@ -40,11 +40,54 @@ describe('internalUsersApi', () => {
   })
 
   it('loads the internal user list with the authenticated session token', () => {
-    fetchInternalUsers('token-list')
+    getJson.mockResolvedValue({
+      items: [],
+      pagination: {
+        page: 3,
+        pageSize: 10,
+        totalItems: 12,
+        totalPages: 2,
+        hasPreviousPage: true,
+        hasNextPage: false,
+      },
+    })
 
-    expect(getJson).toHaveBeenCalledWith('/internal-users', {
+    fetchInternalUsers('token-list', {
+      page: 3,
+      pageSize: 10,
+      search: 'lisboa',
+    })
+
+    expect(getJson).toHaveBeenCalledWith('/internal-users?page=3&pageSize=10&search=lisboa', {
       token: 'token-list',
       fallbackMessage: 'Nao foi possivel carregar a lista de utilizadores.',
+    })
+  })
+
+  it('normalizes the legacy list response into a paginated shape', async () => {
+    getJson.mockResolvedValue([
+      { id: 'user-1', userId: 'staff.one' },
+      { id: 'user-2', userId: 'staff.two' },
+    ])
+
+    await expect(
+      fetchInternalUsers('token-list', {
+        page: 1,
+        pageSize: 10,
+      }),
+    ).resolves.toEqual({
+      items: [
+        { id: 'user-1', userId: 'staff.one' },
+        { id: 'user-2', userId: 'staff.two' },
+      ],
+      pagination: {
+        page: 1,
+        pageSize: 10,
+        totalItems: 2,
+        totalPages: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
     })
   })
 

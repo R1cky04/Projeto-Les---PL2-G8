@@ -19,6 +19,8 @@ describe('InternalUsersService', () => {
   let prisma: {
     $transaction: jest.Mock;
     user: {
+      count: jest.Mock;
+      findMany: jest.Mock;
       findUnique: jest.Mock;
       findFirst: jest.Mock;
       create: jest.Mock;
@@ -55,6 +57,8 @@ describe('InternalUsersService', () => {
         Promise.all(operations),
       ),
       user: {
+        count: jest.fn(),
+        findMany: jest.fn(),
         findUnique: jest.fn(),
         findFirst: jest.fn(),
         create: jest.fn(),
@@ -197,6 +201,111 @@ describe('InternalUsersService', () => {
 
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
     expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('returns internal users with pagination metadata', async () => {
+    prisma.user.count.mockResolvedValue(12);
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: 'user-7',
+        userId: 'staff.page',
+        internalRole: InternalUserRole.STAFF,
+        internalStatus: InternalUserStatus.PENDING_IT_VALIDATION,
+        permissions: [InternalPermission.RESERVATION_READ],
+        requiresItValidation: true,
+        isActive: true,
+        createdAt: new Date('2026-03-21T09:00:00.000Z'),
+      },
+    ]);
+
+    const response = await service.findAll('2', '5');
+
+    expect(prisma.user.count).toHaveBeenCalledWith({
+      where: { isInternal: true },
+    });
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: { isInternal: true },
+      select: {
+        id: true,
+        userId: true,
+        internalRole: true,
+        internalStatus: true,
+        permissions: true,
+        requiresItValidation: true,
+        isActive: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: 5,
+      take: 5,
+    });
+    expect(response.pagination).toEqual({
+      page: 2,
+      pageSize: 5,
+      totalItems: 12,
+      totalPages: 3,
+      hasPreviousPage: true,
+      hasNextPage: true,
+    });
+    expect(response.items).toHaveLength(1);
+  });
+
+  it('filters internal users by a search term and keeps the default page size of ten', async () => {
+    prisma.user.count.mockResolvedValue(1);
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: 'user-8',
+        userId: 'staff.lisboa',
+        internalRole: InternalUserRole.STAFF,
+        internalStatus: InternalUserStatus.ACTIVE,
+        permissions: [InternalPermission.USER_READ],
+        requiresItValidation: false,
+        isActive: true,
+        createdAt: new Date('2026-03-21T10:00:00.000Z'),
+      },
+    ]);
+
+    const response = await service.findAll(undefined, undefined, ' lisboa ');
+
+    expect(prisma.user.count).toHaveBeenCalledWith({
+      where: {
+        isInternal: true,
+        userId: {
+          contains: 'lisboa',
+          mode: 'insensitive',
+        },
+      },
+    });
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: {
+        isInternal: true,
+        userId: {
+          contains: 'lisboa',
+          mode: 'insensitive',
+        },
+      },
+      select: {
+        id: true,
+        userId: true,
+        internalRole: true,
+        internalStatus: true,
+        permissions: true,
+        requiresItValidation: true,
+        isActive: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: 0,
+      take: 10,
+    });
+    expect(response.pagination).toEqual({
+      page: 1,
+      pageSize: 10,
+      totalItems: 1,
+      totalPages: 1,
+      hasPreviousPage: false,
+      hasNextPage: false,
+    });
   });
 
   it('permanently deletes an internal user without historical records', async () => {

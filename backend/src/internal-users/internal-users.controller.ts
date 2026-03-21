@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import type { AuthenticatedRequest } from '../auth/auth.types';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { CreateInternalUserResponseDto } from './dto/create-internal-user-response.dto';
 import { DeleteInternalUserResponseDto } from './dto/delete-internal-user-response.dto';
+import { ListInternalUsersResponseDto } from './dto/list-internal-users-response.dto';
 import { InternalUsersService } from './internal-users.service';
 import { ItMasterGuard } from './it-master.guard';
 
@@ -30,8 +32,12 @@ export class InternalUsersController {
   }
 
   @Get()
-  findAll() {
-    return this.internalUsersService.findAll();
+  findAll(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string,
+  ): Promise<ListInternalUsersResponseDto> {
+    return this.internalUsersService.findAll(page, pageSize, search);
   }
 
   @Delete(':id')
