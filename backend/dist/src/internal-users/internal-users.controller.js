@@ -26,6 +26,12 @@ let InternalUsersController = class InternalUsersController {
     create(payload) {
         return this.internalUsersService.create(payload);
     }
+    findAll() {
+        return this.internalUsersService.findAll();
+    }
+    remove(id, request) {
+        return this.internalUsersService.remove(id, request.auth.user);
+    }
 };
 exports.InternalUsersController = InternalUsersController;
 __decorate([
@@ -35,6 +41,20 @@ __decorate([
     __metadata("design:paramtypes", [create_internal_user_dto_1.CreateInternalUserDto]),
     __metadata("design:returntype", Promise)
 ], InternalUsersController.prototype, "create", null);
+__decorate([
+    (0, common_1.Get)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], InternalUsersController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], InternalUsersController.prototype, "remove", null);
 exports.InternalUsersController = InternalUsersController = __decorate([
     (0, common_1.Controller)('internal-users'),
     (0, common_1.UseGuards)(auth_session_guard_1.AuthSessionGuard, it_master_guard_1.ItMasterGuard),

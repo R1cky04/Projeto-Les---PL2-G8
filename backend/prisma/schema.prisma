@@ -42,6 +42,13 @@ enum InternalPermission {
   USER_ACTIVATE
 }
 
+// Deletion audit keeps a durable trace of IT actions even when the user record
+// is permanently removed.
+enum InternalUserDeletionAuditMode {
+  DELETED
+  DEACTIVATED
+}
+
 enum TenantUserRole {
   ADMIN
   STAFF
@@ -193,6 +200,20 @@ model InternalSession {
 
   @@index([userId])
   @@index([expiresAt, revokedAt])
+}
+
+model InternalUserDeletionAuditLog {
+  id                   String                        @id @default(cuid())
+  mode                 InternalUserDeletionAuditMode
+  actorUserId          String
+  actorUserIdentifier  String
+  targetUserId         String
+  targetUserIdentifier String
+  summary              String
+  createdAt            DateTime                      @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([targetUserId, createdAt])
 }
 
 model TenantUser {

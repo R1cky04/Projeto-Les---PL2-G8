@@ -17,7 +17,7 @@ export class ItMasterGuard implements CanActivate {
 
     if (actorRole !== InternalUserRole.IT) {
       throw new ForbiddenException({
-        message: 'Apenas o IT pode criar utilizadores internos.',
+        message: 'Apenas o IT pode gerir utilizadores internos.',
         code: 'IT_ROLE_REQUIRED',
       });
     }

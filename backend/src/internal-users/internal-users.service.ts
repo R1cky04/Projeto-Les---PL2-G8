@@ -1,8 +1,16 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { InternalUserRole } from '@prisma/client';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  InternalUserDeletionAuditMode,
+  InternalUserRole,
+} from '@prisma/client';
+import { AuthenticatedUserDto } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { CreateInternalUserResponseDto } from './dto/create-internal-user-response.dto';
+import {
+  DeleteInternalUserResponseDto,
+  InternalUserDeletionMode,
+} from './dto/delete-internal-user-response.dto';
 import {
   getInitialStatusForRole,
   getPermissionsForRole,
@@ -11,9 +19,11 @@ import {
 import { normalizeCreateInternalUserInput } from './internal-user-validation';
 import { PasswordHasherService } from './password-hasher.service';
 
-// Application service for internal user provisioning.
+// Application service for internal-user provisioning and lifecycle actions.
 @Injectable()
 export class InternalUsersService {
+  private readonly logger = new Logger(InternalUsersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly passwordHasher: PasswordHasherService,
@@ -86,10 +96,188 @@ export class InternalUsersService {
       });
     }
   }
+
+  async findAll() {
+    const users = await this.prisma.user.findMany({
+      where: { isInternal: true },
+      select: {
+        id: true,
+        userId: true,
+        internalRole: true,
+        internalStatus: true,
+        permissions: true,
+        requiresItValidation: true,
+        isActive: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    this.logger.log(`Found ${users.length} internal users.`);
+    return users;
+  }
+
+  async remove(
+    id: string,
+    actor: AuthenticatedUserDto,
+  ): Promise<DeleteInternalUserResponseDto> {
+    const user = await this.prisma.user.findFirst({
+      where: { id, isInternal: true },
+      select: {
+        id: true,
+        userId: true,
+        isActive: true,
+        createdReservations: {
+          select: { id: true, status: true },
+        },
+        createdRentals: {
+          select: { id: true, status: true },
+        },
+        createdTransfers: {
+          select: { id: true, status: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Utilizador interno nao encontrado.');
+    }
+
+    if (!user.isActive) {
+      throw new NotFoundException(
+        'O utilizador indicado ja foi removido ou desativado.',
+      );
+    }
+
+    const hasActiveReservations = user.createdReservations.some(
+      (res) => res.status === 'CONFIRMED' || res.status === 'DRAFT',
+    );
+    const hasActiveRentals = user.createdRentals.some(
+      (rental) => rental.status === 'OPEN',
+    );
+    const hasActiveTransfers = user.createdTransfers.some(
+      (transfer) =>
+        transfer.status === 'PENDING' || transfer.status === 'IN_TRANSIT',
+    );
+
+    if (hasActiveReservations || hasActiveRentals || hasActiveTransfers) {
+      throw new ConflictException(
+        'Nao foi possivel eliminar ou desativar: o utilizador possui contratos ou reservas ativas.',
+      );
+    }
+
+    const targetUserId = user.userId ?? id;
+    const hasHistory =
+      user.createdReservations.length > 0 ||
+      user.createdRentals.length > 0 ||
+      user.createdTransfers.length > 0;
+
+    if (hasHistory) {
+      return this.softDeleteUser(id, targetUserId, actor);
+    }
+
+    return this.deleteUser(id, targetUserId, actor);
+  }
+
+  private async softDeleteUser(
+    id: string,
+    targetUserId: string,
+    actor: AuthenticatedUserDto,
+  ): Promise<DeleteInternalUserResponseDto> {
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id },
+        data: { isActive: false },
+      }),
+      this.prisma.internalSession.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+      this.prisma.internalUserDeletionAuditLog.create({
+        data: this.buildDeletionAuditEntry({
+          actor,
+          targetUserId: id,
+          targetUserIdentifier: targetUserId,
+          mode: 'DEACTIVATED',
+          summary:
+            'Conta desativada para reter historico existente e remover o acesso imediato.',
+        }),
+      }),
+    ]);
+
+    this.logger.log(
+      `Internal user ${targetUserId} (${id}) was deactivated by ${actor.userId}.`,
+    );
+
+    return {
+      message:
+        'Utilizador desativado temporariamente devido a retencao de historico.',
+      mode: 'DEACTIVATED',
+      userId: targetUserId,
+    };
+  }
+
+  private async deleteUser(
+    id: string,
+    targetUserId: string,
+    actor: AuthenticatedUserDto,
+  ): Promise<DeleteInternalUserResponseDto> {
+    await this.prisma.$transaction([
+      this.prisma.internalSession.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+      this.prisma.internalUserDeletionAuditLog.create({
+        data: this.buildDeletionAuditEntry({
+          actor,
+          targetUserId: id,
+          targetUserIdentifier: targetUserId,
+          mode: 'DELETED',
+          summary:
+            'Conta eliminada permanentemente por nao possuir historico a reter.',
+        }),
+      }),
+      this.prisma.user.delete({ where: { id } }),
+    ]);
+
+    this.logger.log(
+      `Internal user ${targetUserId} (${id}) was permanently deleted by ${actor.userId}.`,
+    );
+
+    return {
+      message: 'Utilizador removido permanentemente com sucesso.',
+      mode: 'DELETED',
+      userId: targetUserId,
+    };
+  }
+
+  private buildDeletionAuditEntry(input: {
+    actor: AuthenticatedUserDto;
+    targetUserId: string;
+    targetUserIdentifier: string;
+    mode: InternalUserDeletionMode;
+    summary: string;
+  }) {
+    return {
+      actorUserId: input.actor.id,
+      actorUserIdentifier: input.actor.userId,
+      targetUserId: input.targetUserId,
+      targetUserIdentifier: input.targetUserIdentifier,
+      mode: toDeletionAuditMode(input.mode),
+      summary: input.summary,
+    };
+  }
 }
 
 function getCreationMessage(role: InternalUserRole): string {
   return requiresItValidation(role)
     ? 'Utilizador criado com sucesso, mas a conta fica pendente de validacao do IT.'
     : 'Utilizador criado com sucesso.';
+}
+
+function toDeletionAuditMode(
+  mode: InternalUserDeletionMode,
+): InternalUserDeletionAuditMode {
+  return mode === 'DEACTIVATED'
+    ? InternalUserDeletionAuditMode.DEACTIVATED
+    : InternalUserDeletionAuditMode.DELETED;
 }

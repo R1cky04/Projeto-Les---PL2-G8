@@ -3,8 +3,15 @@
     class="internal-users-page page-shell"
     :class="{ 'internal-users-page-embedded': embedded }"
   >
-    <main class="page-layout" style="max-width: 600px; margin-top: 40px; margin-left: auto; margin-right: auto;">
-      <section class="content-grid" style="display: block;">
+    <main class="page-layout">
+      <section class="content-grid">
+        <InternalUserListPanel
+          :users="users"
+          :loading="loadingUsers"
+          :deleting-user-id="deletingUserId"
+          @delete="confirmDeleteUser"
+        />
+
         <InternalUserFormPanel
           :user-id="form.userId"
           :password="form.password"
@@ -25,7 +32,7 @@
           v-if="createdUser"
           :created-user="createdUser"
           :role-options="roleOptions"
-          style="margin-top: 24px;"
+          class="created-notification"
         />
       </section>
     </main>
@@ -33,26 +40,36 @@
 </template>
 
 <script>
-// Container view for the feature. Child components stay presentational;
-// this view owns page state, validation and API coordination.
 import InternalUserCreatedCard from '../components/internal-users/InternalUserCreatedCard.vue'
 import InternalUserFormPanel from '../components/internal-users/InternalUserFormPanel.vue'
+import InternalUserListPanel from '../components/internal-users/InternalUserListPanel.vue'
 import { ROLE_OPTIONS } from '../constants/internalUserRoles'
-import { createInternalUser } from '../services/internalUsersApi'
+import {
+  createInternalUser,
+  deleteInternalUser,
+  fetchInternalUsers,
+} from '../services/internalUsersApi'
 import {
   buildCreateInternalUserPayload,
   createInternalUserForm,
   mapInternalUserApiErrors,
   validateInternalUserForm,
 } from '../utils/internalUserForm'
+import {
+  getInternalUserDeletionPrompt,
+  getInternalUserDeletionResultMessage,
+} from '../utils/internalUserPresentation'
 
 const DEFAULT_ROLE = ROLE_OPTIONS[0]?.value || ''
 
+// IT workspace for provisioning and deletion. The parent owns authentication;
+// this view owns module-local state and feedback.
 export default {
   name: 'InternalUsersView',
   components: {
     InternalUserCreatedCard,
     InternalUserFormPanel,
+    InternalUserListPanel,
   },
   props: {
     sessionToken: {
@@ -77,9 +94,28 @@ export default {
       submitError: '',
       successMessage: '',
       createdUser: null,
+      users: [],
+      loadingUsers: false,
+      deletingUserId: null,
     }
   },
+  async created() {
+    await this.loadUsers()
+  },
   methods: {
+    async loadUsers() {
+      this.loadingUsers = true
+
+      try {
+        this.users = await fetchInternalUsers(this.sessionToken)
+      } catch (error) {
+        this.submitError =
+          error.message || 'Nao foi possivel carregar a lista de utilizadores.'
+      } finally {
+        this.loadingUsers = false
+      }
+    },
+
     async submitForm() {
       this.successMessage = ''
       this.submitError = ''
@@ -103,20 +139,64 @@ export default {
         this.createdUser = response.user
         this.successMessage = response.message
         this.form = createInternalUserForm(DEFAULT_ROLE)
+        await this.loadUsers()
       } catch (error) {
-        // Keep the form contract stable even if the API returns a richer error shape.
         this.fieldErrors = mapInternalUserApiErrors(error.errors)
         this.submitError = error.message || 'Nao foi possivel criar o utilizador.'
       } finally {
         this.isSubmitting = false
       }
     },
+
+    async confirmDeleteUser(user) {
+      if (!window.confirm(getInternalUserDeletionPrompt(user.userId))) {
+        return
+      }
+
+      this.deletingUserId = user.id
+      this.submitError = ''
+      this.successMessage = ''
+
+      try {
+        const response = await deleteInternalUser(user.id, this.sessionToken)
+
+        this.createdUser = null
+        this.successMessage = getInternalUserDeletionResultMessage(response.mode)
+        await this.loadUsers()
+      } catch (error) {
+        this.submitError = error.message || 'Erro ao eliminar utilizador.'
+      } finally {
+        this.deletingUserId = null
+      }
+    },
+
     resetForm() {
       this.form = createInternalUserForm(DEFAULT_ROLE)
       this.fieldErrors = {}
       this.submitError = ''
       this.successMessage = ''
+      this.createdUser = null
     },
   },
 }
 </script>
+
+<style scoped>
+.content-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.created-notification {
+  grid-column: 1 / -1;
+  margin-top: 24px;
+}
+
+@media (max-width: 1100px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

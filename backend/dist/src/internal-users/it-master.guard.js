@@ -15,7 +15,7 @@ let ItMasterGuard = class ItMasterGuard {
         const actorRole = request.auth?.user.role;
         if (actorRole !== client_1.InternalUserRole.IT) {
             throw new common_1.ForbiddenException({
-                message: 'Apenas o IT pode criar utilizadores internos.',
+                message: 'Apenas o IT pode gerir utilizadores internos.',
                 code: 'IT_ROLE_REQUIRED',
             });
         }

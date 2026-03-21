@@ -1,28 +1,70 @@
-import { ConflictException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   InternalPermission,
   InternalUserRole,
   InternalUserStatus,
 } from '@prisma/client';
+import { AuthenticatedUserDto } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { InternalUsersService } from './internal-users.service';
 import { PasswordHasherService } from './password-hasher.service';
 
-// Service tests covering policy derivation, activation state and validation boundaries.
+// Service tests cover creation policy, deletion policy, retention behavior and
+// the audit trail required by the IT workflow.
 describe('InternalUsersService', () => {
   let service: InternalUsersService;
   let prisma: {
+    $transaction: jest.Mock;
     user: {
       findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+    };
+    internalSession: {
+      updateMany: jest.Mock;
+    };
+    internalUserDeletionAuditLog: {
       create: jest.Mock;
     };
   };
   let passwordHasher: PasswordHasherService;
 
+  const actor: AuthenticatedUserDto = {
+    id: 'it-actor-id',
+    userId: 'it.master',
+    fullName: 'IT Master',
+    role: InternalUserRole.IT,
+    status: InternalUserStatus.ACTIVE,
+    isActive: true,
+    accessLevel: 'FULL',
+    permissions: [
+      InternalPermission.USER_CREATE,
+      InternalPermission.USER_ACTIVATE,
+      InternalPermission.USER_READ,
+    ],
+  };
+
   beforeEach(() => {
     prisma = {
+      $transaction: jest.fn().mockImplementation((operations) =>
+        Promise.all(operations),
+      ),
       user: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+      internalSession: {
+        updateMany: jest.fn(),
+      },
+      internalUserDeletionAuditLog: {
         create: jest.fn(),
       },
     };
@@ -155,5 +197,128 @@ describe('InternalUsersService', () => {
 
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
     expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('permanently deletes an internal user without historical records', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'user-3',
+      userId: 'staff.clean',
+      isActive: true,
+      createdReservations: [],
+      createdRentals: [],
+      createdTransfers: [],
+    });
+    prisma.internalSession.updateMany.mockResolvedValue({ count: 2 });
+    prisma.internalUserDeletionAuditLog.create.mockResolvedValue({
+      id: 'audit-1',
+      mode: 'DELETED',
+    });
+    prisma.user.delete.mockResolvedValue({ id: 'user-3' });
+
+    const response = await service.remove('user-3', actor);
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.internalSession.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user-3', revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(prisma.internalUserDeletionAuditLog.create).toHaveBeenCalledWith({
+      data: {
+        actorUserId: actor.id,
+        actorUserIdentifier: actor.userId,
+        targetUserId: 'user-3',
+        targetUserIdentifier: 'staff.clean',
+        mode: 'DELETED',
+        summary:
+          'Conta eliminada permanentemente por nao possuir historico a reter.',
+      },
+    });
+    expect(prisma.user.delete).toHaveBeenCalledWith({
+      where: { id: 'user-3' },
+    });
+    expect(response).toEqual({
+      message: 'Utilizador removido permanentemente com sucesso.',
+      mode: 'DELETED',
+      userId: 'staff.clean',
+    });
+  });
+
+  it('deactivates an internal user when history must be retained', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'user-4',
+      userId: 'staff.history',
+      isActive: true,
+      createdReservations: [{ id: 'res-1', status: 'COMPLETED' }],
+      createdRentals: [],
+      createdTransfers: [],
+    });
+    prisma.user.update.mockResolvedValue({ id: 'user-4', isActive: false });
+    prisma.internalSession.updateMany.mockResolvedValue({ count: 1 });
+    prisma.internalUserDeletionAuditLog.create.mockResolvedValue({
+      id: 'audit-2',
+      mode: 'DEACTIVATED',
+    });
+
+    const response = await service.remove('user-4', actor);
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-4' },
+      data: { isActive: false },
+    });
+    expect(prisma.user.delete).not.toHaveBeenCalled();
+    expect(prisma.internalUserDeletionAuditLog.create).toHaveBeenCalledWith({
+      data: {
+        actorUserId: actor.id,
+        actorUserIdentifier: actor.userId,
+        targetUserId: 'user-4',
+        targetUserIdentifier: 'staff.history',
+        mode: 'DEACTIVATED',
+        summary:
+          'Conta desativada para reter historico existente e remover o acesso imediato.',
+      },
+    });
+    expect(response).toEqual({
+      message:
+        'Utilizador desativado temporariamente devido a retencao de historico.',
+      mode: 'DEACTIVATED',
+      userId: 'staff.history',
+    });
+  });
+
+  it('rejects deletion when the target user is already inactive', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'user-5',
+      userId: 'staff.inactive',
+      isActive: false,
+      createdReservations: [],
+      createdRentals: [],
+      createdTransfers: [],
+    });
+
+    await expect(service.remove('user-5', actor)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.user.delete).not.toHaveBeenCalled();
+  });
+
+  it('blocks deletion while the user still owns active operational records', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'user-6',
+      userId: 'staff.busy',
+      isActive: true,
+      createdReservations: [{ id: 'res-2', status: 'CONFIRMED' }],
+      createdRentals: [],
+      createdTransfers: [],
+    });
+
+    await expect(service.remove('user-6', actor)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.user.delete).not.toHaveBeenCalled();
+    expect(prisma.internalUserDeletionAuditLog.create).not.toHaveBeenCalled();
   });
 });
