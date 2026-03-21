@@ -29,7 +29,7 @@
 
         <div class="module-shell-actions">
           <button class="auth-secondary-button is-active" type="button" @click="returnToWorkspace">
-            Novo Utilizador
+            Voltar ao painel
           </button>
           <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
             Terminar sessão
