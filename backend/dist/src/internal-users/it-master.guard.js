@@ -8,14 +8,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ItMasterGuard = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 let ItMasterGuard = class ItMasterGuard {
     canActivate(context) {
         const request = context.switchToHttp().getRequest();
-        const actorRoleHeader = request.headers['x-actor-role'];
-        const actorRole = Array.isArray(actorRoleHeader)
-            ? actorRoleHeader[0]
-            : actorRoleHeader;
-        if (actorRole?.toUpperCase() !== 'IT') {
+        const actorRole = request.auth?.user.role;
+        if (actorRole !== client_1.InternalUserRole.IT) {
             throw new common_1.ForbiddenException({
                 message: 'Apenas o IT pode criar utilizadores internos.',
                 code: 'IT_ROLE_REQUIRED',

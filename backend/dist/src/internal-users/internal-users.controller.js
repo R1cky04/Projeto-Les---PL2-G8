@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InternalUsersController = void 0;
 const common_1 = require("@nestjs/common");
+const auth_session_guard_1 = require("../auth/auth-session.guard");
 const create_internal_user_dto_1 = require("./dto/create-internal-user.dto");
 const internal_users_service_1 = require("./internal-users.service");
 const it_master_guard_1 = require("./it-master.guard");
@@ -36,7 +37,7 @@ __decorate([
 ], InternalUsersController.prototype, "create", null);
 exports.InternalUsersController = InternalUsersController = __decorate([
     (0, common_1.Controller)('internal-users'),
-    (0, common_1.UseGuards)(it_master_guard_1.ItMasterGuard),
+    (0, common_1.UseGuards)(auth_session_guard_1.AuthSessionGuard, it_master_guard_1.ItMasterGuard),
     __metadata("design:paramtypes", [internal_users_service_1.InternalUsersService])
 ], InternalUsersController);
 //# sourceMappingURL=internal-users.controller.js.map

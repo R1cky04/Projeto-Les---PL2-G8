@@ -6,6 +6,18 @@ import {
 
 // Centralized role policy for internal accounts.
 const ROLE_PERMISSIONS: Record<InternalUserRole, InternalPermission[]> = {
+  [InternalUserRole.IT]: [
+    InternalPermission.RESERVATION_READ,
+    InternalPermission.RENTAL_READ,
+    InternalPermission.VEHICLE_READ,
+    InternalPermission.VEHICLE_WRITE,
+    InternalPermission.MAINTENANCE_WRITE,
+    InternalPermission.TRANSFER_WRITE,
+    InternalPermission.INCIDENT_WRITE,
+    InternalPermission.USER_READ,
+    InternalPermission.USER_CREATE,
+    InternalPermission.USER_ACTIVATE,
+  ],
   [InternalUserRole.STAFF]: [
     InternalPermission.RESERVATION_READ,
     InternalPermission.RENTAL_READ,

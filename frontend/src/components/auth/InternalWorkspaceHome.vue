@@ -1,0 +1,116 @@
+<template>
+  <section class="auth-workspace">
+    <header class="workspace-header">
+      <div>
+        <p class="auth-eyebrow">Sessao interna</p>
+        <h1>{{ authState.user.fullName || authState.user.userId }}</h1>
+        <p class="workspace-subtitle">
+          {{ roleLabel(authState.user.role) }} | {{ accessLevelLabel(authState.user.accessLevel) }}
+        </p>
+      </div>
+
+      <button class="auth-secondary-button" type="button" @click="$emit('logout')">
+        Terminar sessao
+      </button>
+    </header>
+
+    <section class="workspace-summary-grid">
+      <article class="auth-card summary-card">
+        <p class="summary-label">User ID</p>
+        <strong>{{ authState.user.userId }}</strong>
+      </article>
+
+      <article class="auth-card summary-card">
+        <p class="summary-label">Estado</p>
+        <strong>{{ authState.user.status }}</strong>
+      </article>
+
+      <article class="auth-card summary-card">
+        <p class="summary-label">Expira em</p>
+        <strong>{{ formatExpiry(authState.session.expiresAt) }}</strong>
+      </article>
+
+      <article class="auth-card summary-card">
+        <p class="summary-label">Sessoes paralelas</p>
+        <strong>{{ authState.session.concurrentSessionCount }}</strong>
+      </article>
+    </section>
+
+    <article v-if="authState.session.warnings.length > 0" class="auth-card workspace-alerts">
+      <p class="summary-label">Avisos da sessao</p>
+      <ul class="alert-list">
+        <li v-for="warning in authState.session.warnings" :key="warning">
+          {{ warning }}
+        </li>
+      </ul>
+    </article>
+
+    <section class="feature-grid">
+      <article
+        v-for="feature in authState.features"
+        :key="feature.key"
+        class="auth-card feature-card"
+        :class="`feature-card-${feature.status.toLowerCase()}`"
+      >
+        <div class="feature-head">
+          <div>
+            <h2>{{ feature.label }}</h2>
+            <p>{{ feature.description }}</p>
+          </div>
+          <span class="feature-status">
+            {{ featureStatusLabel(feature.status) }}
+          </span>
+        </div>
+
+        <p v-if="feature.reason" class="feature-reason">
+          {{ feature.reason }}
+        </p>
+
+        <button
+          class="auth-primary-button feature-action"
+          type="button"
+          :disabled="feature.status !== 'AVAILABLE'"
+          @click="$emit('open-feature', feature.key)"
+        >
+          {{ feature.key === 'INTERNAL_USERS' ? 'Abrir modulo' : 'Autorizado' }}
+        </button>
+      </article>
+    </section>
+  </section>
+</template>
+
+<script>
+import {
+  formatSessionExpiry,
+  getAccessLevelLabel,
+  getFeatureStatusLabel,
+  getRoleLabel,
+} from '../../utils/authPresentation'
+
+// Workspace home focuses on authenticated session presentation and feature
+// discovery; navigation remains in the parent container.
+export default {
+  name: 'InternalWorkspaceHome',
+  props: {
+    authState: {
+      type: Object,
+      required: true,
+    },
+  },
+  emits: ['logout', 'open-feature'],
+  methods: {
+    roleLabel(role) {
+      return getRoleLabel(role)
+    },
+    accessLevelLabel(accessLevel) {
+      return getAccessLevelLabel(accessLevel)
+    },
+    featureStatusLabel(status) {
+      return getFeatureStatusLabel(status)
+    },
+    formatExpiry(value) {
+      return formatSessionExpiry(value)
+    },
+  },
+}
+</script>

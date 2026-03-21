@@ -5,6 +5,18 @@ exports.requiresItValidation = requiresItValidation;
 exports.getInitialStatusForRole = getInitialStatusForRole;
 const client_1 = require("@prisma/client");
 const ROLE_PERMISSIONS = {
+    [client_1.InternalUserRole.IT]: [
+        client_1.InternalPermission.RESERVATION_READ,
+        client_1.InternalPermission.RENTAL_READ,
+        client_1.InternalPermission.VEHICLE_READ,
+        client_1.InternalPermission.VEHICLE_WRITE,
+        client_1.InternalPermission.MAINTENANCE_WRITE,
+        client_1.InternalPermission.TRANSFER_WRITE,
+        client_1.InternalPermission.INCIDENT_WRITE,
+        client_1.InternalPermission.USER_READ,
+        client_1.InternalPermission.USER_CREATE,
+        client_1.InternalPermission.USER_ACTIVATE,
+    ],
     [client_1.InternalUserRole.STAFF]: [
         client_1.InternalPermission.RESERVATION_READ,
         client_1.InternalPermission.RENTAL_READ,

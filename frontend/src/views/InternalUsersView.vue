@@ -1,21 +1,10 @@
 <template>
-  <div class="internal-users-page page-shell">
-    <main class="page-layout">
-      <section class="hero">
-        <p class="eyebrow">Sprint | Criacao de Contas de Utilizador</p>
-        <h1>Backoffice IT para onboarding de contas internas</h1>
-        <p class="intro">
-          Fluxo de criacao de utilizadores Staff, Admin e Frota com validacao,
-          permissoes herdadas e estado inicial alinhado com o perfil.
-        </p>
-        <div class="hero-pills">
-          <span class="pill pill-strong">Sessao simulada: IT</span>
-          <span class="pill">Backend Nest + Prisma</span>
-          <span class="pill">Feedback imediato de sucesso e erro</span>
-        </div>
-      </section>
-
-      <section class="content-grid">
+  <div
+    class="internal-users-page page-shell"
+    :class="{ 'internal-users-page-embedded': embedded }"
+  >
+    <main class="page-layout" style="max-width: 600px; margin-top: 40px; margin-left: auto; margin-right: auto;">
+      <section class="content-grid" style="display: block;">
         <InternalUserFormPanel
           :user-id="form.userId"
           :password="form.password"
@@ -32,15 +21,11 @@
           @update:role="form.role = $event"
         />
 
-        <InternalUserRoleGuide
-          :role-options="roleOptions"
-          :selected-role="form.role"
-        />
-
         <InternalUserCreatedCard
           v-if="createdUser"
           :created-user="createdUser"
           :role-options="roleOptions"
+          style="margin-top: 24px;"
         />
       </section>
     </main>
@@ -52,7 +37,6 @@
 // this view owns page state, validation and API coordination.
 import InternalUserCreatedCard from '../components/internal-users/InternalUserCreatedCard.vue'
 import InternalUserFormPanel from '../components/internal-users/InternalUserFormPanel.vue'
-import InternalUserRoleGuide from '../components/internal-users/InternalUserRoleGuide.vue'
 import { ROLE_OPTIONS } from '../constants/internalUserRoles'
 import { createInternalUser } from '../services/internalUsersApi'
 import {
@@ -69,7 +53,20 @@ export default {
   components: {
     InternalUserCreatedCard,
     InternalUserFormPanel,
-    InternalUserRoleGuide,
+  },
+  props: {
+    sessionToken: {
+      type: String,
+      required: true,
+    },
+    sessionUser: {
+      type: Object,
+      required: true,
+    },
+    embedded: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -100,6 +97,7 @@ export default {
       try {
         const response = await createInternalUser(
           buildCreateInternalUserPayload(this.form),
+          this.sessionToken,
         )
 
         this.createdUser = response.user

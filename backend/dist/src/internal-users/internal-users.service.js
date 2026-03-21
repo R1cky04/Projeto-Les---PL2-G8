@@ -39,7 +39,7 @@ let InternalUsersService = class InternalUsersService {
                 internalStatus: (0, internal_user_access_1.getInitialStatusForRole)(input.role),
                 permissions,
                 requiresItValidation: pendingValidation,
-                isActive: !pendingValidation,
+                isActive: true,
             },
             select: {
                 id: true,

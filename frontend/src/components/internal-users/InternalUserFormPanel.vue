@@ -2,8 +2,9 @@
   <article class="panel panel-form">
     <div class="panel-head">
       <div>
-        <p class="panel-label">RF1 a RF4</p>
-        <h2>Criar utilizador interno</h2>
+        <div style="font-size: 3rem; margin-bottom: 0.5rem; background: rgba(59,130,246,0.1); width: 80px; height: 80px; display: inline-flex; align-items: center; justify-content: center; border-radius: 20px; border: 1px solid rgba(59,130,246,0.3); box-shadow: 0 0 20px rgba(59,130,246,0.2);">🏢</div>
+        <h2>Novo Utilizador</h2>
+        <p style="color: var(--muted); font-size: 0.95rem; margin-top: 8px;">Expanda a equipa do Rent-a-Car.</p>
       </div>
       <button
         class="ghost-button"
@@ -73,7 +74,7 @@
 
       <div class="form-actions">
         <button class="primary-button" type="submit" :disabled="isSubmitting">
-          {{ isSubmitting ? 'A criar...' : 'Criar utilizador' }}
+          {{ isSubmitting ? 'A registar...' : 'Registar Utilizador' }}
         </button>
       </div>
     </form>

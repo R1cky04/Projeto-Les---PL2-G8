@@ -4,21 +4,18 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { InternalUserRole } from '@prisma/client';
+import { AuthenticatedRequest } from '../auth/auth.types';
 
-// Temporary authorization guard for the sprint auth placeholder.
+// Authorization guard for IT-only workflows layered on top of an authenticated
+// session resolved by AuthSessionGuard.
 @Injectable()
 export class ItMasterGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest<{
-      headers: Record<string, string | string[] | undefined>;
-    }>();
-    // Replace this header lookup with request.user once authentication exists.
-    const actorRoleHeader = request.headers['x-actor-role'];
-    const actorRole = Array.isArray(actorRoleHeader)
-      ? actorRoleHeader[0]
-      : actorRoleHeader;
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const actorRole = request.auth?.user.role;
 
-    if (actorRole?.toUpperCase() !== 'IT') {
+    if (actorRole !== InternalUserRole.IT) {
       throw new ForbiddenException({
         message: 'Apenas o IT pode criar utilizadores internos.',
         code: 'IT_ROLE_REQUIRED',

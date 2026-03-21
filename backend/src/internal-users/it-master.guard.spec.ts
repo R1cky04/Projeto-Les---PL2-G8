@@ -1,29 +1,34 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { InternalUserRole } from '@prisma/client';
 import { ItMasterGuard } from './it-master.guard';
 
-// Guard tests for the temporary IT-only authorization rule.
+// Guard tests for the IT-only authorization rule after authentication.
 describe('ItMasterGuard', () => {
   const guard = new ItMasterGuard();
 
   it('allows requests flagged as IT', () => {
-    const context = createExecutionContext('IT');
+    const context = createExecutionContext(InternalUserRole.IT);
 
     expect(guard.canActivate(context)).toBe(true);
   });
 
   it('rejects requests without IT role', () => {
-    const context = createExecutionContext('STAFF');
+    const context = createExecutionContext(InternalUserRole.STAFF);
 
     expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
 });
 
-function createExecutionContext(role: string | undefined): ExecutionContext {
+function createExecutionContext(
+  role: InternalUserRole | undefined,
+): ExecutionContext {
   return {
     switchToHttp: () => ({
       getRequest: () => ({
-        headers: {
-          'x-actor-role': role,
+        auth: {
+          user: {
+            role,
+          },
         },
       }),
     }),

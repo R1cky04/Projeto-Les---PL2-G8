@@ -110,7 +110,7 @@ describe('InternalUsersService', () => {
         InternalPermission.INCIDENT_WRITE,
       ],
       requiresItValidation: true,
-      isActive: false,
+      isActive: true,
       createdAt: new Date('2026-03-17T12:05:00.000Z'),
     });
 
@@ -124,7 +124,7 @@ describe('InternalUsersService', () => {
       internalRole: InternalUserRole.FLEET,
       internalStatus: InternalUserStatus.PENDING_IT_VALIDATION,
       requiresItValidation: true,
-      isActive: false,
+      isActive: true,
     });
     expect(response.message).toContain('pendente de validacao do IT');
     expect(response.user.requiresItValidation).toBe(true);

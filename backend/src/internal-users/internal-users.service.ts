@@ -41,7 +41,9 @@ export class InternalUsersService {
         internalStatus: getInitialStatusForRole(input.role),
         permissions,
         requiresItValidation: pendingValidation,
-        isActive: !pendingValidation,
+        // Pending validation users can authenticate with limited access; blocked
+        // accounts are represented separately through isActive = false.
+        isActive: true,
       },
       select: {
         id: true,
