@@ -35,6 +35,18 @@ Endpoints:
 
 Observação: o Electron em modo desktop (`electron:serve`/`electron:build`) deve ser executado localmente no host, não dentro do container.
 
+### Script unico para testar com Electron
+
+Na raiz do projeto, executa:
+
+powershell -ExecutionPolicy Bypass -File .\run-electron-dev.ps1
+
+O script sobe `db` + `backend` via Docker Compose e depois arranca o Electron no frontend.
+
+Se ja tiveres dependencias instaladas no frontend e quiseres acelerar:
+
+powershell -ExecutionPolicy Bypass -File .\run-electron-dev.ps1 -SkipInstall
+
 ## Estrutura
 
 ```

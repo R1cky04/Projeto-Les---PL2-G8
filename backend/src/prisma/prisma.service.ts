@@ -1,9 +1,31 @@
-import { Injectable } from '@nestjs/common';
-// @ts-ignore
-// import { PrismaClient } from '../../generated/prisma';
+import 'dotenv/config';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { PrismaClient } from '../../generated/prisma';
 
+// Prisma bootstrap for Prisma 7 + PostgreSQL driver adapters.
 @Injectable()
-export class PrismaService {
-  // Removido temporariamente para evitar problemas de inicialização
-  // public prisma = new PrismaClient();
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  constructor() {
+    const connectionString = process.env.DATABASE_URL;
+
+    if (!connectionString) {
+      throw new Error('DATABASE_URL is not configured.');
+    }
+
+    super({
+      adapter: new PrismaPg({ connectionString }),
+    });
+  }
+
+  async onModuleInit() {
+    await this.$connect();
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
 }
