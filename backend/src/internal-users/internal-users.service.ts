@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { InternalUserRole } from '@prisma/client';
+import { InternalUserRole } from './internal-user.enums';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { CreateInternalUserResponseDto } from './dto/create-internal-user-response.dto';
@@ -30,7 +30,7 @@ export class InternalUsersService {
     const pendingValidation = requiresItValidation(input.role);
     const passwordHash = this.passwordHasher.hash(input.password);
 
-    const user = await this.prisma.user.create({
+    const user = await (this.prisma as any).user.create({
       data: {
         userId: input.userId,
         passwordHash,
@@ -72,7 +72,7 @@ export class InternalUsersService {
 
   private async ensureUserIdIsUnique(userId: string) {
     // Keep the failure deterministic and user-friendly before hitting the unique index.
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUser = await (this.prisma as any).user.findUnique({
       where: { userId },
       select: { id: true },
     });

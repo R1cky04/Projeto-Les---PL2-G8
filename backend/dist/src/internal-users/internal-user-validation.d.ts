@@ -1,4 +1,4 @@
-import { InternalUserRole } from '@prisma/client';
+import { InternalUserRole } from './internal-user.enums';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 export interface NormalizedCreateInternalUserInput {
     userId: string;

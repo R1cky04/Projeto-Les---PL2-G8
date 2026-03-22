@@ -11,7 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InternalUsersService = void 0;
 const common_1 = require("@nestjs/common");
-const client_1 = require("@prisma/client");
+const internal_user_enums_1 = require("./internal-user.enums");
 const prisma_service_1 = require("../prisma/prisma.service");
 const internal_user_access_1 = require("./internal-user-access");
 const internal_user_validation_1 = require("./internal-user-validation");
@@ -57,7 +57,7 @@ let InternalUsersService = class InternalUsersService {
             user: {
                 id: user.id,
                 userId: user.userId ?? '',
-                role: user.internalRole ?? client_1.InternalUserRole.STAFF,
+                role: user.internalRole ?? internal_user_enums_1.InternalUserRole.STAFF,
                 status: user.internalStatus,
                 permissions: user.permissions,
                 requiresItValidation: user.requiresItValidation,

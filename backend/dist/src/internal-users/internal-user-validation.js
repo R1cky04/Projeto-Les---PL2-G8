@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.normalizeCreateInternalUserInput = normalizeCreateInternalUserInput;
 const common_1 = require("@nestjs/common");
-const client_1 = require("@prisma/client");
+const internal_user_enums_1 = require("./internal-user.enums");
 const USER_ID_PATTERN = /^[a-z0-9._-]{4,30}$/;
 function normalizeCreateInternalUserInput(payload) {
     const errors = [];
@@ -85,12 +85,12 @@ function parseRole(role) {
     }
     const normalizedRole = role.trim().toUpperCase();
     switch (normalizedRole) {
-        case client_1.InternalUserRole.ADMIN:
-            return client_1.InternalUserRole.ADMIN;
-        case client_1.InternalUserRole.STAFF:
-            return client_1.InternalUserRole.STAFF;
-        case client_1.InternalUserRole.FLEET:
-            return client_1.InternalUserRole.FLEET;
+        case internal_user_enums_1.InternalUserRole.ADMIN:
+            return internal_user_enums_1.InternalUserRole.ADMIN;
+        case internal_user_enums_1.InternalUserRole.STAFF:
+            return internal_user_enums_1.InternalUserRole.STAFF;
+        case internal_user_enums_1.InternalUserRole.FLEET:
+            return internal_user_enums_1.InternalUserRole.FLEET;
         default:
             return null;
     }

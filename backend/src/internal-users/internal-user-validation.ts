@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { InternalUserRole } from '@prisma/client';
+import { InternalUserRole } from './internal-user.enums';
 import {
   CreateInternalUserDto,
   FieldValidationError,

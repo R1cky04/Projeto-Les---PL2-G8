@@ -2,7 +2,7 @@ import {
   InternalPermission,
   InternalUserRole,
   InternalUserStatus,
-} from '@prisma/client';
+} from '../internal-user.enums';
 
 // Success payload returned by the create-internal-user endpoint.
 export interface CreatedInternalUserDto {

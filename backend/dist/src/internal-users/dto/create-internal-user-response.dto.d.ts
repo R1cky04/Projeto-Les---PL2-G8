@@ -1,4 +1,4 @@
-import { InternalPermission, InternalUserRole, InternalUserStatus } from '@prisma/client';
+import { InternalPermission, InternalUserRole, InternalUserStatus } from '../internal-user.enums';
 export interface CreatedInternalUserDto {
     id: string;
     userId: string;

@@ -1,0 +1,21 @@
+export declare enum InternalUserRole {
+    ADMIN = "ADMIN",
+    STAFF = "STAFF",
+    FLEET = "FLEET"
+}
+export declare enum InternalUserStatus {
+    ACTIVE = "ACTIVE",
+    PENDING_IT_VALIDATION = "PENDING_IT_VALIDATION"
+}
+export declare enum InternalPermission {
+    RESERVATION_READ = "RESERVATION_READ",
+    RENTAL_READ = "RENTAL_READ",
+    VEHICLE_READ = "VEHICLE_READ",
+    VEHICLE_WRITE = "VEHICLE_WRITE",
+    MAINTENANCE_WRITE = "MAINTENANCE_WRITE",
+    TRANSFER_WRITE = "TRANSFER_WRITE",
+    INCIDENT_WRITE = "INCIDENT_WRITE",
+    USER_READ = "USER_READ",
+    USER_CREATE = "USER_CREATE",
+    USER_ACTIVATE = "USER_ACTIVATE"
+}

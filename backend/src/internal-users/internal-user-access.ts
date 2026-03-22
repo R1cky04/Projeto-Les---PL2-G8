@@ -2,7 +2,7 @@ import {
   InternalPermission,
   InternalUserRole,
   InternalUserStatus,
-} from '@prisma/client';
+} from './internal-user.enums';
 
 // Centralized role policy for internal accounts.
 const ROLE_PERMISSIONS: Record<InternalUserRole, InternalPermission[]> = {
