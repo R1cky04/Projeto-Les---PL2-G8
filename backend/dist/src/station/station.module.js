@@ -10,13 +10,16 @@ exports.StationModule = void 0;
 const common_1 = require("@nestjs/common");
 const station_service_1 = require("./station.service");
 const station_controller_1 = require("./station.controller");
+const it_station_management_guard_1 = require("./it-station-management.guard");
+const auth_module_1 = require("../auth/auth.module");
 let StationModule = class StationModule {
 };
 exports.StationModule = StationModule;
 exports.StationModule = StationModule = __decorate([
     (0, common_1.Module)({
+        imports: [auth_module_1.AuthModule],
         controllers: [station_controller_1.StationController],
-        providers: [station_service_1.StationService],
+        providers: [station_service_1.StationService, it_station_management_guard_1.ItStationManagementGuard],
         exports: [station_service_1.StationService],
     })
 ], StationModule);

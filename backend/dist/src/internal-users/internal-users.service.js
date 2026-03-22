@@ -262,6 +262,9 @@ let InternalUsersService = class InternalUsersService {
         };
     }
     async remove(id, actor) {
+        if (id === actor.id) {
+            throw new common_1.ConflictException('Nao e permitido remover a conta atualmente autenticada.');
+        }
         const user = this.prisma.user
             ? await this.prisma.user.findFirst({
                 where: { id, isInternal: true },

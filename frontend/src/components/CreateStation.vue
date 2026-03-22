@@ -72,6 +72,12 @@ import axios from 'axios';
 
 export default {
   name: 'CreateStation',
+  props: {
+    sessionToken: {
+      type: String,
+      default: '',
+    },
+  },
   data() {
     return {
       form: { name: '', location: '', capacity: null },
@@ -81,18 +87,32 @@ export default {
     };
   },
   methods: {
+    buildAuthConfig() {
+      if (!this.sessionToken) {
+        return {};
+      }
+
+      return {
+        headers: {
+          Authorization: `Bearer ${this.sessionToken}`,
+        },
+      };
+    },
     async submitForm() {
       if (this.form.capacity <= 0) {
         this.showFeedback('A capacidade deve ser positiva.', 'error');
         return;
       }
+
       this.loading = true;
       try {
-        await axios.post('http://localhost:3000/stations', this.form);
+        await axios.post('http://localhost:3000/stations', this.form, this.buildAuthConfig());
         this.showFeedback('Estação registada com sucesso!', 'success');
         this.resetForm();
       } catch (err) {
+        const details = err?.response?.data?.details;
         const backendMessage =
+          (Array.isArray(details) && details.length > 0 ? details.join(' | ') : null) ||
           err?.response?.data?.message ||
           err?.response?.data?.error ||
           err?.message;

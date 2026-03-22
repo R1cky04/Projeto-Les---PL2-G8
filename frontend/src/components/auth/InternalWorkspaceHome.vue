@@ -97,7 +97,7 @@
           :disabled="!canManageStations()"
           @click="$emit('open-feature', 'STATION_MANAGEMENT')"
         >
-          Abrir modulo
+          {{ canManageStations() ? 'Abrir modulo' : 'Nao autorizado' }}
         </button>
       </article>
     </section>

@@ -15,6 +15,7 @@ class CreateStationDto {
     name;
     location;
     capacity;
+    allocatedVehicles;
 }
 exports.CreateStationDto = CreateStationDto;
 __decorate([
@@ -32,4 +33,10 @@ __decorate([
     (0, class_validator_1.Min)(1),
     __metadata("design:type", Number)
 ], CreateStationDto.prototype, "capacity", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], CreateStationDto.prototype, "allocatedVehicles", void 0);
 //# sourceMappingURL=create-station.dto.js.map

@@ -5,13 +5,16 @@ export interface Station {
     name: string;
     location: string;
     capacity: number;
+    allocatedVehicles: number;
     createdAt: Date;
     updatedAt: Date;
     createdBy: string | null;
+    partialWarnings?: string[];
 }
 export declare class StationService {
     private stations;
     private nextId;
+    private validateStationPayload;
     create(createStationDto: CreateStationDto, createdBy?: string): Promise<Station>;
     findAll(): Promise<Station[]>;
     findOne(id: number): Promise<Station>;

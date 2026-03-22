@@ -17,13 +17,15 @@ const common_1 = require("@nestjs/common");
 const station_service_1 = require("./station.service");
 const create_station_dto_1 = require("./dto/create-station.dto");
 const update_station_dto_1 = require("./dto/update-station.dto");
+const auth_session_guard_1 = require("../auth/auth-session.guard");
+const it_station_management_guard_1 = require("./it-station-management.guard");
 let StationController = class StationController {
     stationService;
     constructor(stationService) {
         this.stationService = stationService;
     }
-    async create(createStationDto) {
-        const createdBy = 'IT-User';
+    async create(createStationDto, request) {
+        const createdBy = request.auth?.user.userId || request.auth?.user.id || 'IT-User';
         return this.stationService.create(createStationDto, createdBy);
     }
     async search(searchTerm) {
@@ -35,12 +37,12 @@ let StationController = class StationController {
     async findAll() {
         return this.stationService.findAll();
     }
-    async update(id, updateStationDto) {
-        const updatedBy = 'IT-User';
+    async update(id, updateStationDto, request) {
+        const updatedBy = request.auth?.user.userId || request.auth?.user.id || 'IT-User';
         return this.stationService.update(id, updateStationDto, updatedBy);
     }
-    async delete(id) {
-        const deletedBy = 'IT-User';
+    async delete(id, request) {
+        const deletedBy = request.auth?.user.userId || request.auth?.user.id || 'IT-User';
         return this.stationService.delete(id, deletedBy);
     }
 };
@@ -48,8 +50,9 @@ exports.StationController = StationController;
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_station_dto_1.CreateStationDto]),
+    __metadata("design:paramtypes", [create_station_dto_1.CreateStationDto, Object]),
     __metadata("design:returntype", Promise)
 ], StationController.prototype, "create", null);
 __decorate([
@@ -76,19 +79,22 @@ __decorate([
     (0, common_1.Put)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, update_station_dto_1.UpdateStationDto]),
+    __metadata("design:paramtypes", [Number, update_station_dto_1.UpdateStationDto, Object]),
     __metadata("design:returntype", Promise)
 ], StationController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", Promise)
 ], StationController.prototype, "delete", null);
 exports.StationController = StationController = __decorate([
     (0, common_1.Controller)('stations'),
+    (0, common_1.UseGuards)(auth_session_guard_1.AuthSessionGuard, it_station_management_guard_1.ItStationManagementGuard),
     __metadata("design:paramtypes", [station_service_1.StationService])
 ], StationController);
 //# sourceMappingURL=station.controller.js.map

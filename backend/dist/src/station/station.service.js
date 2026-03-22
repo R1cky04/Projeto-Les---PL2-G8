@@ -15,6 +15,7 @@ let StationService = class StationService {
             name: 'Estação Central',
             location: 'Centro da Cidade',
             capacity: 50,
+            allocatedVehicles: 24,
             createdAt: new Date(),
             updatedAt: new Date(),
             createdBy: 'Sistema',
@@ -24,25 +25,84 @@ let StationService = class StationService {
             name: 'Estação Norte',
             location: 'Zona Norte',
             capacity: 30,
+            allocatedVehicles: 11,
             createdAt: new Date(),
             updatedAt: new Date(),
             createdBy: 'Sistema',
         },
     ];
     nextId = 3;
-    async create(createStationDto, createdBy) {
-        if (createStationDto.capacity <= 0) {
-            throw new common_1.BadRequestException('Capacidade deve ser um número positivo.');
+    validateStationPayload(payload, current) {
+        const validUpdates = {};
+        const errors = [];
+        if (payload.name !== undefined) {
+            if (typeof payload.name !== 'string' || !payload.name.trim()) {
+                errors.push('Nome invalido: deve ser texto nao vazio.');
+            }
+            else {
+                validUpdates.name = payload.name.trim();
+            }
         }
-        const existingStation = this.stations.find(s => s.name === createStationDto.name);
+        if (payload.location !== undefined) {
+            if (typeof payload.location !== 'string' || payload.location.trim().length < 3) {
+                errors.push('Localizacao invalida: indique pelo menos 3 caracteres.');
+            }
+            else {
+                validUpdates.location = payload.location.trim();
+            }
+        }
+        if (payload.capacity !== undefined) {
+            if (!Number.isInteger(payload.capacity) || Number(payload.capacity) <= 0) {
+                errors.push('Capacidade invalida: deve ser um numero inteiro positivo.');
+            }
+            else {
+                validUpdates.capacity = Number(payload.capacity);
+            }
+        }
+        if (payload.allocatedVehicles !== undefined) {
+            if (!Number.isInteger(payload.allocatedVehicles) || Number(payload.allocatedVehicles) < 0) {
+                errors.push('Veiculos alocados invalidos: deve ser um inteiro >= 0.');
+            }
+            else {
+                validUpdates.allocatedVehicles = Number(payload.allocatedVehicles);
+            }
+        }
+        const effectiveCapacity = validUpdates.capacity ?? current?.capacity ?? Number(payload.capacity);
+        const effectiveAllocatedVehicles = validUpdates.allocatedVehicles ?? current?.allocatedVehicles ?? Number(payload.allocatedVehicles);
+        if (Number.isFinite(effectiveCapacity) &&
+            Number.isFinite(effectiveAllocatedVehicles) &&
+            effectiveAllocatedVehicles > effectiveCapacity) {
+            if (validUpdates.allocatedVehicles !== undefined) {
+                delete validUpdates.allocatedVehicles;
+            }
+            errors.push('Veiculos alocados nao podem exceder a capacidade da estacao.');
+        }
+        return { validUpdates, errors };
+    }
+    async create(createStationDto, createdBy) {
+        const { validUpdates, errors } = this.validateStationPayload({
+            name: createStationDto.name,
+            location: createStationDto.location,
+            capacity: createStationDto.capacity,
+            allocatedVehicles: createStationDto.allocatedVehicles,
+        }, null);
+        if (errors.length > 0) {
+            throw new common_1.BadRequestException({
+                message: 'Dados invalidos para criar estacao.',
+                details: errors,
+            });
+        }
+        const normalizedName = validUpdates.name;
+        const existingStation = this.stations.find(s => s.name.toLowerCase() === normalizedName.toLowerCase());
         if (existingStation) {
             throw new common_1.ConflictException('Já existe uma estação com este nome.');
         }
         const station = {
             id: this.nextId++,
-            name: createStationDto.name,
-            location: createStationDto.location,
-            capacity: createStationDto.capacity,
+            name: validUpdates.name,
+            location: validUpdates.location,
+            capacity: validUpdates.capacity,
+            allocatedVehicles: validUpdates.allocatedVehicles ?? 0,
             createdAt: new Date(),
             updatedAt: new Date(),
             createdBy: createdBy || 'Sistema',
@@ -72,22 +132,33 @@ let StationService = class StationService {
             throw new common_1.NotFoundException('Estação não encontrada');
         }
         const station = this.stations[stationIndex];
-        if (updateStationDto.capacity !== undefined && updateStationDto.capacity <= 0) {
-            throw new common_1.BadRequestException('Capacidade deve ser um número positivo.');
-        }
-        if (updateStationDto.name && updateStationDto.name !== station.name) {
-            const nameExists = this.stations.find(s => s.name === updateStationDto.name && s.id !== id);
+        const { validUpdates, errors } = this.validateStationPayload({
+            name: updateStationDto.name,
+            location: updateStationDto.location,
+            capacity: updateStationDto.capacity,
+            allocatedVehicles: updateStationDto.allocatedVehicles,
+        }, station);
+        if (validUpdates.name && validUpdates.name !== station.name) {
+            const nameExists = this.stations.find(s => s.name.toLowerCase() === validUpdates.name.toLowerCase() && s.id !== id);
             if (nameExists) {
                 throw new common_1.ConflictException('Já existe uma estação com este nome.');
             }
         }
+        if (Object.keys(validUpdates).length === 0 && errors.length > 0) {
+            throw new common_1.BadRequestException({
+                message: 'Sem alteracoes validas para aplicar.',
+                details: errors,
+            });
+        }
+        const previousStation = { ...station };
         const updatedStation = {
             ...station,
-            ...updateStationDto,
+            ...validUpdates,
             updatedAt: new Date(),
+            partialWarnings: errors.length > 0 ? errors : undefined,
         };
         this.stations[stationIndex] = updatedStation;
-        this.logAudit('UPDATE', id, updatedBy || 'desconhecido', `Estação atualizada: ${updatedStation.name}`);
+        this.logAudit('UPDATE', id, updatedBy || 'desconhecido', `Estacao atualizada: ${previousStation.name} -> ${updatedStation.name}; localizacao: ${previousStation.location} -> ${updatedStation.location}; capacidade: ${previousStation.capacity} -> ${updatedStation.capacity}; alocados: ${previousStation.allocatedVehicles} -> ${updatedStation.allocatedVehicles}`);
         return updatedStation;
     }
     async delete(id, deletedBy) {

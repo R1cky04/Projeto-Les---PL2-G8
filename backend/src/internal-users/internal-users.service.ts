@@ -354,6 +354,12 @@ export class InternalUsersService {
     id: string,
     actor: AuthenticatedUserDto,
   ): Promise<DeleteInternalUserResponseDto> {
+    if (id === actor.id) {
+      throw new ConflictException(
+        'Nao e permitido remover a conta atualmente autenticada.',
+      );
+    }
+
     const user = (this.prisma as any).user
       ? await this.prisma.user.findFirst({
           where: { id, isInternal: true },

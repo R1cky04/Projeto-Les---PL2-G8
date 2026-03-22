@@ -63,39 +63,47 @@
 
       <section class="station-module-toolbar">
         <div class="station-module-toolbar-head">
-          <h2>Estacoes</h2>
-          <p>
-            {{
-              stationModuleView === 'MANAGE'
-                ? 'Consulte e atualize estacoes existentes. Use o atalho de criacao quando precisar de registar uma nova estacao.'
-                : 'Preencha os dados obrigatorios e submeta para registar uma nova estacao na rede.'
-            }}
-          </p>
-        </div>
+          <div class="station-module-toolbar-copy">
+            <h2>Estacoes</h2>
+            <p>
+              {{
+                stationModuleView === 'MANAGE'
+                  ? 'Consulte e atualize estacoes existentes. Use o atalho de criacao quando precisar de registar uma nova estacao.'
+                  : 'Preencha os dados obrigatorios e submeta para registar uma nova estacao na rede.'
+              }}
+            </p>
+          </div>
 
-        <div class="station-module-toolbar-actions">
-          <button
-            class="auth-primary-button station-toggle-create"
-            v-if="stationModuleView === 'MANAGE'"
-            type="button"
-            @click="setStationModuleView('CREATE')"
-          >
-            Criar estacao
-          </button>
+          <div class="station-module-toolbar-actions">
+            <button
+              class="auth-primary-button station-toggle-create"
+              v-if="stationModuleView === 'MANAGE'"
+              type="button"
+              @click="setStationModuleView('CREATE')"
+            >
+              Criar estacao
+            </button>
 
-          <button
-            v-else
-            class="auth-secondary-button station-toggle-back"
-            type="button"
-            @click="setStationModuleView('MANAGE')"
-          >
-            Voltar a gerir estacoes
-          </button>
+            <button
+              v-else
+              class="auth-secondary-button station-toggle-back"
+              type="button"
+              @click="setStationModuleView('MANAGE')"
+            >
+              Voltar a gerir estacoes
+            </button>
+          </div>
         </div>
       </section>
 
-      <ManageStation v-if="stationModuleView === 'MANAGE'" />
-      <CreateStation v-else />
+      <ManageStation
+        v-if="stationModuleView === 'MANAGE'"
+        :session-token="sessionToken"
+      />
+      <CreateStation
+        v-else
+        :session-token="sessionToken"
+      />
     </main>
 
     <main v-else class="auth-workspace-shell">
@@ -115,10 +123,9 @@
 <script>
 import InternalLoginPanel from '../components/auth/InternalLoginPanel.vue'
 import InternalWorkspaceHome from '../components/auth/InternalWorkspaceHome.vue'
-import { fetchCurrentSession, loginInternalUser, logoutInternalUser } from '../services/authApi'
+import { loginInternalUser, logoutInternalUser } from '../services/authApi'
 import {
   clearStoredSessionToken,
-  readStoredSessionToken,
   storeSessionToken,
 } from '../services/authStorage'
 import {
@@ -163,23 +170,11 @@ export default {
     async restoreSession() {
       this.isRestoringSession = true
 
-      const storedToken = readStoredSessionToken()
-
-      if (!storedToken) {
-        this.isRestoringSession = false
-        return
-      }
-
-      try {
-        const response = await fetchCurrentSession(storedToken)
-        this.applyAuthenticatedState(response, storedToken)
-      } catch {
-        clearStoredSessionToken()
-        this.sessionToken = ''
-        this.authState = null
-      } finally {
-        this.isRestoringSession = false
-      }
+      // Force manual authentication on each desktop start.
+      clearStoredSessionToken()
+      this.sessionToken = ''
+      this.authState = null
+      this.isRestoringSession = false
     },
     async submitLogin() {
       this.submitError = ''
@@ -294,9 +289,17 @@ export default {
   max-width: 1400px;
   margin: 18px auto 12px;
   padding: 0 32px;
+}
+
+.station-module-toolbar-head {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.station-module-toolbar-copy {
+  flex: 1;
 }
 
 .station-module-toolbar-head h2 {
@@ -313,7 +316,7 @@ export default {
 .station-module-toolbar-actions {
   display: flex;
   gap: 12px;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
 }
 
@@ -327,7 +330,7 @@ export default {
 }
 
 .station-toggle-back {
-  margin-left: auto;
+  margin-left: 0;
 }
 
 @media (max-width: 720px) {
@@ -336,13 +339,14 @@ export default {
     padding-right: 16px;
   }
 
-  .station-module-toolbar-actions {
+  .station-module-toolbar-head {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .station-toggle-back {
-    margin-left: 0;
+  .station-module-toolbar-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>

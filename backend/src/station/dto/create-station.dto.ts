@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsInt, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsInt, Min, IsOptional } from 'class-validator';
 
 /**
  * DTO para criação de uma nova estação.
@@ -16,4 +16,9 @@ export class CreateStationDto {
   @IsInt()
   @Min(1)
   capacity: number; // Capacidade máxima de veículos (deve ser positiva)
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  allocatedVehicles: number; // Veículos atualmente alocados (>=0 e <= capacity)
 }

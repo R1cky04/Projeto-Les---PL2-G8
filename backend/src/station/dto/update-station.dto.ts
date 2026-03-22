@@ -17,4 +17,9 @@ export class UpdateStationDto {
    * Capacidade máxima de veículos (opcional)
    */
   capacity?: number;
+
+  /**
+   * Veículos atualmente alocados (opcional)
+   */
+  allocatedVehicles?: number;
 }

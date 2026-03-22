@@ -5,6 +5,7 @@ class UpdateStationDto {
     name;
     location;
     capacity;
+    allocatedVehicles;
 }
 exports.UpdateStationDto = UpdateStationDto;
 //# sourceMappingURL=update-station.dto.js.map

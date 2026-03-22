@@ -45,7 +45,7 @@
           >
             <div class="card-lead">
               <span class="station-id">ID: {{ station.id }}</span>
-              <span class="capacity-tag">{{ station.capacity }} Vagas</span>
+              <span class="capacity-tag">{{ station.allocatedVehicles || 0 }}/{{ station.capacity }} Vagas</span>
             </div>
             <h3 class="station-name">{{ station.name }}</h3>
             <span class="station-loc">{{ station.location }}</span>
@@ -93,6 +93,11 @@
                 <label>Coordenadas / Localização</label>
                 <input v-model="editForm.location" type="text" />
               </div>
+
+              <div class="input-block flex-1">
+                <label>Veículos Alocados</label>
+                <input v-model.number="editForm.allocatedVehicles" type="number" min="0" />
+              </div>
             </div>
 
             <footer class="pane-footer">
@@ -130,6 +135,12 @@ import axios from 'axios';
 
 export default {
   name: 'ManageStation',
+  props: {
+    sessionToken: {
+      type: String,
+      default: '',
+    },
+  },
   data() {
     return {
       stations: [],
@@ -138,21 +149,56 @@ export default {
       searchDebounceTimer: null,
       submitting: false,
       toast: { show: false, text: '', type: '' },
-      editForm: { name: '', location: '', capacity: 0 }
+      editForm: { name: '', location: '', capacity: 0, allocatedVehicles: 0 }
     };
   },
   methods: {
+    buildAuthConfig() {
+      if (!this.sessionToken) {
+        return {};
+      }
+
+      return {
+        headers: {
+          Authorization: `Bearer ${this.sessionToken}`,
+        },
+      };
+    },
+    extractApiError(err, fallbackMessage) {
+      const details = err?.response?.data?.details;
+      if (Array.isArray(details) && details.length > 0) {
+        return details.join(' | ');
+      }
+
+      const apiMessage =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message;
+
+      if (Array.isArray(apiMessage)) {
+        return apiMessage.join(' | ');
+      }
+
+      return apiMessage || fallbackMessage;
+    },
     async loadStations() {
       try {
-        const res = await axios.get('http://localhost:3000/stations');
+        const res = await axios.get('http://localhost:3000/stations', this.buildAuthConfig());
         this.stations = res.data;
+
+        if (!this.selectedStation && this.stations.length > 0) {
+          this.selectStation(this.stations[0]);
+        }
       } catch (err) {
-        this.showToast('Erro na ligação ao servidor.', 'error');
+        this.showToast(this.extractApiError(err, 'Erro na ligação ao servidor.'), 'error');
       }
     },
     selectStation(station) {
       this.selectedStation = station;
-      this.editForm = { ...station };
+      this.editForm = {
+        ...station,
+        allocatedVehicles: station?.allocatedVehicles || 0,
+      };
     },
     handleSearchInput() {
       if (this.searchDebounceTimer) {
@@ -168,7 +214,7 @@ export default {
         ? `http://localhost:3000/stations/search/${this.searchTerm}` 
         : 'http://localhost:3000/stations';
       try {
-        const res = await axios.get(url);
+        const res = await axios.get(url, this.buildAuthConfig());
         this.stations = res.data;
 
         if (
@@ -178,7 +224,7 @@ export default {
           this.selectedStation = null;
         }
       } catch (err) {
-        this.showToast('Erro ao filtrar estacoes.', 'error');
+        this.showToast(this.extractApiError(err, 'Erro ao filtrar estacoes.'), 'error');
       }
     },
     clearSearch() {
@@ -199,15 +245,43 @@ export default {
       this.$refs.searchInput?.focus();
     },
     async updateStation() {
+      if (!this.selectedStation?.id) {
+        this.showToast('Selecione uma estacao para editar.', 'error');
+        return;
+      }
+
+      if (this.editForm.capacity <= 0) {
+        this.showToast('Capacidade invalida: deve ser maior que zero.', 'error');
+        return;
+      }
+
+      if ((this.editForm.allocatedVehicles || 0) < 0) {
+        this.showToast('Veiculos alocados invalidos: deve ser >= 0.', 'error');
+        return;
+      }
+
+      if ((this.editForm.allocatedVehicles || 0) > this.editForm.capacity) {
+        this.showToast('Veiculos alocados nao podem exceder a capacidade.', 'error');
+        return;
+      }
+
       this.submitting = true;
       try {
-        const res = await axios.put(`http://localhost:3000/stations/${this.selectedStation.id}`, this.editForm);
+        const res = await axios.put(
+          `http://localhost:3000/stations/${this.selectedStation.id}`,
+          this.editForm,
+          this.buildAuthConfig(),
+        );
         // Atualiza a estação selecionada com os novos dados (incluindo updatedAt do servidor)
         this.selectedStation = res.data;
-        this.showToast('Dados atualizados com sucesso.', 'success');
+        if (Array.isArray(res.data?.partialWarnings) && res.data.partialWarnings.length > 0) {
+          this.showToast(`Atualizacao parcial: ${res.data.partialWarnings.join(' | ')}`, 'error');
+        } else {
+          this.showToast('Dados atualizados com sucesso.', 'success');
+        }
         this.loadStations();
       } catch (err) {
-        this.showToast('Erro ao atualizar registo.', 'error');
+        this.showToast(this.extractApiError(err, 'Erro ao atualizar registo.'), 'error');
       } finally {
         this.submitting = false;
       }
@@ -215,12 +289,15 @@ export default {
     async deleteStation() {
       if (confirm("Confirmar a remoção permanente desta unidade?")) {
         try {
-          await axios.delete(`http://localhost:3000/stations/${this.selectedStation.id}`);
+          await axios.delete(
+            `http://localhost:3000/stations/${this.selectedStation.id}`,
+            this.buildAuthConfig(),
+          );
           this.showToast('Unidade removida do sistema.', 'success');
           this.selectedStation = null;
           this.loadStations();
         } catch (err) {
-          this.showToast('Erro ao remover unidade.', 'error');
+          this.showToast(this.extractApiError(err, 'Erro ao remover unidade.'), 'error');
         }
       }
     },
