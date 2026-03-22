@@ -45,6 +45,59 @@
       />
     </main>
 
+    <main v-else-if="currentFeature === 'STATION_MANAGEMENT'" class="auth-module-shell">
+      <header class="module-shell-header">
+        <div>
+          <h1>Rent-a-<span class="brand-blue">Car</span> Management</h1>
+        </div>
+
+        <div class="module-shell-actions">
+          <button class="auth-secondary-button is-active" type="button" @click="returnToWorkspace">
+            Voltar ao painel
+          </button>
+          <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
+            Terminar sessão
+          </button>
+        </div>
+      </header>
+
+      <section class="station-module-toolbar">
+        <div class="station-module-toolbar-head">
+          <h2>Estacoes</h2>
+          <p>
+            {{
+              stationModuleView === 'MANAGE'
+                ? 'Consulte e atualize estacoes existentes. Use o atalho de criacao quando precisar de registar uma nova estacao.'
+                : 'Preencha os dados obrigatorios e submeta para registar uma nova estacao na rede.'
+            }}
+          </p>
+        </div>
+
+        <div class="station-module-toolbar-actions">
+          <button
+            class="auth-primary-button station-toggle-create"
+            v-if="stationModuleView === 'MANAGE'"
+            type="button"
+            @click="setStationModuleView('CREATE')"
+          >
+            Criar estacao
+          </button>
+
+          <button
+            v-else
+            class="auth-secondary-button station-toggle-back"
+            type="button"
+            @click="setStationModuleView('MANAGE')"
+          >
+            Voltar a gerir estacoes
+          </button>
+        </div>
+      </section>
+
+      <ManageStation v-if="stationModuleView === 'MANAGE'" />
+      <CreateStation v-else />
+    </main>
+
     <main v-else class="auth-workspace-shell">
       <p v-if="workspaceMessage" class="auth-banner auth-banner-info">
         {{ workspaceMessage }}
@@ -74,6 +127,8 @@ import {
   mapLoginApiErrors,
   validateLoginForm,
 } from '../utils/loginForm'
+import CreateStation from '../components/CreateStation.vue'
+import ManageStation from '../components/ManageStation.vue'
 import InternalUsersView from './InternalUsersView.vue'
 
 // Root authenticated container. It owns session restore, login/logout and the
@@ -81,7 +136,9 @@ import InternalUsersView from './InternalUsersView.vue'
 export default {
   name: 'InternalPortalView',
   components: {
+    CreateStation,
     InternalLoginPanel,
+    ManageStation,
     InternalUsersView,
     InternalWorkspaceHome,
   },
@@ -95,6 +152,7 @@ export default {
       authState: null,
       sessionToken: '',
       currentFeature: '',
+      stationModuleView: 'MANAGE',
       workspaceMessage: '',
     }
   },
@@ -172,8 +230,23 @@ export default {
       }
     },
     openFeature(featureKey) {
-      if (featureKey === 'INTERNAL_USERS') {
+      if (featureKey === 'INTERNAL_USERS' || featureKey === 'STATION_MANAGEMENT') {
+        if (
+          featureKey === 'STATION_MANAGEMENT' &&
+          this.authState?.user?.role !== 'IT'
+        ) {
+          this.workspaceMessage =
+            'A funcionalidade de estacoes esta disponivel apenas para o perfil IT autenticado.'
+          return
+        }
+
         this.currentFeature = featureKey
+        if (featureKey === 'STATION_MANAGEMENT') {
+          this.stationModuleView = 'MANAGE'
+          this.$nextTick(() => {
+            this.scrollToModuleTop()
+          })
+        }
         this.workspaceMessage = ''
         return
       }
@@ -184,10 +257,26 @@ export default {
     returnToWorkspace() {
       this.currentFeature = ''
     },
+    setStationModuleView(view) {
+      this.stationModuleView = view
+      this.$nextTick(() => {
+        this.scrollToModuleTop()
+      })
+    },
+    scrollToModuleTop() {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+      if (document?.documentElement) {
+        document.documentElement.scrollTop = 0
+      }
+      if (document?.body) {
+        document.body.scrollTop = 0
+      }
+    },
     applyAuthenticatedState(response, sessionToken) {
       this.authState = response
       this.sessionToken = sessionToken
       this.currentFeature = ''
+      this.stationModuleView = 'MANAGE'
       this.workspaceMessage = ''
       this.submitError = ''
       this.fieldErrors = {}
@@ -199,3 +288,61 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.station-module-toolbar {
+  max-width: 1400px;
+  margin: 18px auto 12px;
+  padding: 0 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.station-module-toolbar-head h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.station-module-toolbar-head p {
+  margin: 6px 0 0;
+  color: var(--auth-muted);
+  font-size: 0.92rem;
+}
+
+.station-module-toolbar-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.station-toggle-create,
+.station-toggle-back {
+  min-height: 44px;
+}
+
+.station-toggle-create {
+  min-width: 180px;
+}
+
+.station-toggle-back {
+  margin-left: auto;
+}
+
+@media (max-width: 720px) {
+  .station-module-toolbar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .station-module-toolbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .station-toggle-back {
+    margin-left: 0;
+  }
+}
+</style>

@@ -75,6 +75,31 @@
           {{ feature.key === 'INTERNAL_USERS' ? 'Abrir modulo' : 'Autorizado' }}
         </button>
       </article>
+
+      <article class="auth-card feature-card feature-card-available">
+        <div class="feature-head">
+          <div>
+            <h2>Gerir Estacoes</h2>
+            <p>Aceda a um unico modulo para consultar, editar e, se necessario, criar novas estacoes.</p>
+          </div>
+          <span class="feature-status">
+            {{ canManageStations() ? 'Disponivel' : 'Acesso IT' }}
+          </span>
+        </div>
+
+        <p v-if="!canManageStations()" class="feature-reason">
+          Apenas o perfil IT autenticado com permissao de gestao de estacoes pode aceder a este modulo.
+        </p>
+
+        <button
+          class="auth-primary-button feature-action"
+          type="button"
+          :disabled="!canManageStations()"
+          @click="$emit('open-feature', 'STATION_MANAGEMENT')"
+        >
+          Abrir modulo
+        </button>
+      </article>
     </section>
   </section>
 </template>
@@ -110,6 +135,9 @@ export default {
     },
     formatExpiry(value) {
       return formatSessionExpiry(value)
+    },
+    canManageStations() {
+      return this.authState?.user?.role === 'IT'
     },
   },
 }

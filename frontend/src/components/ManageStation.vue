@@ -5,23 +5,37 @@
         <h1>Gestão de Infraestrutura</h1>
         <p>Monitorização e edição de unidades da rede operacional.</p>
       </div>
-      
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input 
-          v-model="searchTerm" 
-          type="text" 
-          placeholder="Filtrar por nome ou ID..." 
-          @input="handleSearch"
-        />
-      </div>
     </header>
 
     <div class="main-layout">
       <aside class="sidebar-list">
         <div class="list-status">
           <span>{{ stations.length }} Unidades Ativas</span>
+          <span class="status-hint">Ctrl+K para filtrar</span>
         </div>
+
+        <div class="filter-sticky">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input
+              ref="searchInput"
+              v-model="searchTerm"
+              type="text"
+              placeholder="Filtrar por nome ou ID..."
+              @input="handleSearchInput"
+            />
+
+            <button
+              v-if="searchTerm"
+              class="clear-search"
+              type="button"
+              @click="clearSearch"
+            >
+              Limpar
+            </button>
+          </div>
+        </div>
+
         <div class="scroll-area">
           <div 
             v-for="station in stations" 
@@ -121,6 +135,7 @@ export default {
       stations: [],
       selectedStation: null,
       searchTerm: '',
+      searchDebounceTimer: null,
       submitting: false,
       toast: { show: false, text: '', type: '' },
       editForm: { name: '', location: '', capacity: 0 }
@@ -139,12 +154,49 @@ export default {
       this.selectedStation = station;
       this.editForm = { ...station };
     },
+    handleSearchInput() {
+      if (this.searchDebounceTimer) {
+        clearTimeout(this.searchDebounceTimer);
+      }
+
+      this.searchDebounceTimer = setTimeout(() => {
+        this.handleSearch();
+      }, 250);
+    },
     async handleSearch() {
       const url = this.searchTerm 
         ? `http://localhost:3000/stations/search/${this.searchTerm}` 
         : 'http://localhost:3000/stations';
-      const res = await axios.get(url);
-      this.stations = res.data;
+      try {
+        const res = await axios.get(url);
+        this.stations = res.data;
+
+        if (
+          this.selectedStation &&
+          !this.stations.some((station) => station.id === this.selectedStation.id)
+        ) {
+          this.selectedStation = null;
+        }
+      } catch (err) {
+        this.showToast('Erro ao filtrar estacoes.', 'error');
+      }
+    },
+    clearSearch() {
+      this.searchTerm = '';
+      this.handleSearch();
+      this.$nextTick(() => {
+        this.$refs.searchInput?.focus();
+      });
+    },
+    handleGlobalShortcut(event) {
+      const isFilterShortcut = event.ctrlKey && event.key.toLowerCase() === 'k';
+
+      if (!isFilterShortcut) {
+        return;
+      }
+
+      event.preventDefault();
+      this.$refs.searchInput?.focus();
     },
     async updateStation() {
       this.submitting = true;
@@ -183,7 +235,16 @@ export default {
       setTimeout(() => this.toast.show = false, 3000);
     }
   },
-  mounted() { this.loadStations(); }
+  mounted() {
+    this.loadStations();
+    window.addEventListener('keydown', this.handleGlobalShortcut);
+  },
+  beforeUnmount() {
+    window.removeEventListener('keydown', this.handleGlobalShortcut);
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+  }
 };
 </script>
 
@@ -201,7 +262,7 @@ export default {
 
 .dashboard-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   margin-bottom: 30px;
   border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -218,7 +279,7 @@ export default {
   padding: 10px 15px;
   display: flex;
   align-items: center;
-  width: 320px;
+  width: 100%;
 }
 
 .search-icon { margin-right: 12px; opacity: 0.5; }
@@ -231,12 +292,27 @@ export default {
   font-size: 0.9rem;
 }
 
+.search-box input:focus {
+  outline: none;
+}
+
+.clear-search {
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.12);
+  color: #bfdbfe;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .main-layout {
+  --panel-height: min(72vh, 760px);
   display: grid;
   grid-template-columns: 350px 1fr;
   gap: 30px;
-  flex: 1;
-  height: calc(100vh - 160px);
+  align-items: start;
 }
 
 .sidebar-list {
@@ -246,6 +322,8 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  height: var(--panel-height);
+  max-height: var(--panel-height);
 }
 
 .list-status {
@@ -256,6 +334,25 @@ export default {
   text-transform: uppercase;
   color: #64748b;
   border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-hint {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  color: #475569;
+}
+
+.filter-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #0f172a;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding: 12px 15px;
 }
 
 .scroll-area { flex: 1; overflow-y: auto; padding: 15px; }
@@ -284,9 +381,18 @@ export default {
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 12px;
   overflow-y: auto;
+  height: var(--panel-height);
+  max-height: var(--panel-height);
+  min-height: 360px;
 }
 
-.editor-pane { padding: 40px; min-height: 100%; display: flex; flex-direction: column; }
+.editor-pane {
+  min-height: 100%;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
 
 .pane-header {
   border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -307,7 +413,7 @@ export default {
 .time-val { font-size: 0.85rem; color: #94a3b8; }
 .highlight-time .time-val { color: #3b82f6; font-weight: 500; }
 
-.pane-body { flex: 1; display: flex; flex-direction: column; gap: 25px; }
+.pane-body { display: flex; flex-direction: column; gap: 22px; }
 .input-row { display: flex; gap: 20px; }
 .flex-2 { flex: 2; }
 .flex-1 { flex: 1; }
@@ -327,8 +433,8 @@ export default {
 .input-block input:focus { border-color: #3b82f6; outline: none; background: #1a2337; }
 
 .pane-footer {
-  margin-top: 50px;
-  padding-top: 25px;
+  margin-top: 24px;
+  padding-top: 20px;
   border-top: 1px solid rgba(255,255,255,0.05);
   display: flex;
   gap: 15px;
@@ -341,7 +447,15 @@ export default {
 .btn-danger:hover { background: #ef4444; color: #fff; }
 .btn-ghost { background: transparent; color: #64748b; border: 1px solid #2d3748; }
 
-.empty-state { height: 100%; display: flex; align-items: center; justify-content: center; color: #475569; }
+.empty-state {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  padding: 24px;
+  box-sizing: border-box;
+}
 .empty-content { text-align: center; max-width: 300px; }
 .empty-icon { font-size: 3rem; margin-bottom: 20px; opacity: 0.2; }
 
@@ -351,4 +465,16 @@ export default {
 
 .fade-fast-enter-active { transition: all 0.2s ease; }
 .fade-fast-enter { opacity: 0; transform: translateY(5px); }
+
+@media (max-width: 980px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-list,
+  .details-view {
+    height: auto;
+    max-height: none;
+  }
+}
 </style>
