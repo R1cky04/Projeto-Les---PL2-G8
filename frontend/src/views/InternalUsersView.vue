@@ -17,6 +17,7 @@
           @search="applySearch"
           @clear-search="clearSearch"
           @update:search-draft="searchDraft = $event"
+          @update:searchDraft="searchDraft = $event"
         />
 
         <InternalUserFormPanel
@@ -31,6 +32,7 @@
           @submit="submitForm"
           @reset="resetForm"
           @update:user-id="form.userId = $event"
+          @update:userId="form.userId = $event"
           @update:password="form.password = $event"
           @update:role="form.role = $event"
         />

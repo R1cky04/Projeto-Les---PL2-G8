@@ -3,7 +3,11 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { InternalUserStatus } from '../internal-users/internal-user.enums';
+import {
+  InternalPermission,
+  InternalUserRole,
+  InternalUserStatus,
+} from '../internal-users/internal-user.enums';
 import { PrismaService } from '../prisma/prisma.service';
 import { getPermissionsForRole } from '../internal-users/internal-user-access';
 import { PasswordHasherService } from '../internal-users/password-hasher.service';
@@ -17,6 +21,34 @@ import { buildFeatureCatalog, parseDisabledFeaturesFromEnvironment } from './aut
 import { AuthTokenService } from './auth-token.service';
 import { normalizeLoginInput } from './auth-validation';
 import { LoginDto } from './dto/login.dto';
+
+type DbUserRow = {
+  id: string;
+  userId: string | null;
+  fullName: string | null;
+  passwordHash: string | null;
+  isInternal: boolean;
+  isActive: boolean;
+  internalRole: InternalUserRole | null;
+  internalStatus: InternalUserStatus;
+  permissions: InternalPermission[] | string | null;
+};
+
+type DbSessionWithUserRow = {
+  sessionId: string;
+  tokenId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  revokedAt: Date | null;
+  userPkId: string;
+  userId: string | null;
+  fullName: string | null;
+  isActive: boolean;
+  isInternal: boolean;
+  internalRole: InternalUserRole | null;
+  internalStatus: InternalUserStatus;
+  permissions: InternalPermission[] | string | null;
+};
 
 // Central application service for login, session restore and logout.
 @Injectable()
@@ -32,20 +64,22 @@ export class AuthService {
     userAgent?: string,
   ): Promise<AuthSessionResponseDto> {
     const input = normalizeLoginInput(payload);
-    const user = await this.prisma.user.findUnique({
-      where: { userId: input.userId },
-      select: {
-        id: true,
-        userId: true,
-        fullName: true,
-        passwordHash: true,
-        isInternal: true,
-        isActive: true,
-        internalRole: true,
-        internalStatus: true,
-        permissions: true,
-      },
-    });
+    const userRows = await this.prisma.$queryRaw<DbUserRow[]>`
+      SELECT
+        id,
+        "userId",
+        "fullName",
+        "passwordHash",
+        "isInternal",
+        "isActive",
+        "internalRole",
+        "internalStatus",
+        permissions
+      FROM "User"
+      WHERE "userId" = ${input.userId}
+      LIMIT 1
+    `;
+    const user = userRows[0];
 
     if (
       !user ||
@@ -73,18 +107,32 @@ export class AuthService {
     const issuedToken = this.authTokenService.issueToken();
     const expiresAt = this.createSessionExpiry();
 
-    const session = await this.prisma.internalSession.create({
-      data: {
-        tokenId: issuedToken.tokenId,
-        tokenHash: issuedToken.tokenHash,
-        userId: user.id,
-        userAgent: userAgent ?? null,
-        expiresAt,
-      },
-      select: {
-        id: true,
-      },
-    });
+    const createdSessionRows = await this.prisma.$queryRaw<{ id: string }[]>`
+      INSERT INTO "InternalSession" (
+        id,
+        "tokenId",
+        "tokenHash",
+        "userId",
+        "userAgent",
+        "expiresAt",
+        "createdAt",
+        "updatedAt",
+        "lastSeenAt"
+      )
+      VALUES (
+        md5(random()::text || clock_timestamp()::text),
+        ${issuedToken.tokenId},
+        ${issuedToken.tokenHash},
+        ${user.id},
+        ${userAgent ?? null},
+        ${expiresAt},
+        NOW(),
+        NOW(),
+        NOW()
+      )
+      RETURNING id
+    `;
+    const session = createdSessionRows[0];
 
     const context = this.buildAuthenticatedContext({
       sessionId: session.id,
@@ -100,8 +148,8 @@ export class AuthService {
         isActive: user.isActive,
         accessLevel,
         permissions:
-          user.permissions.length > 0
-            ? user.permissions
+          this.normalizePermissions(user.permissions).length > 0
+            ? this.normalizePermissions(user.permissions)
             : getPermissionsForRole(user.internalRole),
       },
     });
@@ -125,37 +173,36 @@ export class AuthService {
       });
     }
 
-    const session = await this.prisma.internalSession.findUnique({
-      where: { tokenId: parsedToken.tokenId },
-      select: {
-        id: true,
-        tokenId: true,
-        tokenHash: true,
-        expiresAt: true,
-        revokedAt: true,
-        user: {
-          select: {
-            id: true,
-            userId: true,
-            fullName: true,
-            isActive: true,
-            isInternal: true,
-            internalRole: true,
-            internalStatus: true,
-            permissions: true,
-          },
-        },
-      },
-    });
+    const sessionRows = await this.prisma.$queryRaw<DbSessionWithUserRow[]>`
+      SELECT
+        s.id AS "sessionId",
+        s."tokenId",
+        s."tokenHash",
+        s."expiresAt",
+        s."revokedAt",
+        u.id AS "userPkId",
+        u."userId",
+        u."fullName",
+        u."isActive",
+        u."isInternal",
+        u."internalRole",
+        u."internalStatus",
+        u.permissions
+      FROM "InternalSession" s
+      INNER JOIN "User" u ON u.id = s."userId"
+      WHERE s."tokenId" = ${parsedToken.tokenId}
+      LIMIT 1
+    `;
+    const session = sessionRows[0];
 
     if (
       !session ||
       session.revokedAt ||
       session.expiresAt <= new Date() ||
       !this.authTokenService.verifySecret(parsedToken.secret, session.tokenHash) ||
-      !session.user.isInternal ||
-      !session.user.userId ||
-      !session.user.internalRole
+      !session.isInternal ||
+      !session.userId ||
+      !session.internalRole
     ) {
       throw new UnauthorizedException({
         message: 'Sessao invalida ou expirada.',
@@ -163,7 +210,7 @@ export class AuthService {
       });
     }
 
-    if (!session.user.isActive) {
+    if (!session.isActive) {
       throw new ForbiddenException({
         message: 'A conta encontra-se bloqueada ou desativada.',
         code: 'ACCOUNT_BLOCKED',
@@ -171,36 +218,67 @@ export class AuthService {
     }
 
     const concurrentSessionCount = await this.countActiveSessions(
-      session.user.id,
+      session.userPkId,
       session.tokenId,
     );
 
-    await this.prisma.internalSession.update({
-      where: { tokenId: session.tokenId },
-      data: {
-        lastSeenAt: new Date(),
-      },
-    });
+    await this.prisma.$executeRaw`
+      UPDATE "InternalSession"
+      SET "lastSeenAt" = NOW(), "updatedAt" = NOW()
+      WHERE "tokenId" = ${session.tokenId}
+    `;
 
     return this.buildAuthenticatedContext({
-      sessionId: session.id,
+      sessionId: session.sessionId,
       tokenId: session.tokenId,
       expiresAt: session.expiresAt,
       concurrentSessionCount,
       user: {
-        id: session.user.id,
-        userId: session.user.userId,
-        fullName: session.user.fullName,
-        role: session.user.internalRole,
-        status: session.user.internalStatus,
-        isActive: session.user.isActive,
-        accessLevel: this.getAccessLevel(session.user.internalStatus),
+        id: session.userPkId,
+        userId: session.userId,
+        fullName: session.fullName,
+        role: session.internalRole,
+        status: session.internalStatus,
+        isActive: session.isActive,
+        accessLevel: this.getAccessLevel(session.internalStatus),
         permissions:
-          session.user.permissions.length > 0
-            ? session.user.permissions
-            : getPermissionsForRole(session.user.internalRole),
+          this.normalizePermissions(session.permissions).length > 0
+            ? this.normalizePermissions(session.permissions)
+            : getPermissionsForRole(session.internalRole),
       },
     });
+  }
+
+  private normalizePermissions(
+    permissions: InternalPermission[] | string | null | undefined,
+  ): InternalPermission[] {
+    if (Array.isArray(permissions)) {
+      return permissions;
+    }
+
+    if (typeof permissions !== 'string') {
+      return [];
+    }
+
+    const trimmed = permissions.trim();
+
+    if (trimmed === '{}' || trimmed.length === 0) {
+      return [];
+    }
+
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      return trimmed
+        .slice(1, -1)
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry): entry is InternalPermission =>
+          Object.values(InternalPermission).includes(
+            entry as InternalPermission,
+          ),
+        );
+    }
+
+    return [];
   }
 
   getCurrentSession(
@@ -212,12 +290,11 @@ export class AuthService {
   async logoutCurrentSession(
     context: AuthenticatedSessionContext,
   ): Promise<{ message: string }> {
-    await this.prisma.internalSession.update({
-      where: { id: context.sessionId },
-      data: {
-        revokedAt: new Date(),
-      },
-    });
+    await this.prisma.$executeRaw`
+      UPDATE "InternalSession"
+      SET "revokedAt" = NOW(), "updatedAt" = NOW()
+      WHERE id = ${context.sessionId}
+    `;
 
     return {
       message: 'Sessao terminada com sucesso.',
@@ -304,22 +381,24 @@ export class AuthService {
     userId: string,
     excludeTokenId?: string,
   ): Promise<number> {
-    return this.prisma.internalSession.count({
-      where: {
-        userId,
-        revokedAt: null,
-        expiresAt: {
-          gt: new Date(),
-        },
-        ...(excludeTokenId
-          ? {
-              NOT: {
-                tokenId: excludeTokenId,
-              },
-            }
-          : {}),
-      },
-    });
+    const rows = excludeTokenId
+      ? await this.prisma.$queryRaw<{ total: bigint }[]>`
+          SELECT COUNT(*)::bigint AS total
+          FROM "InternalSession"
+          WHERE "userId" = ${userId}
+            AND "revokedAt" IS NULL
+            AND "expiresAt" > NOW()
+            AND "tokenId" <> ${excludeTokenId}
+        `
+      : await this.prisma.$queryRaw<{ total: bigint }[]>`
+          SELECT COUNT(*)::bigint AS total
+          FROM "InternalSession"
+          WHERE "userId" = ${userId}
+            AND "revokedAt" IS NULL
+            AND "expiresAt" > NOW()
+        `;
+
+    return Number(rows[0]?.total ?? 0n);
   }
 
   private getAccessLevel(status: InternalUserStatus): SessionAccessLevel {

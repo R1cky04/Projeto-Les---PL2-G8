@@ -17,6 +17,7 @@
         :is-submitting="isSubmitting"
         @submit="submitLogin"
         @update:user-id="loginForm.userId = $event"
+        @update:userId="loginForm.userId = $event"
         @update:password="loginForm.password = $event"
       />
     </main>

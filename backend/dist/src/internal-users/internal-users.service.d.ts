@@ -20,4 +20,5 @@ export declare class InternalUsersService {
     private softDeleteUser;
     private deleteUser;
     private buildDeletionAuditEntry;
+    private getInternalUserDeletionSnapshotRaw;
 }

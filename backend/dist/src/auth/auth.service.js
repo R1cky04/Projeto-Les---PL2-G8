@@ -29,20 +29,22 @@ let AuthService = class AuthService {
     }
     async login(payload, userAgent) {
         const input = (0, auth_validation_1.normalizeLoginInput)(payload);
-        const user = await this.prisma.user.findUnique({
-            where: { userId: input.userId },
-            select: {
-                id: true,
-                userId: true,
-                fullName: true,
-                passwordHash: true,
-                isInternal: true,
-                isActive: true,
-                internalRole: true,
-                internalStatus: true,
-                permissions: true,
-            },
-        });
+        const userRows = await this.prisma.$queryRaw `
+      SELECT
+        id,
+        "userId",
+        "fullName",
+        "passwordHash",
+        "isInternal",
+        "isActive",
+        "internalRole",
+        "internalStatus",
+        permissions
+      FROM "User"
+      WHERE "userId" = ${input.userId}
+      LIMIT 1
+    `;
+        const user = userRows[0];
         if (!user ||
             !user.isInternal ||
             !user.userId ||
@@ -63,18 +65,32 @@ let AuthService = class AuthService {
         const concurrentSessionCount = await this.countActiveSessions(user.id);
         const issuedToken = this.authTokenService.issueToken();
         const expiresAt = this.createSessionExpiry();
-        const session = await this.prisma.internalSession.create({
-            data: {
-                tokenId: issuedToken.tokenId,
-                tokenHash: issuedToken.tokenHash,
-                userId: user.id,
-                userAgent: userAgent ?? null,
-                expiresAt,
-            },
-            select: {
-                id: true,
-            },
-        });
+        const createdSessionRows = await this.prisma.$queryRaw `
+      INSERT INTO "InternalSession" (
+        id,
+        "tokenId",
+        "tokenHash",
+        "userId",
+        "userAgent",
+        "expiresAt",
+        "createdAt",
+        "updatedAt",
+        "lastSeenAt"
+      )
+      VALUES (
+        md5(random()::text || clock_timestamp()::text),
+        ${issuedToken.tokenId},
+        ${issuedToken.tokenHash},
+        ${user.id},
+        ${userAgent ?? null},
+        ${expiresAt},
+        NOW(),
+        NOW(),
+        NOW()
+      )
+      RETURNING id
+    `;
+        const session = createdSessionRows[0];
         const context = this.buildAuthenticatedContext({
             sessionId: session.id,
             tokenId: issuedToken.tokenId,
@@ -88,8 +104,8 @@ let AuthService = class AuthService {
                 status: user.internalStatus,
                 isActive: user.isActive,
                 accessLevel,
-                permissions: user.permissions.length > 0
-                    ? user.permissions
+                permissions: this.normalizePermissions(user.permissions).length > 0
+                    ? this.normalizePermissions(user.permissions)
                     : (0, internal_user_access_1.getPermissionsForRole)(user.internalRole),
             },
         });
@@ -103,82 +119,99 @@ let AuthService = class AuthService {
                 code: 'INVALID_SESSION',
             });
         }
-        const session = await this.prisma.internalSession.findUnique({
-            where: { tokenId: parsedToken.tokenId },
-            select: {
-                id: true,
-                tokenId: true,
-                tokenHash: true,
-                expiresAt: true,
-                revokedAt: true,
-                user: {
-                    select: {
-                        id: true,
-                        userId: true,
-                        fullName: true,
-                        isActive: true,
-                        isInternal: true,
-                        internalRole: true,
-                        internalStatus: true,
-                        permissions: true,
-                    },
-                },
-            },
-        });
+        const sessionRows = await this.prisma.$queryRaw `
+      SELECT
+        s.id AS "sessionId",
+        s."tokenId",
+        s."tokenHash",
+        s."expiresAt",
+        s."revokedAt",
+        u.id AS "userPkId",
+        u."userId",
+        u."fullName",
+        u."isActive",
+        u."isInternal",
+        u."internalRole",
+        u."internalStatus",
+        u.permissions
+      FROM "InternalSession" s
+      INNER JOIN "User" u ON u.id = s."userId"
+      WHERE s."tokenId" = ${parsedToken.tokenId}
+      LIMIT 1
+    `;
+        const session = sessionRows[0];
         if (!session ||
             session.revokedAt ||
             session.expiresAt <= new Date() ||
             !this.authTokenService.verifySecret(parsedToken.secret, session.tokenHash) ||
-            !session.user.isInternal ||
-            !session.user.userId ||
-            !session.user.internalRole) {
+            !session.isInternal ||
+            !session.userId ||
+            !session.internalRole) {
             throw new common_1.UnauthorizedException({
                 message: 'Sessao invalida ou expirada.',
                 code: 'INVALID_SESSION',
             });
         }
-        if (!session.user.isActive) {
+        if (!session.isActive) {
             throw new common_1.ForbiddenException({
                 message: 'A conta encontra-se bloqueada ou desativada.',
                 code: 'ACCOUNT_BLOCKED',
             });
         }
-        const concurrentSessionCount = await this.countActiveSessions(session.user.id, session.tokenId);
-        await this.prisma.internalSession.update({
-            where: { tokenId: session.tokenId },
-            data: {
-                lastSeenAt: new Date(),
-            },
-        });
+        const concurrentSessionCount = await this.countActiveSessions(session.userPkId, session.tokenId);
+        await this.prisma.$executeRaw `
+      UPDATE "InternalSession"
+      SET "lastSeenAt" = NOW(), "updatedAt" = NOW()
+      WHERE "tokenId" = ${session.tokenId}
+    `;
         return this.buildAuthenticatedContext({
-            sessionId: session.id,
+            sessionId: session.sessionId,
             tokenId: session.tokenId,
             expiresAt: session.expiresAt,
             concurrentSessionCount,
             user: {
-                id: session.user.id,
-                userId: session.user.userId,
-                fullName: session.user.fullName,
-                role: session.user.internalRole,
-                status: session.user.internalStatus,
-                isActive: session.user.isActive,
-                accessLevel: this.getAccessLevel(session.user.internalStatus),
-                permissions: session.user.permissions.length > 0
-                    ? session.user.permissions
-                    : (0, internal_user_access_1.getPermissionsForRole)(session.user.internalRole),
+                id: session.userPkId,
+                userId: session.userId,
+                fullName: session.fullName,
+                role: session.internalRole,
+                status: session.internalStatus,
+                isActive: session.isActive,
+                accessLevel: this.getAccessLevel(session.internalStatus),
+                permissions: this.normalizePermissions(session.permissions).length > 0
+                    ? this.normalizePermissions(session.permissions)
+                    : (0, internal_user_access_1.getPermissionsForRole)(session.internalRole),
             },
         });
+    }
+    normalizePermissions(permissions) {
+        if (Array.isArray(permissions)) {
+            return permissions;
+        }
+        if (typeof permissions !== 'string') {
+            return [];
+        }
+        const trimmed = permissions.trim();
+        if (trimmed === '{}' || trimmed.length === 0) {
+            return [];
+        }
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            return trimmed
+                .slice(1, -1)
+                .split(',')
+                .map((entry) => entry.trim())
+                .filter((entry) => Object.values(internal_user_enums_1.InternalPermission).includes(entry));
+        }
+        return [];
     }
     getCurrentSession(context) {
         return this.toResponse(context, 'Sessao restaurada com sucesso.');
     }
     async logoutCurrentSession(context) {
-        await this.prisma.internalSession.update({
-            where: { id: context.sessionId },
-            data: {
-                revokedAt: new Date(),
-            },
-        });
+        await this.prisma.$executeRaw `
+      UPDATE "InternalSession"
+      SET "revokedAt" = NOW(), "updatedAt" = NOW()
+      WHERE id = ${context.sessionId}
+    `;
         return {
             message: 'Sessao terminada com sucesso.',
         };
@@ -224,22 +257,23 @@ let AuthService = class AuthService {
         return warnings;
     }
     async countActiveSessions(userId, excludeTokenId) {
-        return this.prisma.internalSession.count({
-            where: {
-                userId,
-                revokedAt: null,
-                expiresAt: {
-                    gt: new Date(),
-                },
-                ...(excludeTokenId
-                    ? {
-                        NOT: {
-                            tokenId: excludeTokenId,
-                        },
-                    }
-                    : {}),
-            },
-        });
+        const rows = excludeTokenId
+            ? await this.prisma.$queryRaw `
+          SELECT COUNT(*)::bigint AS total
+          FROM "InternalSession"
+          WHERE "userId" = ${userId}
+            AND "revokedAt" IS NULL
+            AND "expiresAt" > NOW()
+            AND "tokenId" <> ${excludeTokenId}
+        `
+            : await this.prisma.$queryRaw `
+          SELECT COUNT(*)::bigint AS total
+          FROM "InternalSession"
+          WHERE "userId" = ${userId}
+            AND "revokedAt" IS NULL
+            AND "expiresAt" > NOW()
+        `;
+        return Number(rows[0]?.total ?? 0n);
     }
     getAccessLevel(status) {
         return status === internal_user_enums_1.InternalUserStatus.PENDING_IT_VALIDATION

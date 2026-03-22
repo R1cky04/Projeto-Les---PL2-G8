@@ -15,8 +15,7 @@
           type="search"
           :value="searchDraft"
           placeholder="ex: staff.lisboa"
-          :disabled="loading"
-          @input="$emit('update:search-draft', $event.target.value)"
+          @input="emitSearchDraftUpdate($event.target.value)"
         />
       </label>
 
@@ -171,8 +170,13 @@ export default {
     'search',
     'clear-search',
     'update:search-draft',
+    'update:searchDraft',
   ],
   methods: {
+    emitSearchDraftUpdate(value) {
+      this.$emit('update:search-draft', value)
+      this.$emit('update:searchDraft', value)
+    },
     activityLabel(isActive) {
       return getInternalUserActivityLabel(isActive)
     },

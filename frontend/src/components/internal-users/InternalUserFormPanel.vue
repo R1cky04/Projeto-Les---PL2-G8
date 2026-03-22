@@ -31,7 +31,7 @@
           autocomplete="username"
           placeholder="ex: staff.lisboa"
           type="text"
-          @input="$emit('update:userId', $event.target.value)"
+          @input="emitUserIdUpdate($event.target.value)"
         >
         <small v-if="fieldErrors.userId" class="field-error">
           {{ fieldErrors.userId }}
@@ -126,6 +126,19 @@ export default {
       default: false,
     },
   },
-  emits: ['submit', 'reset', 'update:userId', 'update:password', 'update:role'],
+  emits: [
+    'submit',
+    'reset',
+    'update:user-id',
+    'update:userId',
+    'update:password',
+    'update:role',
+  ],
+  methods: {
+    emitUserIdUpdate(value) {
+      this.$emit('update:user-id', value)
+      this.$emit('update:userId', value)
+    },
+  },
 }
 </script>

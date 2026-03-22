@@ -28,31 +28,70 @@ let AuthBootstrapService = class AuthBootstrapService {
         if (!this.shouldBootstrapMasterIt()) {
             return;
         }
-        if (!this.prisma.user) {
-            return;
-        }
         const userId = (process.env.MASTER_IT_USER_ID ?? DEFAULT_MASTER_IT_USER_ID).trim().toLowerCase();
         const password = process.env.MASTER_IT_PASSWORD ?? DEFAULT_MASTER_IT_PASSWORD;
-        const existingUser = await this.prisma.user.findUnique({
-            where: { userId },
-            select: { id: true },
-        });
-        if (existingUser) {
+        if (this.prisma.user) {
+            const existingUser = await this.prisma.user.findUnique({
+                where: { userId },
+                select: { id: true },
+            });
+            if (existingUser) {
+                return;
+            }
+            await this.prisma.user.create({
+                data: {
+                    userId,
+                    passwordHash: this.passwordHasher.hash(password),
+                    fullName: 'Master IT',
+                    isInternal: true,
+                    isActive: true,
+                    internalRole: internal_user_enums_1.InternalUserRole.IT,
+                    internalStatus: internal_user_enums_1.InternalUserStatus.ACTIVE,
+                    requiresItValidation: false,
+                    permissions: (0, internal_user_access_1.getPermissionsForRole)(internal_user_enums_1.InternalUserRole.IT),
+                },
+            });
             return;
         }
-        await this.prisma.user.create({
-            data: {
-                userId,
-                passwordHash: this.passwordHasher.hash(password),
-                fullName: 'Master IT',
-                isInternal: true,
-                isActive: true,
-                internalRole: internal_user_enums_1.InternalUserRole.IT,
-                internalStatus: internal_user_enums_1.InternalUserStatus.ACTIVE,
-                requiresItValidation: false,
-                permissions: (0, internal_user_access_1.getPermissionsForRole)(internal_user_enums_1.InternalUserRole.IT),
-            },
-        });
+        const existingRows = await this.prisma.$queryRaw `
+      SELECT id
+      FROM "User"
+      WHERE "userId" = ${userId}
+      LIMIT 1
+    `;
+        if (existingRows.length > 0) {
+            return;
+        }
+        await this.prisma.$executeRaw `
+      INSERT INTO "User" (
+        id,
+        "userId",
+        "passwordHash",
+        "fullName",
+        "isInternal",
+        "isActive",
+        "internalRole",
+        "internalStatus",
+        "requiresItValidation",
+        permissions,
+        "createdAt",
+        "updatedAt"
+      )
+      VALUES (
+        md5(random()::text || clock_timestamp()::text),
+        ${userId},
+        ${this.passwordHasher.hash(password)},
+        'Master IT',
+        true,
+        true,
+        ${internal_user_enums_1.InternalUserRole.IT}::"InternalUserRole",
+        ${internal_user_enums_1.InternalUserStatus.ACTIVE}::"InternalUserStatus",
+        false,
+        ARRAY[]::"InternalPermission"[],
+        NOW(),
+        NOW()
+      )
+    `;
     }
     shouldBootstrapMasterIt() {
         if (process.env.NODE_ENV === 'test') {

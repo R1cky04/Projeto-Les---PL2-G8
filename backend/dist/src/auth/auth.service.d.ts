@@ -10,6 +10,7 @@ export declare class AuthService {
     constructor(prisma: PrismaService, passwordHasher: PasswordHasherService, authTokenService: AuthTokenService);
     login(payload: LoginDto, userAgent?: string): Promise<AuthSessionResponseDto>;
     authenticateSessionToken(rawToken: string): Promise<AuthenticatedSessionContext>;
+    private normalizePermissions;
     getCurrentSession(context: AuthenticatedSessionContext): AuthSessionResponseDto;
     logoutCurrentSession(context: AuthenticatedSessionContext): Promise<{
         message: string;

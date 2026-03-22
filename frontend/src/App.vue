@@ -1,15 +1,17 @@
 <template>
-  <ManageStation />
+  <InternalPortalView />
 </template>
 
 <script>
-import ManageStation from './components/ManageStation.vue'
+import './styles/internal-auth.css'
+import './styles/internal-users.css'
+import InternalPortalView from './views/InternalPortalView.vue'
 
-// Temporary root for direct desktop testing of station management.
+// Composition root for the authenticated internal portal.
 export default {
   name: 'App',
   components: {
-    ManageStation,
+    InternalPortalView,
   },
 }
 </script>
