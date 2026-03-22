@@ -9,6 +9,7 @@ datasource db {
 
 // Roles supported by the internal account provisioning flow.
 enum InternalUserRole {
+  IT
   ADMIN
   STAFF
   FLEET
@@ -32,6 +33,13 @@ enum InternalPermission {
   USER_READ
   USER_CREATE
   USER_ACTIVATE
+}
+
+// Deletion audit keeps a durable trace of IT actions even when the user record
+// is permanently removed.
+enum InternalUserDeletionAuditMode {
+  DELETED
+  DEACTIVATED
 }
 
 enum TenantUserRole {
@@ -159,6 +167,7 @@ model User {
   isActive             Boolean              @default(true)
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
+  sessions             InternalSession[]
   memberships          TenantUser[]
   customerProfiles     CustomerProfile[]
   createdReservations  Reservation[]        @relation("ReservationCreatedBy")
@@ -167,6 +176,37 @@ model User {
   drivenTransfers      VehicleTransfer[]    @relation("TransferDriver")
   openedImpros         VehicleImpro[]       @relation("ImproOpenedBy")
   closedImpros         VehicleImpro[]       @relation("ImproClosedBy")
+}
+
+model InternalSession {
+  id         String   @id @default(cuid())
+  tokenId    String   @unique
+  tokenHash  String
+  userId     String
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt, revokedAt])
+}
+
+model InternalUserDeletionAuditLog {
+  id                   String                        @id @default(cuid())
+  mode                 InternalUserDeletionAuditMode
+  actorUserId          String
+  actorUserIdentifier  String
+  targetUserId         String
+  targetUserIdentifier String
+  summary              String
+  createdAt            DateTime                      @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([targetUserId, createdAt])
 }
 
 model TenantUser {

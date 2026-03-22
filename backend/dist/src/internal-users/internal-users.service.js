@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var InternalUsersService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InternalUsersService = void 0;
 const common_1 = require("@nestjs/common");
@@ -17,8 +18,13 @@ const internal_user_access_1 = require("./internal-user-access");
 const internal_user_validation_1 = require("./internal-user-validation");
 const password_hasher_service_1 = require("./password-hasher.service");
 let InternalUsersService = class InternalUsersService {
+    static { InternalUsersService_1 = this; }
     prisma;
     passwordHasher;
+    static DEFAULT_PAGE = 1;
+    static DEFAULT_PAGE_SIZE = 10;
+    static MAX_PAGE_SIZE = 20;
+    logger = new common_1.Logger(InternalUsersService_1.name);
     constructor(prisma, passwordHasher) {
         this.prisma = prisma;
         this.passwordHasher = passwordHasher;
@@ -39,7 +45,7 @@ let InternalUsersService = class InternalUsersService {
                 internalStatus: (0, internal_user_access_1.getInitialStatusForRole)(input.role),
                 permissions,
                 requiresItValidation: pendingValidation,
-                isActive: !pendingValidation,
+                isActive: true,
             },
             select: {
                 id: true,
@@ -78,9 +84,150 @@ let InternalUsersService = class InternalUsersService {
             });
         }
     }
+    async findAll(pageInput, pageSizeInput, searchInput) {
+        const page = normalizePositiveInteger(pageInput, InternalUsersService_1.DEFAULT_PAGE);
+        const pageSize = Math.min(normalizePositiveInteger(pageSizeInput, InternalUsersService_1.DEFAULT_PAGE_SIZE), InternalUsersService_1.MAX_PAGE_SIZE);
+        const searchTerm = normalizeSearchTerm(searchInput);
+        const skip = (page - 1) * pageSize;
+        const where = buildInternalUserDirectoryWhere(searchTerm);
+        const [totalItems, items] = await this.prisma.$transaction([
+            this.prisma.user.count({
+                where,
+            }),
+            this.prisma.user.findMany({
+                where,
+                select: {
+                    id: true,
+                    userId: true,
+                    internalRole: true,
+                    internalStatus: true,
+                    permissions: true,
+                    requiresItValidation: true,
+                    isActive: true,
+                    createdAt: true,
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: pageSize,
+            }),
+        ]);
+        const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+        this.logger.log(`Found ${items.length} internal users on page ${page} of ${totalPages}${searchTerm ? ` for search "${searchTerm}"` : ''}.`);
+        return {
+            items,
+            pagination: {
+                page,
+                pageSize,
+                totalItems,
+                totalPages,
+                hasPreviousPage: page > 1,
+                hasNextPage: page < totalPages,
+            },
+        };
+    }
+    async remove(id, actor) {
+        const user = await this.prisma.user.findFirst({
+            where: { id, isInternal: true },
+            select: {
+                id: true,
+                userId: true,
+                isActive: true,
+                createdReservations: {
+                    select: { id: true, status: true },
+                },
+                createdRentals: {
+                    select: { id: true, status: true },
+                },
+                createdTransfers: {
+                    select: { id: true, status: true },
+                },
+            },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('Utilizador interno nao encontrado.');
+        }
+        if (!user.isActive) {
+            throw new common_1.NotFoundException('O utilizador indicado ja foi removido ou desativado.');
+        }
+        const hasActiveReservations = user.createdReservations.some((res) => res.status === 'CONFIRMED' || res.status === 'DRAFT');
+        const hasActiveRentals = user.createdRentals.some((rental) => rental.status === 'OPEN');
+        const hasActiveTransfers = user.createdTransfers.some((transfer) => transfer.status === 'PENDING' || transfer.status === 'IN_TRANSIT');
+        if (hasActiveReservations || hasActiveRentals || hasActiveTransfers) {
+            throw new common_1.ConflictException('Nao foi possivel eliminar ou desativar: o utilizador possui contratos ou reservas ativas.');
+        }
+        const targetUserId = user.userId ?? id;
+        const hasHistory = user.createdReservations.length > 0 ||
+            user.createdRentals.length > 0 ||
+            user.createdTransfers.length > 0;
+        if (hasHistory) {
+            return this.softDeleteUser(id, targetUserId, actor);
+        }
+        return this.deleteUser(id, targetUserId, actor);
+    }
+    async softDeleteUser(id, targetUserId, actor) {
+        await this.prisma.$transaction([
+            this.prisma.user.update({
+                where: { id },
+                data: { isActive: false },
+            }),
+            this.prisma.internalSession.updateMany({
+                where: { userId: id, revokedAt: null },
+                data: { revokedAt: new Date() },
+            }),
+            this.prisma.internalUserDeletionAuditLog.create({
+                data: this.buildDeletionAuditEntry({
+                    actor,
+                    targetUserId: id,
+                    targetUserIdentifier: targetUserId,
+                    mode: 'DEACTIVATED',
+                    summary: 'Conta desativada para reter historico existente e remover o acesso imediato.',
+                }),
+            }),
+        ]);
+        this.logger.log(`Internal user ${targetUserId} (${id}) was deactivated by ${actor.userId}.`);
+        return {
+            message: 'Utilizador desativado temporariamente devido a retencao de historico.',
+            mode: 'DEACTIVATED',
+            userId: targetUserId,
+        };
+    }
+    async deleteUser(id, targetUserId, actor) {
+        await this.prisma.$transaction([
+            this.prisma.internalSession.updateMany({
+                where: { userId: id, revokedAt: null },
+                data: { revokedAt: new Date() },
+            }),
+            this.prisma.internalUserDeletionAuditLog.create({
+                data: this.buildDeletionAuditEntry({
+                    actor,
+                    targetUserId: id,
+                    targetUserIdentifier: targetUserId,
+                    mode: 'DELETED',
+                    summary: 'Conta eliminada permanentemente por nao possuir historico a reter.',
+                }),
+            }),
+            this.prisma.user.delete({ where: { id } }),
+        ]);
+        this.logger.log(`Internal user ${targetUserId} (${id}) was permanently deleted by ${actor.userId}.`);
+        return {
+            message: 'Utilizador removido permanentemente com sucesso.',
+            mode: 'DELETED',
+            userId: targetUserId,
+        };
+    }
+    buildDeletionAuditEntry(input) {
+        return {
+            actorUserId: input.actor.id,
+            actorUserIdentifier: input.actor.userId,
+            targetUserId: input.targetUserId,
+            targetUserIdentifier: input.targetUserIdentifier,
+            mode: toDeletionAuditMode(input.mode),
+            summary: input.summary,
+        };
+    }
 };
 exports.InternalUsersService = InternalUsersService;
-exports.InternalUsersService = InternalUsersService = __decorate([
+exports.InternalUsersService = InternalUsersService = InternalUsersService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         password_hasher_service_1.PasswordHasherService])
@@ -89,5 +236,40 @@ function getCreationMessage(role) {
     return (0, internal_user_access_1.requiresItValidation)(role)
         ? 'Utilizador criado com sucesso, mas a conta fica pendente de validacao do IT.'
         : 'Utilizador criado com sucesso.';
+}
+function toDeletionAuditMode(mode) {
+    return mode === 'DEACTIVATED'
+        ? client_1.InternalUserDeletionAuditMode.DEACTIVATED
+        : client_1.InternalUserDeletionAuditMode.DELETED;
+}
+function normalizePositiveInteger(input, fallback) {
+    const normalizedValue = typeof input === 'string' ? Number.parseInt(input, 10) : input;
+    if (typeof normalizedValue === 'number' &&
+        Number.isInteger(normalizedValue) &&
+        normalizedValue > 0) {
+        return normalizedValue;
+    }
+    return fallback;
+}
+function normalizeSearchTerm(input) {
+    if (typeof input !== 'string') {
+        return undefined;
+    }
+    const normalizedValue = input.trim();
+    return normalizedValue ? normalizedValue : undefined;
+}
+function buildInternalUserDirectoryWhere(searchTerm) {
+    if (!searchTerm) {
+        return {
+            isInternal: true,
+        };
+    }
+    return {
+        isInternal: true,
+        userId: {
+            contains: searchTerm,
+            mode: 'insensitive',
+        },
+    };
 }
 //# sourceMappingURL=internal-users.service.js.map

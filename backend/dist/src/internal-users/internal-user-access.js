@@ -5,6 +5,18 @@ exports.requiresItValidation = requiresItValidation;
 exports.getInitialStatusForRole = getInitialStatusForRole;
 const internal_user_enums_1 = require("./internal-user.enums");
 const ROLE_PERMISSIONS = {
+    [internal_user_enums_1.InternalUserRole.IT]: [
+        internal_user_enums_1.InternalPermission.RESERVATION_READ,
+        internal_user_enums_1.InternalPermission.RENTAL_READ,
+        internal_user_enums_1.InternalPermission.VEHICLE_READ,
+        internal_user_enums_1.InternalPermission.VEHICLE_WRITE,
+        internal_user_enums_1.InternalPermission.MAINTENANCE_WRITE,
+        internal_user_enums_1.InternalPermission.TRANSFER_WRITE,
+        internal_user_enums_1.InternalPermission.INCIDENT_WRITE,
+        internal_user_enums_1.InternalPermission.USER_READ,
+        internal_user_enums_1.InternalPermission.USER_CREATE,
+        internal_user_enums_1.InternalPermission.USER_ACTIVATE,
+    ],
     [internal_user_enums_1.InternalUserRole.STAFF]: [
         internal_user_enums_1.InternalPermission.RESERVATION_READ,
         internal_user_enums_1.InternalPermission.RENTAL_READ,
