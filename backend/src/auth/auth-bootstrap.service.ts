@@ -1,5 +1,8 @@
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
-import { InternalUserRole, InternalUserStatus } from '@prisma/client';
+import {
+  InternalUserRole,
+  InternalUserStatus,
+} from '../internal-users/internal-user.enums';
 import { getPermissionsForRole } from '../internal-users/internal-user-access';
 import { PasswordHasherService } from '../internal-users/password-hasher.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,13 +23,19 @@ export class AuthBootstrapService implements OnApplicationBootstrap {
       return;
     }
 
+    // In some local merge states the generated Prisma delegates can lag behind
+    // the schema; skip seed bootstrap instead of crashing the whole API.
+    if (!(this.prisma as any).user) {
+      return;
+    }
+
     const userId = (
       process.env.MASTER_IT_USER_ID ?? DEFAULT_MASTER_IT_USER_ID
     ).trim().toLowerCase();
     const password =
       process.env.MASTER_IT_PASSWORD ?? DEFAULT_MASTER_IT_PASSWORD;
 
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUser = await (this.prisma as any).user.findUnique({
       where: { userId },
       select: { id: true },
     });
@@ -35,7 +44,7 @@ export class AuthBootstrapService implements OnApplicationBootstrap {
       return;
     }
 
-    await this.prisma.user.create({
+    await (this.prisma as any).user.create({
       data: {
         userId,
         passwordHash: this.passwordHasher.hash(password),

@@ -92,7 +92,17 @@ export default {
         this.showFeedback('Estação registada com sucesso!', 'success');
         this.resetForm();
       } catch (err) {
-        this.showFeedback('Erro ao comunicar com o servidor.', 'error');
+        const backendMessage =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message;
+
+        this.showFeedback(
+          backendMessage
+            ? `Erro: ${backendMessage}`
+            : 'Erro ao comunicar com o servidor.',
+          'error'
+        );
       } finally {
         this.loading = false;
       }

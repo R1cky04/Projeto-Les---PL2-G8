@@ -2,49 +2,49 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildFeatureCatalog = buildFeatureCatalog;
 exports.parseDisabledFeaturesFromEnvironment = parseDisabledFeaturesFromEnvironment;
-const client_1 = require("@prisma/client");
+const internal_user_enums_1 = require("../internal-users/internal-user.enums");
 const auth_types_1 = require("./auth.types");
 const FEATURE_DEFINITIONS = [
     {
         key: 'INTERNAL_USERS',
         label: 'Internal Users',
         description: 'Gestao de contas internas, ativacao e controlo de acessos.',
-        isEntitled: (user) => user.role === client_1.InternalUserRole.IT,
+        isEntitled: (user) => user.role === internal_user_enums_1.InternalUserRole.IT,
     },
     {
         key: 'CUSTOMERS',
         label: 'Customers',
         description: 'Consulta e apoio operacional a perfis de cliente.',
-        isEntitled: (user) => user.role === client_1.InternalUserRole.IT ||
-            user.role === client_1.InternalUserRole.ADMIN ||
-            user.role === client_1.InternalUserRole.STAFF,
+        isEntitled: (user) => user.role === internal_user_enums_1.InternalUserRole.IT ||
+            user.role === internal_user_enums_1.InternalUserRole.ADMIN ||
+            user.role === internal_user_enums_1.InternalUserRole.STAFF,
     },
     {
         key: 'RESERVATIONS',
         label: 'Reservations',
         description: 'Reserva, consulta e acompanhamento do ciclo de reservas.',
-        isEntitled: (user) => user.permissions.includes(client_1.InternalPermission.RESERVATION_READ),
+        isEntitled: (user) => user.permissions.includes(internal_user_enums_1.InternalPermission.RESERVATION_READ),
     },
     {
         key: 'RENTALS',
         label: 'Rentals',
         description: 'Acompanhamento de alugueres e estado operacional associado.',
-        isEntitled: (user) => user.permissions.includes(client_1.InternalPermission.RENTAL_READ),
+        isEntitled: (user) => user.permissions.includes(internal_user_enums_1.InternalPermission.RENTAL_READ),
     },
     {
         key: 'VEHICLES',
         label: 'Vehicles',
         description: 'Consulta do parque automovel e disponibilidade das viaturas.',
-        isEntitled: (user) => user.permissions.includes(client_1.InternalPermission.VEHICLE_READ),
+        isEntitled: (user) => user.permissions.includes(internal_user_enums_1.InternalPermission.VEHICLE_READ),
     },
     {
         key: 'FLEET_OPERATIONS',
         label: 'Fleet Operations',
         description: 'Operacoes de frota, manutencao, transferencias e gestao de incidentes.',
-        isEntitled: (user) => user.permissions.includes(client_1.InternalPermission.VEHICLE_WRITE) ||
-            user.permissions.includes(client_1.InternalPermission.MAINTENANCE_WRITE) ||
-            user.permissions.includes(client_1.InternalPermission.TRANSFER_WRITE) ||
-            user.permissions.includes(client_1.InternalPermission.INCIDENT_WRITE),
+        isEntitled: (user) => user.permissions.includes(internal_user_enums_1.InternalPermission.VEHICLE_WRITE) ||
+            user.permissions.includes(internal_user_enums_1.InternalPermission.MAINTENANCE_WRITE) ||
+            user.permissions.includes(internal_user_enums_1.InternalPermission.TRANSFER_WRITE) ||
+            user.permissions.includes(internal_user_enums_1.InternalPermission.INCIDENT_WRITE),
     },
 ];
 const LIMITED_ACCESS_REASON = 'A conta foi autenticada, mas algumas capacidades ficam condicionadas ate validacao final.';

@@ -1,4 +1,7 @@
-import { InternalPermission, InternalUserRole } from '@prisma/client';
+import {
+  InternalPermission,
+  InternalUserRole,
+} from '../internal-users/internal-user.enums';
 import {
   AuthenticatedFeatureDto,
   AuthenticatedUserDto,

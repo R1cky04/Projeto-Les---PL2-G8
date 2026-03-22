@@ -2,7 +2,7 @@ import {
   InternalPermission,
   InternalUserRole,
   InternalUserStatus,
-} from '@prisma/client';
+} from '../internal-users/internal-user.enums';
 import type { Request } from 'express';
 
 // Shared auth contracts used by the service layer, guards and frontend API.

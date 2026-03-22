@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-import { InternalUserRole } from '@prisma/client';
+import { InternalUserRole } from './internal-user.enums';
 import { AuthenticatedRequest } from '../auth/auth.types';
 
 // Authorization guard for IT-only workflows layered on top of an authenticated

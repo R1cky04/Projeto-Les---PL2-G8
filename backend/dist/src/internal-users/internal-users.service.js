@@ -239,8 +239,8 @@ function getCreationMessage(role) {
 }
 function toDeletionAuditMode(mode) {
     return mode === 'DEACTIVATED'
-        ? client_1.InternalUserDeletionAuditMode.DEACTIVATED
-        : client_1.InternalUserDeletionAuditMode.DELETED;
+        ? 'DEACTIVATED'
+        : 'DELETED';
 }
 function normalizePositiveInteger(input, fallback) {
     const normalizedValue = typeof input === 'string' ? Number.parseInt(input, 10) : input;

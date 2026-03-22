@@ -8,12 +8,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ItMasterGuard = void 0;
 const common_1 = require("@nestjs/common");
-const client_1 = require("@prisma/client");
+const internal_user_enums_1 = require("./internal-user.enums");
 let ItMasterGuard = class ItMasterGuard {
     canActivate(context) {
         const request = context.switchToHttp().getRequest();
         const actorRole = request.auth?.user.role;
-        if (actorRole !== client_1.InternalUserRole.IT) {
+        if (actorRole !== internal_user_enums_1.InternalUserRole.IT) {
             throw new common_1.ForbiddenException({
                 message: 'Apenas o IT pode gerir utilizadores internos.',
                 code: 'IT_ROLE_REQUIRED',

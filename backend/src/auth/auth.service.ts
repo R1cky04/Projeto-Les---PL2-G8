@@ -3,7 +3,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { InternalUserStatus } from '@prisma/client';
+import { InternalUserStatus } from '../internal-users/internal-user.enums';
 import { PrismaService } from '../prisma/prisma.service';
 import { getPermissionsForRole } from '../internal-users/internal-user-access';
 import { PasswordHasherService } from '../internal-users/password-hasher.service';

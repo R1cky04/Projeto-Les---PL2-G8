@@ -11,7 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
-const client_1 = require("@prisma/client");
+const internal_user_enums_1 = require("../internal-users/internal-user.enums");
 const prisma_service_1 = require("../prisma/prisma.service");
 const internal_user_access_1 = require("../internal-users/internal-user-access");
 const password_hasher_service_1 = require("../internal-users/password-hasher.service");
@@ -242,7 +242,7 @@ let AuthService = class AuthService {
         });
     }
     getAccessLevel(status) {
-        return status === client_1.InternalUserStatus.PENDING_IT_VALIDATION
+        return status === internal_user_enums_1.InternalUserStatus.PENDING_IT_VALIDATION
             ? 'LIMITED'
             : 'FULL';
     }

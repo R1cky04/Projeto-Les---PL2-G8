@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.InternalPermission = exports.InternalUserStatus = exports.InternalUserRole = void 0;
 var InternalUserRole;
 (function (InternalUserRole) {
+    InternalUserRole["IT"] = "IT";
     InternalUserRole["ADMIN"] = "ADMIN";
     InternalUserRole["STAFF"] = "STAFF";
     InternalUserRole["FLEET"] = "FLEET";

@@ -1,4 +1,4 @@
-import { InternalPermission, InternalUserRole, InternalUserStatus } from '@prisma/client';
+import { InternalPermission, InternalUserRole, InternalUserStatus } from '../internal-users/internal-user.enums';
 import type { Request } from 'express';
 export declare const FEATURE_KEYS: readonly ["INTERNAL_USERS", "CUSTOMERS", "RESERVATIONS", "RENTALS", "VEHICLES", "FLEET_OPERATIONS"];
 export type InternalFeatureKey = (typeof FEATURE_KEYS)[number];

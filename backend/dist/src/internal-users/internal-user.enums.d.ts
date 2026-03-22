@@ -1,4 +1,5 @@
 export declare enum InternalUserRole {
+    IT = "IT",
     ADMIN = "ADMIN",
     STAFF = "STAFF",
     FLEET = "FLEET"

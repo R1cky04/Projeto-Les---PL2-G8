@@ -11,7 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthBootstrapService = void 0;
 const common_1 = require("@nestjs/common");
-const client_1 = require("@prisma/client");
+const internal_user_enums_1 = require("../internal-users/internal-user.enums");
 const internal_user_access_1 = require("../internal-users/internal-user-access");
 const password_hasher_service_1 = require("../internal-users/password-hasher.service");
 const prisma_service_1 = require("../prisma/prisma.service");
@@ -26,6 +26,9 @@ let AuthBootstrapService = class AuthBootstrapService {
     }
     async onApplicationBootstrap() {
         if (!this.shouldBootstrapMasterIt()) {
+            return;
+        }
+        if (!this.prisma.user) {
             return;
         }
         const userId = (process.env.MASTER_IT_USER_ID ?? DEFAULT_MASTER_IT_USER_ID).trim().toLowerCase();
@@ -44,10 +47,10 @@ let AuthBootstrapService = class AuthBootstrapService {
                 fullName: 'Master IT',
                 isInternal: true,
                 isActive: true,
-                internalRole: client_1.InternalUserRole.IT,
-                internalStatus: client_1.InternalUserStatus.ACTIVE,
+                internalRole: internal_user_enums_1.InternalUserRole.IT,
+                internalStatus: internal_user_enums_1.InternalUserStatus.ACTIVE,
                 requiresItValidation: false,
-                permissions: (0, internal_user_access_1.getPermissionsForRole)(client_1.InternalUserRole.IT),
+                permissions: (0, internal_user_access_1.getPermissionsForRole)(internal_user_enums_1.InternalUserRole.IT),
             },
         });
     }

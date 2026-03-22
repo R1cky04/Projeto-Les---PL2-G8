@@ -2,7 +2,7 @@ import {
   InternalPermission,
   InternalUserRole,
   InternalUserStatus,
-} from '@prisma/client';
+} from '../internal-user.enums';
 
 // Response contract for the paginated internal-user directory used by IT.
 export interface InternalUserListItemDto {
