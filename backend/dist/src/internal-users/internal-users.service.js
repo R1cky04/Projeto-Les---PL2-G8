@@ -80,8 +80,8 @@ let InternalUsersService = class InternalUsersService {
                 user: {
                     id: created.id,
                     userId: created.userId ?? '',
-                    role: created.internalRole ?? internal_user_enums_1.InternalUserRole.STAFF,
-                    status: created.internalStatus,
+                    role: normalizeInternalUserRole(created.internalRole ?? internal_user_enums_1.InternalUserRole.STAFF),
+                    status: normalizeInternalUserStatus(created.internalStatus),
                     permissions,
                     requiresItValidation: created.requiresItValidation,
                     isActive: created.isActive,
@@ -117,9 +117,9 @@ let InternalUsersService = class InternalUsersService {
             user: {
                 id: user.id,
                 userId: user.userId ?? '',
-                role: user.internalRole ?? internal_user_enums_1.InternalUserRole.STAFF,
-                status: user.internalStatus,
-                permissions: user.permissions,
+                role: normalizeInternalUserRole((user.internalRole ?? internal_user_enums_1.InternalUserRole.STAFF)),
+                status: normalizeInternalUserStatus(user.internalStatus),
+                permissions: normalizeInternalPermissions(user.permissions),
                 requiresItValidation: user.requiresItValidation,
                 isActive: user.isActive,
                 createdAt: user.createdAt,
@@ -226,7 +226,7 @@ let InternalUsersService = class InternalUsersService {
                 },
             };
         }
-        const [totalItems, items] = await this.prisma.$transaction([
+        const [totalItems, rows] = await this.prisma.$transaction([
             this.prisma.user.count({
                 where,
             }),
@@ -248,6 +248,18 @@ let InternalUsersService = class InternalUsersService {
             }),
         ]);
         const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+        const items = rows.map((row) => ({
+            id: row.id,
+            userId: row.userId,
+            internalRole: row.internalRole
+                ? normalizeInternalUserRole(row.internalRole)
+                : null,
+            internalStatus: normalizeInternalUserStatus(row.internalStatus),
+            permissions: normalizeInternalPermissions(row.permissions),
+            requiresItValidation: row.requiresItValidation,
+            isActive: row.isActive,
+            createdAt: row.createdAt,
+        }));
         this.logger.log(`Found ${items.length} internal users on page ${page} of ${totalPages}${searchTerm ? ` for search "${searchTerm}"` : ''}.`);
         return {
             items,
@@ -574,6 +586,19 @@ function normalizeSearchTerm(input) {
     }
     const normalizedValue = input.trim();
     return normalizedValue ? normalizedValue : undefined;
+}
+function normalizeInternalUserRole(value) {
+    return Object.values(internal_user_enums_1.InternalUserRole).includes(value)
+        ? value
+        : internal_user_enums_1.InternalUserRole.STAFF;
+}
+function normalizeInternalUserStatus(value) {
+    return value === internal_user_enums_1.InternalUserStatus.PENDING_IT_VALIDATION
+        ? internal_user_enums_1.InternalUserStatus.PENDING_IT_VALIDATION
+        : internal_user_enums_1.InternalUserStatus.ACTIVE;
+}
+function normalizeInternalPermissions(values) {
+    return values.filter((value) => Object.values(internal_user_enums_1.InternalPermission).includes(value));
 }
 function buildInternalUserDirectoryWhere(searchTerm) {
     if (!searchTerm) {

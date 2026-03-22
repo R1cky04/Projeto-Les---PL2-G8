@@ -12,8 +12,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaService = void 0;
 require("dotenv/config");
 const adapter_pg_1 = require("@prisma/adapter-pg");
+const client_1 = require("@prisma/client");
 const common_1 = require("@nestjs/common");
-const client_1 = require("../../generated/prisma/client");
 let PrismaService = class PrismaService extends client_1.PrismaClient {
     constructor() {
         const connectionString = process.env.DATABASE_URL;

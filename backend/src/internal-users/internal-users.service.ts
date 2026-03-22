@@ -125,8 +125,10 @@ export class InternalUsersService {
         user: {
           id: created.id,
           userId: created.userId ?? '',
-          role: created.internalRole ?? InternalUserRole.STAFF,
-          status: created.internalStatus,
+          role: normalizeInternalUserRole(
+            created.internalRole ?? InternalUserRole.STAFF,
+          ),
+          status: normalizeInternalUserStatus(created.internalStatus),
           permissions,
           requiresItValidation: created.requiresItValidation,
           isActive: created.isActive,
@@ -167,9 +169,11 @@ export class InternalUsersService {
       user: {
         id: user.id,
         userId: user.userId ?? '',
-        role: user.internalRole ?? InternalUserRole.STAFF,
-        status: user.internalStatus,
-        permissions: user.permissions,
+        role: normalizeInternalUserRole(
+          (user.internalRole ?? InternalUserRole.STAFF) as string,
+        ),
+        status: normalizeInternalUserStatus(user.internalStatus as string),
+        permissions: normalizeInternalPermissions(user.permissions as string[]),
         requiresItValidation: user.requiresItValidation,
         isActive: user.isActive,
         createdAt: user.createdAt,
@@ -309,7 +313,7 @@ export class InternalUsersService {
     // The IT directory can grow large, so the API returns both the current slice
     // and enough metadata for the client to page or search without loading
     // every account into the browser first.
-    const [totalItems, items] = await this.prisma.$transaction([
+    const [totalItems, rows] = await this.prisma.$transaction([
       this.prisma.user.count({
         where,
       }),
@@ -332,6 +336,18 @@ export class InternalUsersService {
     ]);
 
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const items = rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      internalRole: row.internalRole
+        ? normalizeInternalUserRole(row.internalRole as string)
+        : null,
+      internalStatus: normalizeInternalUserStatus(row.internalStatus as string),
+      permissions: normalizeInternalPermissions(row.permissions as string[]),
+      requiresItValidation: row.requiresItValidation,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+    }));
 
     this.logger.log(
       `Found ${items.length} internal users on page ${page} of ${totalPages}${searchTerm ? ` for search "${searchTerm}"` : ''}.`,
@@ -769,6 +785,24 @@ function normalizeSearchTerm(input: string | undefined): string | undefined {
   const normalizedValue = input.trim();
 
   return normalizedValue ? normalizedValue : undefined;
+}
+
+function normalizeInternalUserRole(value: string): InternalUserRole {
+  return Object.values(InternalUserRole).includes(value as InternalUserRole)
+    ? (value as InternalUserRole)
+    : InternalUserRole.STAFF;
+}
+
+function normalizeInternalUserStatus(value: string): InternalUserStatus {
+  return value === InternalUserStatus.PENDING_IT_VALIDATION
+    ? InternalUserStatus.PENDING_IT_VALIDATION
+    : InternalUserStatus.ACTIVE;
+}
+
+function normalizeInternalPermissions(values: string[]): InternalPermission[] {
+  return values.filter((value): value is InternalPermission =>
+    Object.values(InternalPermission).includes(value as InternalPermission),
+  );
 }
 
 function buildInternalUserDirectoryWhere(
