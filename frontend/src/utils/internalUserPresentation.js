@@ -35,3 +35,21 @@ export function getInternalUserDeletionResultMessage(mode) {
 export function getInternalUserActivityLabel(isActive) {
   return isActive ? 'Conta ativa' : 'Conta desativada'
 }
+
+export function getInternalUserStatusLabel(status) {
+  return status === 'PENDING_IT_VALIDATION'
+    ? 'Pendente de validacao IT'
+    : 'Ativa'
+}
+
+export function shouldShowPermissionCompatibilityGuide(warnings) {
+  if (!Array.isArray(warnings)) {
+    return false
+  }
+
+  return warnings.some(
+    (warning) =>
+      typeof warning === 'string' &&
+      warning.includes('Algumas permissoes foram removidas automaticamente'),
+  )
+}

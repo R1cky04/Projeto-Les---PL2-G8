@@ -4,6 +4,8 @@ import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { CreateInternalUserResponseDto } from './dto/create-internal-user-response.dto';
 import { DeleteInternalUserResponseDto } from './dto/delete-internal-user-response.dto';
 import { ListInternalUsersResponseDto } from './dto/list-internal-users-response.dto';
+import { UpdateInternalUserDto } from './dto/update-internal-user.dto';
+import { UpdateInternalUserResponseDto } from './dto/update-internal-user-response.dto';
 import { PasswordHasherService } from './password-hasher.service';
 export declare class InternalUsersService {
     private readonly prisma;
@@ -16,6 +18,12 @@ export declare class InternalUsersService {
     create(payload: CreateInternalUserDto): Promise<CreateInternalUserResponseDto>;
     private ensureUserIdIsUnique;
     findAll(pageInput?: number | string, pageSizeInput?: number | string, searchInput?: string): Promise<ListInternalUsersResponseDto>;
+    private getInternalUserManagementSnapshot;
+    private getInternalUserManagementSnapshotRaw;
+    private updateInternalUserRaw;
+    private updateInternalUserWithPrisma;
+    private recordManagementAudit;
+    update(id: string, payload: UpdateInternalUserDto, actor: AuthenticatedUserDto): Promise<UpdateInternalUserResponseDto>;
     remove(id: string, actor: AuthenticatedUserDto): Promise<DeleteInternalUserResponseDto>;
     private softDeleteUser;
     private deleteUser;

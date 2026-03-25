@@ -15,6 +15,7 @@ const common_1 = require("@nestjs/common");
 const internal_user_enums_1 = require("./internal-user.enums");
 const prisma_service_1 = require("../prisma/prisma.service");
 const internal_user_access_1 = require("./internal-user-access");
+const internal_user_management_validation_1 = require("./internal-user-management-validation");
 const internal_user_validation_1 = require("./internal-user-validation");
 const password_hasher_service_1 = require("./password-hasher.service");
 let InternalUsersService = class InternalUsersService {
@@ -119,14 +120,14 @@ let InternalUsersService = class InternalUsersService {
                 userId: user.userId ?? '',
                 role: normalizeInternalUserRole((user.internalRole ?? internal_user_enums_1.InternalUserRole.STAFF)),
                 status: normalizeInternalUserStatus(user.internalStatus),
-                permissions: normalizeInternalPermissions(user.permissions),
+                permissions: (0, internal_user_access_1.filterPermissionsForRole)(normalizeInternalUserRole((user.internalRole ?? internal_user_enums_1.InternalUserRole.STAFF)), normalizeInternalPermissions(user.permissions)),
                 requiresItValidation: user.requiresItValidation,
                 isActive: user.isActive,
                 createdAt: user.createdAt,
             },
         };
     }
-    async ensureUserIdIsUnique(userId) {
+    async ensureUserIdIsUnique(userId, ignoreUserId) {
         const existingUser = this.prisma.user
             ? await this.prisma.user.findUnique({
                 where: { userId },
@@ -138,7 +139,7 @@ let InternalUsersService = class InternalUsersService {
             WHERE "userId" = ${userId}
             LIMIT 1
           `)[0];
-        if (existingUser) {
+        if (existingUser && existingUser.id !== ignoreUserId) {
             throw new common_1.ConflictException({
                 message: 'O User ID indicado ja existe.',
                 code: 'USER_ID_ALREADY_EXISTS',
@@ -202,13 +203,21 @@ let InternalUsersService = class InternalUsersService {
             const totalItems = Number(countRows[0]?.total ?? 0n);
             const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
             const items = rows.map((row) => ({
+                ...row,
+                role: row.internalRole
+                    ? normalizeInternalUserRole(row.internalRole)
+                    : null,
+                permissions: row.internalRole
+                    ? (0, internal_user_access_1.filterPermissionsForRole)(normalizeInternalUserRole(row.internalRole), parseInternalPermissions(row.permissions))
+                    : [],
+            })).map((row) => ({
                 id: row.id,
                 userId: row.userId,
-                internalRole: row.internalRole,
+                internalRole: row.role,
                 internalStatus: (row.internalStatus === 'PENDING_IT_VALIDATION'
                     ? 'PENDING_IT_VALIDATION'
                     : 'ACTIVE'),
-                permissions: parseInternalPermissions(row.permissions),
+                permissions: row.permissions,
                 requiresItValidation: row.requiresItValidation,
                 isActive: row.isActive,
                 createdAt: row.createdAt,
@@ -249,13 +258,19 @@ let InternalUsersService = class InternalUsersService {
         ]);
         const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         const items = rows.map((row) => ({
-            id: row.id,
-            userId: row.userId,
-            internalRole: row.internalRole
+            ...row,
+            role: row.internalRole
                 ? normalizeInternalUserRole(row.internalRole)
                 : null,
+            permissions: row.internalRole
+                ? (0, internal_user_access_1.filterPermissionsForRole)(normalizeInternalUserRole(row.internalRole), normalizeInternalPermissions(row.permissions))
+                : [],
+        })).map((row) => ({
+            id: row.id,
+            userId: row.userId,
+            internalRole: row.role,
             internalStatus: normalizeInternalUserStatus(row.internalStatus),
-            permissions: normalizeInternalPermissions(row.permissions),
+            permissions: row.permissions,
             requiresItValidation: row.requiresItValidation,
             isActive: row.isActive,
             createdAt: row.createdAt,
@@ -273,17 +288,22 @@ let InternalUsersService = class InternalUsersService {
             },
         };
     }
-    async remove(id, actor) {
-        if (id === actor.id) {
-            throw new common_1.ConflictException('Nao e permitido remover a conta atualmente autenticada.');
+    async getInternalUserManagementSnapshot(id) {
+        if (!this.prisma.user) {
+            return this.getInternalUserManagementSnapshotRaw(id);
         }
-        const user = this.prisma.user
-            ? await this.prisma.user.findFirst({
+        try {
+            const user = await this.prisma.user.findFirst({
                 where: { id, isInternal: true },
                 select: {
                     id: true,
                     userId: true,
+                    internalRole: true,
+                    internalStatus: true,
+                    permissions: true,
+                    requiresItValidation: true,
                     isActive: true,
+                    createdAt: true,
                     createdReservations: {
                         select: { id: true, status: true },
                     },
@@ -294,8 +314,358 @@ let InternalUsersService = class InternalUsersService {
                         select: { id: true, status: true },
                     },
                 },
-            })
-            : await this.getInternalUserDeletionSnapshotRaw(id);
+            });
+            if (!user || !user.internalRole) {
+                return null;
+            }
+            return {
+                id: user.id,
+                userId: user.userId,
+                internalRole: normalizeInternalUserRole(user.internalRole),
+                internalStatus: normalizeInternalUserStatus(user.internalStatus),
+                permissions: (0, internal_user_access_1.filterPermissionsForRole)(normalizeInternalUserRole(user.internalRole), normalizeInternalPermissions(user.permissions)),
+                requiresItValidation: user.requiresItValidation,
+                isActive: user.isActive,
+                createdAt: user.createdAt,
+                hasActiveReservations: user.createdReservations.some((reservation) => reservation.status === 'CONFIRMED' || reservation.status === 'DRAFT'),
+                hasActiveRentals: user.createdRentals.some((rental) => rental.status === 'OPEN'),
+                hasActiveTransfers: user.createdTransfers.some((transfer) => transfer.status === 'PENDING' || transfer.status === 'IN_TRANSIT'),
+            };
+        }
+        catch (error) {
+            this.logger.warn(`Falling back to raw SQL for internal user management snapshot ${id}: ${String(error)}`);
+            return this.getInternalUserManagementSnapshotRaw(id);
+        }
+    }
+    async getInternalUserManagementSnapshotRaw(id) {
+        const rows = await this.prisma.$queryRaw `
+      SELECT
+        u.id,
+        u."userId",
+        u."internalRole",
+        u."internalStatus",
+        u.permissions,
+        u."requiresItValidation",
+        u."isActive",
+        u."createdAt",
+        (
+          SELECT COUNT(*)::bigint
+          FROM "Reservation" r
+          WHERE r."createdById" = u.id
+            AND r.status IN ('CONFIRMED', 'DRAFT')
+        ) AS "activeReservations",
+        (
+          SELECT COUNT(*)::bigint
+          FROM "Rental" rt
+          WHERE rt."createdById" = u.id
+            AND rt.status = 'OPEN'
+        ) AS "activeRentals",
+        (
+          SELECT COUNT(*)::bigint
+          FROM "VehicleTransfer" vt
+          WHERE vt."createdById" = u.id
+            AND vt.status IN ('PENDING', 'IN_TRANSIT')
+        ) AS "activeTransfers"
+      FROM "User" u
+      WHERE u.id = ${id}
+        AND u."isInternal" = true
+      LIMIT 1
+    `;
+        const row = rows[0];
+        if (!row || !row.internalRole) {
+            return null;
+        }
+        return {
+            id: row.id,
+            userId: row.userId,
+            internalRole: normalizeInternalUserRole(row.internalRole),
+            internalStatus: normalizeInternalUserStatus(row.internalStatus),
+            permissions: (0, internal_user_access_1.filterPermissionsForRole)(normalizeInternalUserRole(row.internalRole), normalizeMaybeInternalPermissions(row.permissions)),
+            requiresItValidation: row.requiresItValidation,
+            isActive: row.isActive,
+            createdAt: row.createdAt,
+            hasActiveReservations: Number(row.activeReservations) > 0,
+            hasActiveRentals: Number(row.activeRentals) > 0,
+            hasActiveTransfers: Number(row.activeTransfers) > 0,
+        };
+    }
+    async updateInternalUserRaw(id, data, revokeSessions) {
+        const rows = data.passwordHash
+            ? await this.prisma.$queryRaw `
+          UPDATE "User"
+          SET
+            "userId" = ${data.userId},
+            "passwordHash" = ${data.passwordHash},
+            "fullName" = ${data.userId},
+            "internalRole" = ${data.internalRole}::"InternalUserRole",
+            "internalStatus" = ${data.internalStatus}::"InternalUserStatus",
+            permissions = ${toPgInternalPermissionArrayLiteral(data.permissions)}::"InternalPermission"[],
+            "requiresItValidation" = ${data.requiresItValidation},
+            "isActive" = ${data.isActive},
+            "updatedAt" = NOW()
+          WHERE id = ${id}
+          RETURNING
+            id,
+            "userId",
+            "internalRole",
+            "internalStatus",
+            permissions,
+            "requiresItValidation",
+            "isActive",
+            "createdAt"
+        `
+            : await this.prisma.$queryRaw `
+          UPDATE "User"
+          SET
+            "userId" = ${data.userId},
+            "fullName" = ${data.userId},
+            "internalRole" = ${data.internalRole}::"InternalUserRole",
+            "internalStatus" = ${data.internalStatus}::"InternalUserStatus",
+            permissions = ${toPgInternalPermissionArrayLiteral(data.permissions)}::"InternalPermission"[],
+            "requiresItValidation" = ${data.requiresItValidation},
+            "isActive" = ${data.isActive},
+            "updatedAt" = NOW()
+          WHERE id = ${id}
+          RETURNING
+            id,
+            "userId",
+            "internalRole",
+            "internalStatus",
+            permissions,
+            "requiresItValidation",
+            "isActive",
+            "createdAt"
+        `;
+        if (revokeSessions) {
+            await this.prisma.$executeRaw `
+        UPDATE "InternalSession"
+        SET "revokedAt" = NOW(), "updatedAt" = NOW()
+        WHERE "userId" = ${id}
+          AND "revokedAt" IS NULL
+      `;
+        }
+        return rows[0];
+    }
+    async updateInternalUserWithPrisma(id, data, revokeSessions) {
+        const operations = [
+            this.prisma.user.update({
+                where: { id },
+                data: {
+                    userId: data.userId,
+                    ...(data.passwordHash
+                        ? {
+                            passwordHash: data.passwordHash,
+                        }
+                        : {}),
+                    fullName: data.userId,
+                    internalRole: data.internalRole,
+                    internalStatus: data.internalStatus,
+                    permissions: data.permissions,
+                    requiresItValidation: data.requiresItValidation,
+                    isActive: data.isActive,
+                },
+                select: {
+                    id: true,
+                    userId: true,
+                    internalRole: true,
+                    internalStatus: true,
+                    permissions: true,
+                    requiresItValidation: true,
+                    isActive: true,
+                    createdAt: true,
+                },
+            }),
+        ];
+        if (revokeSessions) {
+            operations.push(this.prisma.internalSession.updateMany({
+                where: { userId: id, revokedAt: null },
+                data: { revokedAt: new Date() },
+            }));
+        }
+        const [updatedUser] = await this.prisma.$transaction(operations);
+        return {
+            id: updatedUser.id,
+            userId: updatedUser.userId,
+            internalRole: updatedUser.internalRole,
+            internalStatus: updatedUser.internalStatus,
+            permissions: toPgInternalPermissionArrayLiteral(updatedUser.permissions),
+            requiresItValidation: updatedUser.requiresItValidation,
+            isActive: updatedUser.isActive,
+            createdAt: updatedUser.createdAt,
+        };
+    }
+    async recordManagementAudit(actor, targetUserId, targetUserIdentifier, outcome, summary) {
+        if (!this.prisma.internalUserManagementAuditLog) {
+            await this.prisma.$executeRaw `
+        INSERT INTO "InternalUserManagementAuditLog" (
+          id,
+          outcome,
+          "actorUserId",
+          "actorUserIdentifier",
+          "targetUserId",
+          "targetUserIdentifier",
+          summary,
+          "createdAt"
+        )
+        VALUES (
+          md5(random()::text || clock_timestamp()::text),
+          ${outcome}::"InternalUserManagementAuditOutcome",
+          ${actor.id},
+          ${actor.userId},
+          ${targetUserId},
+          ${targetUserIdentifier},
+          ${summary},
+          NOW()
+        )
+      `;
+            return;
+        }
+        await this.prisma.internalUserManagementAuditLog.create({
+            data: {
+                actorUserId: actor.id,
+                actorUserIdentifier: actor.userId,
+                targetUserId,
+                targetUserIdentifier,
+                outcome,
+                summary,
+            },
+        });
+    }
+    async update(id, payload, actor) {
+        if (id === actor.id) {
+            throw new common_1.ConflictException('Nao e permitido alterar a conta atualmente autenticada nesta operacao.');
+        }
+        const input = (0, internal_user_management_validation_1.normalizeUpdateInternalUserInput)(payload);
+        const currentUser = await this.getInternalUserManagementSnapshot(id);
+        if (!currentUser) {
+            throw new common_1.NotFoundException('Utilizador interno nao encontrado.');
+        }
+        await this.ensureUserIdIsUnique(input.userId, currentUser.id);
+        const warnings = [];
+        const currentPermissions = [...currentUser.permissions];
+        let nextRole = input.role;
+        let nextStatus = input.status;
+        let nextIsActive = input.isActive;
+        let nextPermissions = (0, internal_user_access_1.getPermissionsForRole)(nextRole);
+        const requestedProtectedChanges = input.role !== currentUser.internalRole ||
+            input.status !== currentUser.internalStatus ||
+            input.isActive !== currentUser.isActive;
+        if (currentUser.internalRole === internal_user_enums_1.InternalUserRole.IT) {
+            nextRole = currentUser.internalRole;
+            nextStatus = internal_user_enums_1.InternalUserStatus.ACTIVE;
+            nextIsActive = true;
+            nextPermissions = currentPermissions;
+            if (requestedProtectedChanges) {
+                warnings.push('As contas com perfil IT sao reservadas. O tipo, o estado, a ativacao e as permissoes herdadas dessa conta foram preservados.');
+            }
+        }
+        else if (input.role === internal_user_enums_1.InternalUserRole.IT) {
+            nextRole = currentUser.internalRole;
+            nextPermissions = currentPermissions;
+            warnings.push('A promocao para IT e reservada ao administrador master. O tipo de utilizador foi preservado.');
+        }
+        if (nextRole !== internal_user_enums_1.InternalUserRole.IT &&
+            !(0, internal_user_access_1.requiresItValidation)(nextRole) &&
+            nextStatus === internal_user_enums_1.InternalUserStatus.PENDING_IT_VALIDATION) {
+            nextStatus = internal_user_enums_1.InternalUserStatus.ACTIVE;
+            warnings.push('O perfil selecionado nao suporta estado pendente. A conta permaneceu ativa.');
+        }
+        if (hasActiveOperationalRecords(currentUser)) {
+            if (nextRole !== currentUser.internalRole) {
+                nextRole = currentUser.internalRole;
+                nextPermissions = currentPermissions;
+                warnings.push('O tipo de utilizador foi preservado porque a conta ainda possui contratos, reservas ou transferencias ativas.');
+            }
+            if (nextStatus !== currentUser.internalStatus) {
+                nextStatus = currentUser.internalStatus;
+                warnings.push('O estado da conta foi preservado porque existem registos operacionais ativos associados ao utilizador.');
+            }
+            if (nextIsActive !== currentUser.isActive) {
+                nextIsActive = currentUser.isActive;
+                warnings.push('A ativacao da conta foi preservada porque existem registos operacionais ativos associados ao utilizador.');
+            }
+        }
+        const passwordHash = input.password
+            ? this.passwordHasher.hash(input.password)
+            : null;
+        const nextRequiresItValidation = (0, internal_user_access_1.requiresItValidation)(nextRole);
+        const updateData = {
+            userId: input.userId,
+            passwordHash,
+            internalRole: nextRole,
+            internalStatus: nextStatus,
+            permissions: nextPermissions,
+            requiresItValidation: nextRequiresItValidation,
+            isActive: nextIsActive,
+        };
+        const accessChanges = currentUser.internalRole !== updateData.internalRole ||
+            currentUser.internalStatus !== updateData.internalStatus ||
+            currentUser.isActive !== updateData.isActive ||
+            !haveSamePermissions(currentUser.permissions, updateData.permissions);
+        const userChanged = currentUser.userId !== updateData.userId;
+        const passwordChanged = Boolean(updateData.passwordHash);
+        const hasAppliedChanges = accessChanges || userChanged || passwordChanged;
+        const revokeSessions = accessChanges || userChanged || passwordChanged;
+        const outcome = warnings.length > 0 ? 'PARTIAL' : 'UPDATED';
+        const updatedUser = !this.prisma.user
+            ? await this.updateInternalUserRaw(currentUser.id, updateData, revokeSessions)
+            : await this.updateInternalUserWithPrisma(currentUser.id, updateData, revokeSessions);
+        const message = buildInternalUserUpdateMessage(hasAppliedChanges, outcome);
+        const summary = buildInternalUserManagementSummary(currentUser, updatedUser, warnings, hasAppliedChanges, passwordChanged);
+        await this.recordManagementAudit(actor, updatedUser.id, updatedUser.userId ?? currentUser.userId ?? currentUser.id, outcome, summary);
+        return {
+            message,
+            outcome,
+            warnings,
+            user: {
+                id: updatedUser.id,
+                userId: updatedUser.userId ?? '',
+                internalRole: updatedUser.internalRole
+                    ? normalizeInternalUserRole(updatedUser.internalRole)
+                    : currentUser.internalRole,
+                internalStatus: normalizeInternalUserStatus(updatedUser.internalStatus),
+                permissions: (0, internal_user_access_1.filterPermissionsForRole)(updatedUser.internalRole
+                    ? normalizeInternalUserRole(updatedUser.internalRole)
+                    : currentUser.internalRole, normalizeMaybeInternalPermissions(updatedUser.permissions)),
+                requiresItValidation: updatedUser.requiresItValidation,
+                isActive: updatedUser.isActive,
+                createdAt: updatedUser.createdAt,
+            },
+        };
+    }
+    async remove(id, actor) {
+        if (id === actor.id) {
+            throw new common_1.ConflictException('Nao e permitido remover a conta atualmente autenticada.');
+        }
+        let user;
+        if (this.prisma.user) {
+            try {
+                user = await this.prisma.user.findFirst({
+                    where: { id, isInternal: true },
+                    select: {
+                        id: true,
+                        userId: true,
+                        isActive: true,
+                        createdReservations: {
+                            select: { id: true, status: true },
+                        },
+                        createdRentals: {
+                            select: { id: true, status: true },
+                        },
+                        createdTransfers: {
+                            select: { id: true, status: true },
+                        },
+                    },
+                });
+            }
+            catch (error) {
+                this.logger.warn(`Falling back to raw SQL for internal user deletion snapshot ${id}: ${String(error)}`);
+                user = await this.getInternalUserDeletionSnapshotRaw(id);
+            }
+        }
+        else {
+            user = await this.getInternalUserDeletionSnapshotRaw(id);
+        }
         if (!user) {
             throw new common_1.NotFoundException('Utilizador interno nao encontrado.');
         }
@@ -600,6 +970,15 @@ function normalizeInternalUserStatus(value) {
 function normalizeInternalPermissions(values) {
     return values.filter((value) => Object.values(internal_user_enums_1.InternalPermission).includes(value));
 }
+function normalizeMaybeInternalPermissions(values) {
+    if (Array.isArray(values)) {
+        return normalizeInternalPermissions(values);
+    }
+    if (typeof values === 'string') {
+        return parseInternalPermissions(values);
+    }
+    return [];
+}
 function buildInternalUserDirectoryWhere(searchTerm) {
     if (!searchTerm) {
         return {
@@ -613,5 +992,61 @@ function buildInternalUserDirectoryWhere(searchTerm) {
             mode: 'insensitive',
         },
     };
+}
+function hasActiveOperationalRecords(snapshot) {
+    return (snapshot.hasActiveReservations ||
+        snapshot.hasActiveRentals ||
+        snapshot.hasActiveTransfers);
+}
+function haveSamePermissions(left, right) {
+    const normalizedLeft = Array.from(new Set(left)).sort();
+    const normalizedRight = Array.from(new Set(right)).sort();
+    if (normalizedLeft.length !== normalizedRight.length) {
+        return false;
+    }
+    return normalizedLeft.every((permission, index) => permission === normalizedRight[index]);
+}
+function buildInternalUserUpdateMessage(hasAppliedChanges, outcome) {
+    if (!hasAppliedChanges) {
+        return 'O pedido foi validado, mas nao existiam alteracoes efetivas para aplicar.';
+    }
+    return outcome === 'PARTIAL'
+        ? 'Utilizador atualizado com limitacoes aplicadas pelas regras do sistema.'
+        : 'Utilizador atualizado com sucesso.';
+}
+function buildInternalUserManagementSummary(currentUser, updatedUser, warnings, hasAppliedChanges, passwordChanged) {
+    const updatedPermissions = normalizeMaybeInternalPermissions(updatedUser.permissions);
+    const updatedRole = updatedUser.internalRole
+        ? normalizeInternalUserRole(updatedUser.internalRole)
+        : currentUser.internalRole;
+    const updatedStatus = normalizeInternalUserStatus(updatedUser.internalStatus);
+    const changes = [];
+    if ((updatedUser.userId ?? '') !== (currentUser.userId ?? '')) {
+        changes.push(`User ID ${currentUser.userId ?? currentUser.id} -> ${updatedUser.userId ?? currentUser.id}`);
+    }
+    if (updatedRole !== currentUser.internalRole) {
+        changes.push(`perfil ${currentUser.internalRole} -> ${updatedRole}`);
+    }
+    if (updatedStatus !== currentUser.internalStatus) {
+        changes.push(`estado ${currentUser.internalStatus} -> ${updatedStatus}`);
+    }
+    if (updatedUser.isActive !== currentUser.isActive) {
+        changes.push(`ativacao ${currentUser.isActive ? 'ativa' : 'desativada'} -> ${updatedUser.isActive ? 'ativa' : 'desativada'}`);
+    }
+    if (passwordChanged) {
+        changes.push('password atualizada');
+    }
+    if (!haveSamePermissions(updatedPermissions, currentUser.permissions)) {
+        changes.push(`permissoes ajustadas para ${updatedPermissions.join(', ') || 'sem permissoes'}`);
+    }
+    const summaryParts = [
+        hasAppliedChanges
+            ? `Atualizacao aplicada: ${changes.join('; ')}.`
+            : 'Pedido validado sem alteracoes efetivas.',
+    ];
+    if (warnings.length > 0) {
+        summaryParts.push(`Limitacoes: ${warnings.join(' ')}`);
+    }
+    return summaryParts.join(' ');
 }
 //# sourceMappingURL=internal-users.service.js.map

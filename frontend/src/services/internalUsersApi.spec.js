@@ -3,13 +3,15 @@ jest.mock('./apiClient', () => ({
   deleteJson: jest.fn(),
   getJson: jest.fn(),
   postJson: jest.fn(),
+  putJson: jest.fn(),
 }))
 
-import { deleteJson, getJson, postJson } from './apiClient'
+import { deleteJson, getJson, postJson, putJson } from './apiClient'
 import {
   createInternalUser,
   deleteInternalUser,
   fetchInternalUsers,
+  updateInternalUser,
 } from './internalUsersApi'
 
 // The feature client only wires endpoints, bearer tokens and fallback copy.
@@ -97,6 +99,32 @@ describe('internalUsersApi', () => {
     expect(deleteJson).toHaveBeenCalledWith('/internal-users/user-123', {
       token: 'token-delete',
       fallbackMessage: 'Nao foi possivel eliminar o utilizador.',
+    })
+  })
+
+  it('sends management updates to the internal user endpoint', () => {
+    updateInternalUser(
+      'user-456',
+      {
+        userId: 'admin.ops',
+        password: 'NewStrong1!',
+        role: 'ADMIN',
+        status: 'ACTIVE',
+        isActive: true,
+      },
+      'token-update',
+    )
+
+    expect(putJson).toHaveBeenCalledWith('/internal-users/user-456', {
+      body: {
+        userId: 'admin.ops',
+        password: 'NewStrong1!',
+        role: 'ADMIN',
+        status: 'ACTIVE',
+        isActive: true,
+      },
+      token: 'token-update',
+      fallbackMessage: 'Nao foi possivel atualizar o utilizador.',
     })
   })
 })

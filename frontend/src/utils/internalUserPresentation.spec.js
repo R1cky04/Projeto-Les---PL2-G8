@@ -5,6 +5,8 @@ import {
   getInternalUserDeletionPrompt,
   getInternalUserDeletionResultMessage,
   getInternalUserRoleLabel,
+  getInternalUserStatusLabel,
+  shouldShowPermissionCompatibilityGuide,
 } from './internalUserPresentation'
 
 describe('internalUserPresentation helpers', () => {
@@ -34,5 +36,18 @@ describe('internalUserPresentation helpers', () => {
     expect(getInternalUserDeletionResultMessage('DELETED')).toContain('permanentemente')
     expect(getInternalUserActivityLabel(true)).toBe('Conta ativa')
     expect(getInternalUserActivityLabel(false)).toBe('Conta desativada')
+    expect(getInternalUserStatusLabel('ACTIVE')).toBe('Ativa')
+    expect(getInternalUserStatusLabel('PENDING_IT_VALIDATION')).toBe(
+      'Pendente de validacao IT',
+    )
+  })
+
+  it('detects when the permission compatibility helper should be shown', () => {
+    expect(
+      shouldShowPermissionCompatibilityGuide([
+        'Algumas permissoes foram removidas automaticamente por nao serem compativeis com o tipo de utilizador selecionado.',
+      ]),
+    ).toBe(true)
+    expect(shouldShowPermissionCompatibilityGuide(['Outro aviso qualquer.'])).toBe(false)
   })
 })

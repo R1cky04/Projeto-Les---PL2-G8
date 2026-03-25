@@ -39,9 +39,6 @@ const ROLE_PERMISSIONS: Record<InternalUserRole, InternalPermission[]> = {
     InternalPermission.MAINTENANCE_WRITE,
     InternalPermission.TRANSFER_WRITE,
     InternalPermission.INCIDENT_WRITE,
-    InternalPermission.USER_READ,
-    InternalPermission.USER_CREATE,
-    InternalPermission.USER_ACTIVATE,
   ],
 };
 
@@ -56,6 +53,17 @@ export function getPermissionsForRole(
 ): InternalPermission[] {
   // Return a defensive copy so callers cannot mutate the policy table.
   return [...ROLE_PERMISSIONS[role]];
+}
+
+export function filterPermissionsForRole(
+  role: InternalUserRole,
+  permissions: InternalPermission[],
+): InternalPermission[] {
+  const allowedPermissions = new Set(getPermissionsForRole(role));
+
+  return Array.from(
+    new Set(permissions.filter((permission) => allowedPermissions.has(permission))),
+  );
 }
 
 export function requiresItValidation(role: InternalUserRole): boolean {
