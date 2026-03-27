@@ -100,6 +100,31 @@
           {{ canManageStations() ? 'Abrir modulo' : 'Nao autorizado' }}
         </button>
       </article>
+
+      <article class="auth-card feature-card feature-card-available">
+        <div class="feature-head">
+          <div>
+            <h2>Gerir Veiculos</h2>
+            <p>Gestao da frota com edicao para IT, ADMIN, STAFF e FLEET; criacao e eliminacao apenas para IT.</p>
+          </div>
+          <span class="feature-status">
+            {{ canManageVehicles() ? 'Disponivel' : 'Sem perfil' }}
+          </span>
+        </div>
+
+        <p v-if="!canManageVehicles()" class="feature-reason">
+          O modulo de veiculos esta disponivel para IT, ADMIN, STAFF e FLEET.
+        </p>
+
+        <button
+          class="auth-primary-button feature-action"
+          type="button"
+          :disabled="!canManageVehicles()"
+          @click="$emit('open-feature', 'VEHICLE_MANAGEMENT')"
+        >
+          {{ canManageVehicles() ? 'Abrir modulo' : 'Nao autorizado' }}
+        </button>
+      </article>
     </section>
   </section>
 </template>
@@ -138,6 +163,9 @@ export default {
     },
     canManageStations() {
       return this.authState?.user?.role === 'IT'
+    },
+    canManageVehicles() {
+      return ['IT', 'ADMIN', 'STAFF', 'FLEET'].includes(this.authState?.user?.role)
     },
   },
 }
