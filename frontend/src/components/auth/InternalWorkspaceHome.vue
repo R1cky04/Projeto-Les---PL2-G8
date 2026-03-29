@@ -72,7 +72,11 @@
           :disabled="feature.status !== 'AVAILABLE'"
           @click="$emit('open-feature', feature.key)"
         >
-          {{ feature.key === 'INTERNAL_USERS' ? 'Abrir modulo' : 'Autorizado' }}
+          {{
+            feature.key === 'INTERNAL_USERS' || feature.key === 'FLEET_OPERATIONS'
+              ? 'Abrir modulo'
+              : 'Autorizado'
+          }}
         </button>
       </article>
 
@@ -98,6 +102,31 @@
           @click="$emit('open-feature', 'STATION_MANAGEMENT')"
         >
           {{ canManageStations() ? 'Abrir modulo' : 'Nao autorizado' }}
+        </button>
+      </article>
+
+      <article class="auth-card feature-card feature-card-available">
+        <div class="feature-head">
+          <div>
+            <h2>Gerir Impros</h2>
+            <p>Crie e acompanhe transferencias de veiculos entre estacoes com historico.</p>
+          </div>
+          <span class="feature-status">
+            {{ canManageImpros() ? 'Disponivel' : 'Acesso Frota/Admin' }}
+          </span>
+        </div>
+
+        <p v-if="!canManageImpros()" class="feature-reason">
+          Apenas os perfis Frota, Admin ou IT com permissao de transferencia podem aceder ao modulo de impros.
+        </p>
+
+        <button
+          class="auth-primary-button feature-action"
+          type="button"
+          :disabled="!canManageImpros()"
+          @click="$emit('open-feature', 'IMPRO_MANAGEMENT')"
+        >
+          {{ canManageImpros() ? 'Abrir modulo' : 'Nao autorizado' }}
         </button>
       </article>
     </section>
@@ -138,6 +167,10 @@ export default {
     },
     canManageStations() {
       return this.authState?.user?.role === 'IT'
+    },
+    canManageImpros() {
+      const role = this.authState?.user?.role
+      return role === 'FLEET' || role === 'ADMIN' || role === 'IT'
     },
   },
 }

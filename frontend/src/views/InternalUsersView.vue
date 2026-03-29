@@ -239,22 +239,4 @@ export default {
 }
 </script>
 
-<style scoped>
-.content-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: 32px;
-  align-items: start;
-}
-
-.created-notification {
-  grid-column: 1 / -1;
-  margin-top: 24px;
-}
-
-@media (max-width: 1100px) {
-  .content-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
+<style scoped src="../styles/views/internal-users-view.css"></style>

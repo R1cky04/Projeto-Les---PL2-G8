@@ -1,0 +1,64 @@
+.station-module-toolbar {
+  max-width: 1400px;
+  margin: 18px auto 12px;
+  padding: 0 32px;
+}
+
+.station-module-toolbar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.station-module-toolbar-copy {
+  flex: 1;
+}
+
+.station-module-toolbar-head h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.station-module-toolbar-head p {
+  margin: 6px 0 0;
+  color: var(--auth-muted);
+  font-size: 0.92rem;
+}
+
+.station-module-toolbar-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.station-toggle-create,
+.station-toggle-back {
+  min-height: 44px;
+}
+
+.station-toggle-create {
+  min-width: 180px;
+}
+
+.station-toggle-back {
+  margin-left: 0;
+}
+
+@media (max-width: 720px) {
+  .station-module-toolbar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .station-module-toolbar-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .station-module-toolbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

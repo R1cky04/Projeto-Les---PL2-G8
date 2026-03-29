@@ -1,12 +1,4 @@
 /* Premium Internal Users Flow Styles */
-body {
-  margin: 0;
-  background-color: #0b1120;
-}
-
-#app {
-  min-height: 100vh;
-}
 
 @keyframes floatIn {
   0% { opacity: 0; transform: translateY(30px); }

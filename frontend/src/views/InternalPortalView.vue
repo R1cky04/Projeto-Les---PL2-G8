@@ -106,6 +106,37 @@
       />
     </main>
 
+    <main v-else-if="currentFeature === 'IMPRO_MANAGEMENT'" class="auth-module-shell">
+      <header class="module-shell-header">
+        <div>
+          <h1>Rent-a-<span class="brand-blue">Car</span> Management</h1>
+        </div>
+
+        <div class="module-shell-actions">
+          <button class="auth-secondary-button is-active" type="button" @click="returnToWorkspace">
+            Voltar ao painel
+          </button>
+          <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
+            Terminar sessão
+          </button>
+        </div>
+      </header>
+
+      <section class="station-module-toolbar">
+        <div class="station-module-toolbar-head">
+          <div class="station-module-toolbar-copy">
+            <h2>Impros</h2>
+            <p>
+              Crie transferencias entre estacoes e atualize dados operacionais
+              com historico auditavel.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <ImproOperationsView :session-token="sessionToken" />
+    </main>
+
     <main v-else class="auth-workspace-shell">
       <p v-if="workspaceMessage" class="auth-banner auth-banner-info">
         {{ workspaceMessage }}
@@ -123,6 +154,7 @@
 <script>
 import InternalLoginPanel from '../components/auth/InternalLoginPanel.vue'
 import InternalWorkspaceHome from '../components/auth/InternalWorkspaceHome.vue'
+import ImproOperationsView from '../components/impro/ImproOperationsView.vue'
 import { loginInternalUser, logoutInternalUser } from '../services/authApi'
 import {
   clearStoredSessionToken,
@@ -144,6 +176,7 @@ export default {
   name: 'InternalPortalView',
   components: {
     CreateStation,
+    ImproOperationsView,
     InternalLoginPanel,
     ManageStation,
     InternalUsersView,
@@ -225,9 +258,17 @@ export default {
       }
     },
     openFeature(featureKey) {
-      if (featureKey === 'INTERNAL_USERS' || featureKey === 'STATION_MANAGEMENT') {
+      if (
+        featureKey === 'INTERNAL_USERS' ||
+        featureKey === 'STATION_MANAGEMENT' ||
+        featureKey === 'IMPRO_MANAGEMENT' ||
+        featureKey === 'FLEET_OPERATIONS'
+      ) {
+        const normalizedFeatureKey =
+          featureKey === 'FLEET_OPERATIONS' ? 'IMPRO_MANAGEMENT' : featureKey
+
         if (
-          featureKey === 'STATION_MANAGEMENT' &&
+          normalizedFeatureKey === 'STATION_MANAGEMENT' &&
           this.authState?.user?.role !== 'IT'
         ) {
           this.workspaceMessage =
@@ -235,13 +276,29 @@ export default {
           return
         }
 
-        this.currentFeature = featureKey
-        if (featureKey === 'STATION_MANAGEMENT') {
+        if (
+          normalizedFeatureKey === 'IMPRO_MANAGEMENT' &&
+          !['FLEET', 'ADMIN', 'IT'].includes(this.authState?.user?.role)
+        ) {
+          this.workspaceMessage =
+            'A funcionalidade de impros esta disponivel apenas para os perfis Frota, Admin ou IT autenticados.'
+          return
+        }
+
+        this.currentFeature = normalizedFeatureKey
+        if (normalizedFeatureKey === 'STATION_MANAGEMENT') {
           this.stationModuleView = 'MANAGE'
           this.$nextTick(() => {
             this.scrollToModuleTop()
           })
         }
+
+        if (normalizedFeatureKey === 'IMPRO_MANAGEMENT') {
+          this.$nextTick(() => {
+            this.scrollToModuleTop()
+          })
+        }
+
         this.workspaceMessage = ''
         return
       }
@@ -284,69 +341,4 @@ export default {
 }
 </script>
 
-<style scoped>
-.station-module-toolbar {
-  max-width: 1400px;
-  margin: 18px auto 12px;
-  padding: 0 32px;
-}
-
-.station-module-toolbar-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.station-module-toolbar-copy {
-  flex: 1;
-}
-
-.station-module-toolbar-head h2 {
-  margin: 0;
-  font-size: 1.35rem;
-}
-
-.station-module-toolbar-head p {
-  margin: 6px 0 0;
-  color: var(--auth-muted);
-  font-size: 0.92rem;
-}
-
-.station-module-toolbar-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.station-toggle-create,
-.station-toggle-back {
-  min-height: 44px;
-}
-
-.station-toggle-create {
-  min-width: 180px;
-}
-
-.station-toggle-back {
-  margin-left: 0;
-}
-
-@media (max-width: 720px) {
-  .station-module-toolbar {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  .station-module-toolbar-head {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .station-module-toolbar-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-</style>
+<style scoped src="../styles/views/internal-portal-view.css"></style>

@@ -22,6 +22,13 @@ export async function deleteJson(path, options = {}) {
   })
 }
 
+export async function patchJson(path, options = {}) {
+  return executeJsonRequest(path, {
+    method: 'PATCH',
+    ...options,
+  })
+}
+
 async function executeJsonRequest(
   path,
   { method, body, token, headers = {}, fallbackMessage },

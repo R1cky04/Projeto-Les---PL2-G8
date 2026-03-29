@@ -1,12 +1,4 @@
 /* Premium Auth Styles */
-body {
-  margin: 0;
-  background: #0b1120;
-}
-
-#app {
-  min-height: 100vh;
-}
 
 @keyframes fadeIn {
   from { opacity: 0; }
