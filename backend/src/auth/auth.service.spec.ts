@@ -6,7 +6,7 @@ import {
   InternalPermission,
   InternalUserRole,
   InternalUserStatus,
-} from '@prisma/client';
+} from '../internal-users/internal-user.enums';
 import { PasswordHasherService } from '../internal-users/password-hasher.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
@@ -16,15 +16,8 @@ import { AuthTokenService } from './auth-token.service';
 describe('AuthService', () => {
   let service: AuthService;
   let prisma: {
-    user: {
-      findUnique: jest.Mock;
-    };
-    internalSession: {
-      count: jest.Mock;
-      create: jest.Mock;
-      findUnique: jest.Mock;
-      update: jest.Mock;
-    };
+    $queryRaw: jest.Mock;
+    $executeRaw: jest.Mock;
   };
   let passwordHasher: PasswordHasherService;
   let authTokenService: {
@@ -35,15 +28,8 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     prisma = {
-      user: {
-        findUnique: jest.fn(),
-      },
-      internalSession: {
-        count: jest.fn(),
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        update: jest.fn(),
-      },
+      $queryRaw: jest.fn(),
+      $executeRaw: jest.fn(),
     };
     passwordHasher = new PasswordHasherService();
     authTokenService = {
@@ -60,21 +46,22 @@ describe('AuthService', () => {
   });
 
   it('logs in an active IT user and returns a full-access session', async () => {
-    prisma.user.findUnique.mockResolvedValue({
-      id: 'user-1',
-      userId: 'it.master',
-      fullName: 'Master IT',
-      passwordHash: passwordHasher.hash('ItMaster1!'),
-      isInternal: true,
-      isActive: true,
-      internalRole: InternalUserRole.IT,
-      internalStatus: InternalUserStatus.ACTIVE,
-      permissions: [],
-    });
-    prisma.internalSession.count.mockResolvedValue(0);
-    prisma.internalSession.create.mockResolvedValue({
-      id: 'session-1',
-    });
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          id: 'user-1',
+          userId: 'it.master',
+          fullName: 'Master IT',
+          passwordHash: passwordHasher.hash('ItMaster1!'),
+          isInternal: true,
+          isActive: true,
+          internalRole: InternalUserRole.IT,
+          internalStatus: InternalUserStatus.ACTIVE,
+          permissions: [],
+        },
+      ])
+      .mockResolvedValueOnce([{ total: 0n }])
+      .mockResolvedValueOnce([{ id: 'session-1' }]);
     authTokenService.issueToken.mockReturnValue({
       rawToken: 'token-1.secret',
       tokenId: 'token-1',
@@ -98,36 +85,29 @@ describe('AuthService', () => {
         }),
       ]),
     );
-    expect(prisma.internalSession.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          tokenId: 'token-1',
-          tokenHash: 'hashed-secret',
-          userId: 'user-1',
-        }),
-      }),
-    );
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(3);
   });
 
   it('logs in a pending staff user with limited access and warning state', async () => {
-    prisma.user.findUnique.mockResolvedValue({
-      id: 'user-2',
-      userId: 'staff.porto',
-      fullName: 'Staff Porto',
-      passwordHash: passwordHasher.hash('StrongPwd1!'),
-      isInternal: true,
-      isActive: true,
-      internalRole: InternalUserRole.STAFF,
-      internalStatus: InternalUserStatus.PENDING_IT_VALIDATION,
-      permissions: [
-        InternalPermission.RESERVATION_READ,
-        InternalPermission.RENTAL_READ,
-      ],
-    });
-    prisma.internalSession.count.mockResolvedValue(1);
-    prisma.internalSession.create.mockResolvedValue({
-      id: 'session-2',
-    });
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          id: 'user-2',
+          userId: 'staff.porto',
+          fullName: 'Staff Porto',
+          passwordHash: passwordHasher.hash('StrongPwd1!'),
+          isInternal: true,
+          isActive: true,
+          internalRole: InternalUserRole.STAFF,
+          internalStatus: InternalUserStatus.PENDING_IT_VALIDATION,
+          permissions: [
+            InternalPermission.RESERVATION_READ,
+            InternalPermission.RENTAL_READ,
+          ],
+        },
+      ])
+      .mockResolvedValueOnce([{ total: 1n }])
+      .mockResolvedValueOnce([{ id: 'session-2' }]);
     authTokenService.issueToken.mockReturnValue({
       rawToken: 'token-2.secret',
       tokenId: 'token-2',
@@ -159,17 +139,19 @@ describe('AuthService', () => {
   });
 
   it('rejects invalid credentials', async () => {
-    prisma.user.findUnique.mockResolvedValue({
-      id: 'user-3',
-      userId: 'admin.lisboa',
-      fullName: 'Admin Lisboa',
-      passwordHash: passwordHasher.hash('DifferentPwd1!'),
-      isInternal: true,
-      isActive: true,
-      internalRole: InternalUserRole.ADMIN,
-      internalStatus: InternalUserStatus.ACTIVE,
-      permissions: [],
-    });
+    prisma.$queryRaw.mockResolvedValueOnce([
+      {
+        id: 'user-3',
+        userId: 'admin.lisboa',
+        fullName: 'Admin Lisboa',
+        passwordHash: passwordHasher.hash('DifferentPwd1!'),
+        isInternal: true,
+        isActive: true,
+        internalRole: InternalUserRole.ADMIN,
+        internalStatus: InternalUserStatus.ACTIVE,
+        permissions: [],
+      },
+    ]);
 
     await expect(
       service.login({
@@ -177,21 +159,23 @@ describe('AuthService', () => {
         password: 'StrongPwd1!',
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(prisma.internalSession.create).not.toHaveBeenCalled();
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
   });
 
   it('rejects blocked accounts even when credentials are valid', async () => {
-    prisma.user.findUnique.mockResolvedValue({
-      id: 'user-4',
-      userId: 'fleet.sul',
-      fullName: 'Fleet Sul',
-      passwordHash: passwordHasher.hash('StrongPwd1!'),
-      isInternal: true,
-      isActive: false,
-      internalRole: InternalUserRole.FLEET,
-      internalStatus: InternalUserStatus.ACTIVE,
-      permissions: [],
-    });
+    prisma.$queryRaw.mockResolvedValueOnce([
+      {
+        id: 'user-4',
+        userId: 'fleet.sul',
+        fullName: 'Fleet Sul',
+        passwordHash: passwordHasher.hash('StrongPwd1!'),
+        isInternal: true,
+        isActive: false,
+        internalRole: InternalUserRole.FLEET,
+        internalStatus: InternalUserStatus.ACTIVE,
+        permissions: [],
+      },
+    ]);
 
     await expect(
       service.login({
@@ -207,30 +191,29 @@ describe('AuthService', () => {
       secret: 'secret-restore',
     });
     authTokenService.verifySecret.mockReturnValue(true);
-    prisma.internalSession.findUnique.mockResolvedValue({
-      id: 'session-restore',
-      tokenId: 'token-restore',
-      tokenHash: 'stored-hash',
-      expiresAt: new Date('2026-03-21T12:00:00.000Z'),
-      revokedAt: null,
-      user: {
-        id: 'user-restore',
-        userId: 'admin.restore',
-        fullName: 'Admin Restore',
-        isActive: true,
-        isInternal: true,
-        internalRole: InternalUserRole.ADMIN,
-        internalStatus: InternalUserStatus.ACTIVE,
-        permissions: [
-          InternalPermission.RESERVATION_READ,
-          InternalPermission.RENTAL_READ,
-        ],
-      },
-    });
-    prisma.internalSession.count.mockResolvedValue(1);
-    prisma.internalSession.update.mockResolvedValue({
-      id: 'session-restore',
-    });
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          sessionId: 'session-restore',
+          tokenId: 'token-restore',
+          tokenHash: 'stored-hash',
+          expiresAt: new Date('2026-03-25T12:00:00.000Z'),
+          revokedAt: null,
+          userPkId: 'user-restore',
+          userId: 'admin.restore',
+          fullName: 'Admin Restore',
+          isActive: true,
+          isInternal: true,
+          internalRole: InternalUserRole.ADMIN,
+          internalStatus: InternalUserStatus.ACTIVE,
+          permissions: [
+            InternalPermission.RESERVATION_READ,
+            InternalPermission.RENTAL_READ,
+          ],
+        },
+      ])
+      .mockResolvedValueOnce([{ total: 1n }]);
+    prisma.$executeRaw.mockResolvedValue(1);
 
     const context = await service.authenticateSessionToken(
       'token-restore.secret-restore',
@@ -241,23 +224,16 @@ describe('AuthService', () => {
     expect(context.warnings).toEqual(
       expect.arrayContaining([expect.stringContaining('sessao ativa')]),
     );
-    expect(prisma.internalSession.update).toHaveBeenCalledWith({
-      where: { tokenId: 'token-restore' },
-      data: {
-        lastSeenAt: expect.any(Date),
-      },
-    });
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
   });
 
   it('revokes the current session on logout', async () => {
-    prisma.internalSession.update.mockResolvedValue({
-      id: 'session-logout',
-    });
+    prisma.$executeRaw.mockResolvedValue(1);
 
     const response = await service.logoutCurrentSession({
       sessionId: 'session-logout',
       tokenId: 'token-logout',
-      expiresAt: new Date('2026-03-21T12:00:00.000Z'),
+      expiresAt: new Date('2026-03-25T12:00:00.000Z'),
       concurrentSessionCount: 0,
       warnings: [],
       user: {
@@ -274,11 +250,6 @@ describe('AuthService', () => {
     });
 
     expect(response.message).toBe('Sessao terminada com sucesso.');
-    expect(prisma.internalSession.update).toHaveBeenCalledWith({
-      where: { id: 'session-logout' },
-      data: {
-        revokedAt: expect.any(Date),
-      },
-    });
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
   });
 });

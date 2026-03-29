@@ -33,6 +33,9 @@ describe('InternalUsersService', () => {
     internalUserDeletionAuditLog: {
       create: jest.Mock;
     };
+    internalUserManagementAuditLog: {
+      create: jest.Mock;
+    };
   };
   let passwordHasher: PasswordHasherService;
 
@@ -71,6 +74,9 @@ describe('InternalUsersService', () => {
       internalUserDeletionAuditLog: {
         create: jest.fn(),
       },
+      internalUserManagementAuditLog: {
+        create: jest.fn(),
+      },
     };
 
     passwordHasher = new PasswordHasherService();
@@ -95,9 +101,6 @@ describe('InternalUsersService', () => {
         InternalPermission.MAINTENANCE_WRITE,
         InternalPermission.TRANSFER_WRITE,
         InternalPermission.INCIDENT_WRITE,
-        InternalPermission.USER_READ,
-        InternalPermission.USER_CREATE,
-        InternalPermission.USER_ACTIVATE,
       ],
       requiresItValidation: false,
       isActive: true,
@@ -126,8 +129,11 @@ describe('InternalUsersService', () => {
       requiresItValidation: false,
       isActive: true,
     });
-    expect(createCall.data.permissions).toContain(
+    expect(createCall.data.permissions).not.toContain(
       InternalPermission.USER_CREATE,
+    );
+    expect(createCall.data.permissions).not.toContain(
+      InternalPermission.USER_ACTIVATE,
     );
     expect(createCall.data.passwordHash).not.toBe('StrongPwd1!');
     expect(
@@ -137,6 +143,19 @@ describe('InternalUsersService', () => {
     expect(response.message).toBe('Utilizador criado com sucesso.');
     expect(response.user.role).toBe(InternalUserRole.ADMIN);
     expect(response.user.status).toBe(InternalUserStatus.ACTIVE);
+  });
+
+  it('rejects attempts to create reserved IT accounts', async () => {
+    await expect(
+      service.create({
+        userId: 'it.shadow',
+        password: 'StrongPwd1!',
+        role: 'IT',
+      } as any),
+    ).rejects.toThrow('Existem erros de validacao.');
+
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(prisma.user.create).not.toHaveBeenCalled();
   });
 
   it('creates a restricted fleet user pending IT validation', async () => {
@@ -190,6 +209,415 @@ describe('InternalUsersService', () => {
     expect(prisma.user.create).not.toHaveBeenCalled();
   });
 
+  it('updates an internal user and records the management audit trail', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'user-9',
+      userId: 'staff.alpha',
+      internalRole: InternalUserRole.STAFF,
+      internalStatus: InternalUserStatus.PENDING_IT_VALIDATION,
+      permissions: [
+        InternalPermission.RESERVATION_READ,
+        InternalPermission.RENTAL_READ,
+      ],
+      requiresItValidation: true,
+      isActive: true,
+      createdAt: new Date('2026-03-22T09:00:00.000Z'),
+      createdReservations: [],
+      createdRentals: [],
+      createdTransfers: [],
+    });
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.update.mockResolvedValue({
+      id: 'user-9',
+      userId: 'admin.alpha',
+      internalRole: InternalUserRole.ADMIN,
+      internalStatus: InternalUserStatus.ACTIVE,
+      permissions: [
+        InternalPermission.RESERVATION_READ,
+        InternalPermission.RENTAL_READ,
+        InternalPermission.VEHICLE_READ,
+        InternalPermission.VEHICLE_WRITE,
+        InternalPermission.MAINTENANCE_WRITE,
+        InternalPermission.TRANSFER_WRITE,
+        InternalPermission.INCIDENT_WRITE,
+      ],
+      requiresItValidation: false,
+      isActive: true,
+      createdAt: new Date('2026-03-22T09:00:00.000Z'),
+    });
+    prisma.internalSession.updateMany.mockResolvedValue({ count: 1 });
+    prisma.internalUserManagementAuditLog.create.mockResolvedValue({
+      id: 'audit-manage-1',
+      outcome: 'UPDATED',
+    });
+
+    const response = await service.update(
+      'user-9',
+      {
+        userId: 'Admin.Alpha',
+        password: 'NewStrong1!',
+        role: 'ADMIN',
+        status: 'ACTIVE',
+        isActive: true,
+      },
+      actor,
+    );
+
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { userId: 'admin.alpha' },
+      select: { id: true },
+    });
+    expect(prisma.user.update).toHaveBeenCalledTimes(1);
+    const updateCall = prisma.user.update.mock.calls[0][0];
+    expect(updateCall.where).toEqual({ id: 'user-9' });
+    expect(updateCall.data).toMatchObject({
+      userId: 'admin.alpha',
+      fullName: 'admin.alpha',
+      internalRole: InternalUserRole.ADMIN,
+      internalStatus: InternalUserStatus.ACTIVE,
+      permissions: [
+        InternalPermission.RESERVATION_READ,
+        InternalPermission.RENTAL_READ,
+        InternalPermission.VEHICLE_READ,
+        InternalPermission.VEHICLE_WRITE,
+        InternalPermission.MAINTENANCE_WRITE,
+        InternalPermission.TRANSFER_WRITE,
+        InternalPermission.INCIDENT_WRITE,
+      ],
+      requiresItValidation: false,
+      isActive: true,
+      passwordHash: expect.any(String),
+    });
+    expect(updateCall.data.passwordHash).not.toBe('NewStrong1!');
+    expect(
+      passwordHasher.verify('NewStrong1!', updateCall.data.passwordHash),
+    ).toBe(true);
+    expect(updateCall.select).toEqual({
+      id: true,
+      userId: true,
+      internalRole: true,
+      internalStatus: true,
+      permissions: true,
+      requiresItValidation: true,
+      isActive: true,
+      createdAt: true,
+    });
+    expect(prisma.internalSession.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user-9', revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(prisma.internalUserManagementAuditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        actorUserId: actor.id,
+        actorUserIdentifier: actor.userId,
+        targetUserId: 'user-9',
+        targetUserIdentifier: 'admin.alpha',
+        outcome: 'UPDATED',
+      }),
+    });
+    expect(response).toMatchObject({
+      message: 'Utilizador atualizado com sucesso.',
+      outcome: 'UPDATED',
+      warnings: [],
+      user: {
+        id: 'user-9',
+        userId: 'admin.alpha',
+        internalRole: InternalUserRole.ADMIN,
+        internalStatus: InternalUserStatus.ACTIVE,
+        requiresItValidation: false,
+        isActive: true,
+      },
+    });
+  });
+
+  it('applies a partial update when promotion to IT is requested', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'user-10',
+      userId: 'staff.beta',
+      internalRole: InternalUserRole.STAFF,
+      internalStatus: InternalUserStatus.PENDING_IT_VALIDATION,
+      permissions: [
+        InternalPermission.RESERVATION_READ,
+        InternalPermission.RENTAL_READ,
+      ],
+      requiresItValidation: true,
+      isActive: true,
+      createdAt: new Date('2026-03-22T09:30:00.000Z'),
+      createdReservations: [],
+      createdRentals: [],
+      createdTransfers: [],
+    });
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.update.mockResolvedValue({
+      id: 'user-10',
+      userId: 'staff.beta.renamed',
+      internalRole: InternalUserRole.STAFF,
+      internalStatus: InternalUserStatus.ACTIVE,
+      permissions: [
+        InternalPermission.RESERVATION_READ,
+        InternalPermission.RENTAL_READ,
+      ],
+      requiresItValidation: true,
+      isActive: true,
+      createdAt: new Date('2026-03-22T09:30:00.000Z'),
+    });
+    prisma.internalSession.updateMany.mockResolvedValue({ count: 1 });
+    prisma.internalUserManagementAuditLog.create.mockResolvedValue({
+      id: 'audit-manage-2',
+      outcome: 'PARTIAL',
+    });
+
+    const response = await service.update(
+      'user-10',
+      {
+        userId: 'staff.beta.renamed',
+        role: 'IT',
+        status: 'ACTIVE',
+        isActive: true,
+      },
+      actor,
+    );
+
+    expect(response.outcome).toBe('PARTIAL');
+    expect(response.user.userId).toBe('staff.beta.renamed');
+    expect(response.user.internalRole).toBe(InternalUserRole.STAFF);
+    expect(response.warnings).toContain(
+      'A promocao para IT e reservada ao administrador master. O tipo de utilizador foi preservado.',
+    );
+    expect(prisma.internalSession.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user-10', revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+  });
+
+  it('preserves protected access fields when the selected account already belongs to IT', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'user-13',
+      userId: 'it.delegate',
+      internalRole: InternalUserRole.IT,
+      internalStatus: InternalUserStatus.ACTIVE,
+      permissions: [
+        InternalPermission.RESERVATION_READ,
+        InternalPermission.RENTAL_READ,
+        InternalPermission.VEHICLE_READ,
+        InternalPermission.VEHICLE_WRITE,
+        InternalPermission.MAINTENANCE_WRITE,
+        InternalPermission.TRANSFER_WRITE,
+        InternalPermission.INCIDENT_WRITE,
+        InternalPermission.USER_READ,
+        InternalPermission.USER_CREATE,
+        InternalPermission.USER_ACTIVATE,
+      ],
+      requiresItValidation: false,
+      isActive: true,
+      createdAt: new Date('2026-03-22T09:45:00.000Z'),
+      createdReservations: [],
+      createdRentals: [],
+      createdTransfers: [],
+    });
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.update.mockResolvedValue({
+      id: 'user-13',
+      userId: 'it.delegate.renamed',
+      internalRole: InternalUserRole.IT,
+      internalStatus: InternalUserStatus.ACTIVE,
+      permissions: [
+        InternalPermission.RESERVATION_READ,
+        InternalPermission.RENTAL_READ,
+        InternalPermission.VEHICLE_READ,
+        InternalPermission.VEHICLE_WRITE,
+        InternalPermission.MAINTENANCE_WRITE,
+        InternalPermission.TRANSFER_WRITE,
+        InternalPermission.INCIDENT_WRITE,
+        InternalPermission.USER_READ,
+        InternalPermission.USER_CREATE,
+        InternalPermission.USER_ACTIVATE,
+      ],
+      requiresItValidation: false,
+      isActive: true,
+      createdAt: new Date('2026-03-22T09:45:00.000Z'),
+    });
+    prisma.internalSession.updateMany.mockResolvedValue({ count: 1 });
+    prisma.internalUserManagementAuditLog.create.mockResolvedValue({
+      id: 'audit-manage-4',
+      outcome: 'PARTIAL',
+    });
+
+    const response = await service.update(
+      'user-13',
+      {
+        userId: 'it.delegate.renamed',
+        role: 'ADMIN',
+        status: 'PENDING_IT_VALIDATION',
+        isActive: false,
+      },
+      actor,
+    );
+
+    expect(response.outcome).toBe('PARTIAL');
+    expect(response.user.internalRole).toBe(InternalUserRole.IT);
+    expect(response.user.permissions).toEqual([
+      InternalPermission.RESERVATION_READ,
+      InternalPermission.RENTAL_READ,
+      InternalPermission.VEHICLE_READ,
+      InternalPermission.VEHICLE_WRITE,
+      InternalPermission.MAINTENANCE_WRITE,
+      InternalPermission.TRANSFER_WRITE,
+      InternalPermission.INCIDENT_WRITE,
+      InternalPermission.USER_READ,
+      InternalPermission.USER_CREATE,
+      InternalPermission.USER_ACTIVATE,
+    ]);
+    expect(response.warnings).toContain(
+      'As contas com perfil IT sao reservadas. O tipo, o estado, a ativacao e as permissoes herdadas dessa conta foram preservados.',
+    );
+  });
+
+  it('preserves access controls when operational records are still active', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'user-11',
+      userId: 'fleet.busy',
+      internalRole: InternalUserRole.FLEET,
+      internalStatus: InternalUserStatus.ACTIVE,
+      permissions: [
+        InternalPermission.RESERVATION_READ,
+        InternalPermission.RENTAL_READ,
+        InternalPermission.VEHICLE_READ,
+        InternalPermission.VEHICLE_WRITE,
+        InternalPermission.MAINTENANCE_WRITE,
+        InternalPermission.TRANSFER_WRITE,
+        InternalPermission.INCIDENT_WRITE,
+      ],
+      requiresItValidation: true,
+      isActive: true,
+      createdAt: new Date('2026-03-22T10:00:00.000Z'),
+      createdReservations: [{ id: 'res-active', status: 'CONFIRMED' }],
+      createdRentals: [],
+      createdTransfers: [],
+    });
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.update.mockResolvedValue({
+      id: 'user-11',
+      userId: 'fleet.busy.ops',
+      internalRole: InternalUserRole.FLEET,
+      internalStatus: InternalUserStatus.ACTIVE,
+      permissions: [
+        InternalPermission.RESERVATION_READ,
+        InternalPermission.RENTAL_READ,
+        InternalPermission.VEHICLE_READ,
+        InternalPermission.VEHICLE_WRITE,
+        InternalPermission.MAINTENANCE_WRITE,
+        InternalPermission.TRANSFER_WRITE,
+        InternalPermission.INCIDENT_WRITE,
+      ],
+      requiresItValidation: true,
+      isActive: true,
+      createdAt: new Date('2026-03-22T10:00:00.000Z'),
+    });
+    prisma.internalSession.updateMany.mockResolvedValue({ count: 1 });
+    prisma.internalUserManagementAuditLog.create.mockResolvedValue({
+      id: 'audit-manage-3',
+      outcome: 'PARTIAL',
+    });
+
+    const response = await service.update(
+      'user-11',
+      {
+        userId: 'fleet.busy.ops',
+        role: 'ADMIN',
+        status: 'PENDING_IT_VALIDATION',
+        isActive: false,
+      },
+      actor,
+    );
+
+    expect(response.outcome).toBe('PARTIAL');
+    expect(response.user.userId).toBe('fleet.busy.ops');
+    expect(response.user.internalRole).toBe(InternalUserRole.FLEET);
+    expect(response.user.internalStatus).toBe(InternalUserStatus.ACTIVE);
+    expect(response.user.isActive).toBe(true);
+    expect(response.warnings).toContain(
+      'O tipo de utilizador foi preservado porque a conta ainda possui contratos, reservas ou transferencias ativas.',
+    );
+    expect(response.warnings).toContain(
+      'A ativacao da conta foi preservada porque existem registos operacionais ativos associados ao utilizador.',
+    );
+  });
+
+  it('rejects updates when the requested User ID already exists', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'user-12',
+      userId: 'staff.gamma',
+      internalRole: InternalUserRole.STAFF,
+      internalStatus: InternalUserStatus.ACTIVE,
+      permissions: [
+        InternalPermission.RESERVATION_READ,
+        InternalPermission.RENTAL_READ,
+      ],
+      requiresItValidation: true,
+      isActive: true,
+      createdAt: new Date('2026-03-22T10:30:00.000Z'),
+      createdReservations: [],
+      createdRentals: [],
+      createdTransfers: [],
+    });
+    prisma.user.findUnique.mockResolvedValue({ id: 'some-other-user' });
+
+    await expect(
+      service.update(
+        'user-12',
+        {
+          userId: 'already.used',
+          role: 'STAFF',
+          status: 'ACTIVE',
+          isActive: true,
+        },
+        actor,
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.internalUserManagementAuditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects updates for users that do not exist', async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.update(
+        'missing-user',
+        {
+          userId: 'missing.user',
+          role: 'STAFF',
+          status: 'ACTIVE',
+          isActive: true,
+        },
+        actor,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('blocks self-management through the IT update flow', async () => {
+    await expect(
+      service.update(
+        actor.id,
+        {
+          userId: 'it.master.renamed',
+          role: 'IT',
+          status: 'ACTIVE',
+          isActive: true,
+        },
+        actor,
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(prisma.user.findFirst).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
   it('rejects weak passwords before hitting persistence', async () => {
     await expect(
       service.create({
@@ -201,6 +629,25 @@ describe('InternalUsersService', () => {
 
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
     expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects weak password changes before updating an existing user', async () => {
+    await expect(
+      service.update(
+        'user-weak-update',
+        {
+          userId: 'staff.weak',
+          password: '1234',
+          role: 'STAFF',
+          status: 'ACTIVE',
+          isActive: true,
+        },
+        actor,
+      ),
+    ).rejects.toThrow('Existem erros de validacao.');
+
+    expect(prisma.user.findFirst).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it('returns internal users with pagination metadata', async () => {

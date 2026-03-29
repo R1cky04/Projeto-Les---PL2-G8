@@ -1,5 +1,5 @@
 /* eslint-env jest */
-import { getJson, postJson } from './apiClient'
+import { getJson, postJson, putJson } from './apiClient'
 
 // API client tests focus on request wiring and normalized error contracts.
 describe('apiClient', () => {
@@ -24,6 +24,29 @@ describe('apiClient', () => {
         method: 'POST',
         headers: expect.objectContaining({
           Authorization: 'Bearer token-123',
+          'Content-Type': 'application/json',
+        }),
+      }),
+    )
+  })
+
+  it('supports authenticated PUT requests for update flows', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ ok: true }),
+    })
+
+    await putJson('/internal-users/user-1', {
+      body: { userId: 'staff.updated' },
+      token: 'token-456',
+    })
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:3000/internal-users/user-1',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer token-456',
           'Content-Type': 'application/json',
         }),
       }),

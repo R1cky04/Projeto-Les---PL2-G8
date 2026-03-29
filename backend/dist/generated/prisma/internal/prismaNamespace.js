@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.defineExtension = exports.NullsOrder = exports.QueryMode = exports.SortOrder = exports.StationScalarFieldEnum = exports.TransactionIsolationLevel = exports.ModelName = exports.AnyNull = exports.JsonNull = exports.DbNull = exports.NullTypes = exports.prismaVersion = exports.getExtensionContext = exports.Decimal = exports.Sql = exports.raw = exports.join = exports.empty = exports.sql = exports.PrismaClientValidationError = exports.PrismaClientInitializationError = exports.PrismaClientRustPanicError = exports.PrismaClientUnknownRequestError = exports.PrismaClientKnownRequestError = void 0;
+exports.defineExtension = exports.NullsOrder = exports.QueryMode = exports.SortOrder = exports.VehicleMaintenanceScalarFieldEnum = exports.PaymentScalarFieldEnum = exports.RentalScalarFieldEnum = exports.ReservationScalarFieldEnum = exports.VehicleScalarFieldEnum = exports.LocationScalarFieldEnum = exports.CustomerProfileScalarFieldEnum = exports.TenantUserScalarFieldEnum = exports.UserScalarFieldEnum = exports.TenantScalarFieldEnum = exports.TransactionIsolationLevel = exports.ModelName = exports.AnyNull = exports.JsonNull = exports.DbNull = exports.NullTypes = exports.prismaVersion = exports.getExtensionContext = exports.Decimal = exports.Sql = exports.raw = exports.join = exports.empty = exports.sql = exports.PrismaClientValidationError = exports.PrismaClientInitializationError = exports.PrismaClientRustPanicError = exports.PrismaClientUnknownRequestError = exports.PrismaClientKnownRequestError = void 0;
 const runtime = __importStar(require("@prisma/client/runtime/client"));
 exports.PrismaClientKnownRequestError = runtime.PrismaClientKnownRequestError;
 exports.PrismaClientUnknownRequestError = runtime.PrismaClientUnknownRequestError;
@@ -60,7 +60,16 @@ exports.DbNull = runtime.DbNull;
 exports.JsonNull = runtime.JsonNull;
 exports.AnyNull = runtime.AnyNull;
 exports.ModelName = {
-    Station: 'Station'
+    Tenant: 'Tenant',
+    User: 'User',
+    TenantUser: 'TenantUser',
+    CustomerProfile: 'CustomerProfile',
+    Location: 'Location',
+    Vehicle: 'Vehicle',
+    Reservation: 'Reservation',
+    Rental: 'Rental',
+    Payment: 'Payment',
+    VehicleMaintenance: 'VehicleMaintenance'
 };
 exports.TransactionIsolationLevel = runtime.makeStrictEnum({
     ReadUncommitted: 'ReadUncommitted',
@@ -68,14 +77,140 @@ exports.TransactionIsolationLevel = runtime.makeStrictEnum({
     RepeatableRead: 'RepeatableRead',
     Serializable: 'Serializable'
 });
-exports.StationScalarFieldEnum = {
+exports.TenantScalarFieldEnum = {
     id: 'id',
     name: 'name',
-    location: 'location',
-    capacity: 'capacity',
+    slug: 'slug',
+    taxNumber: 'taxNumber',
     createdAt: 'createdAt',
-    updatedAt: 'updatedAt',
-    createdBy: 'createdBy'
+    updatedAt: 'updatedAt'
+};
+exports.UserScalarFieldEnum = {
+    id: 'id',
+    email: 'email',
+    passwordHash: 'passwordHash',
+    fullName: 'fullName',
+    phone: 'phone',
+    isActive: 'isActive',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.TenantUserScalarFieldEnum = {
+    id: 'id',
+    tenantId: 'tenantId',
+    userId: 'userId',
+    role: 'role',
+    isActive: 'isActive',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.CustomerProfileScalarFieldEnum = {
+    id: 'id',
+    tenantId: 'tenantId',
+    userId: 'userId',
+    customerType: 'customerType',
+    firstName: 'firstName',
+    lastName: 'lastName',
+    email: 'email',
+    phone: 'phone',
+    taxNumber: 'taxNumber',
+    documentNumber: 'documentNumber',
+    driverLicenseNo: 'driverLicenseNo',
+    driverLicenseUntil: 'driverLicenseUntil',
+    birthDate: 'birthDate',
+    notes: 'notes',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.LocationScalarFieldEnum = {
+    id: 'id',
+    tenantId: 'tenantId',
+    name: 'name',
+    addressLine1: 'addressLine1',
+    addressLine2: 'addressLine2',
+    city: 'city',
+    postalCode: 'postalCode',
+    country: 'country',
+    isActive: 'isActive',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.VehicleScalarFieldEnum = {
+    id: 'id',
+    tenantId: 'tenantId',
+    plateNumber: 'plateNumber',
+    vin: 'vin',
+    brand: 'brand',
+    model: 'model',
+    category: 'category',
+    year: 'year',
+    seats: 'seats',
+    transmission: 'transmission',
+    fuelType: 'fuelType',
+    odometerKm: 'odometerKm',
+    dailyRate: 'dailyRate',
+    status: 'status',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.ReservationScalarFieldEnum = {
+    id: 'id',
+    tenantId: 'tenantId',
+    customerProfileId: 'customerProfileId',
+    vehicleId: 'vehicleId',
+    pickupLocationId: 'pickupLocationId',
+    dropoffLocationId: 'dropoffLocationId',
+    pickupAt: 'pickupAt',
+    dropoffAt: 'dropoffAt',
+    status: 'status',
+    quotedTotal: 'quotedTotal',
+    notes: 'notes',
+    createdById: 'createdById',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.RentalScalarFieldEnum = {
+    id: 'id',
+    tenantId: 'tenantId',
+    reservationId: 'reservationId',
+    customerProfileId: 'customerProfileId',
+    vehicleId: 'vehicleId',
+    pickupAt: 'pickupAt',
+    expectedReturnAt: 'expectedReturnAt',
+    returnedAt: 'returnedAt',
+    pickupOdometerKm: 'pickupOdometerKm',
+    returnOdometerKm: 'returnOdometerKm',
+    status: 'status',
+    totalAmount: 'totalAmount',
+    depositAmount: 'depositAmount',
+    paymentStatus: 'paymentStatus',
+    notes: 'notes',
+    createdById: 'createdById',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.PaymentScalarFieldEnum = {
+    id: 'id',
+    tenantId: 'tenantId',
+    rentalId: 'rentalId',
+    amount: 'amount',
+    method: 'method',
+    status: 'status',
+    externalRef: 'externalRef',
+    paidAt: 'paidAt',
+    createdAt: 'createdAt'
+};
+exports.VehicleMaintenanceScalarFieldEnum = {
+    id: 'id',
+    tenantId: 'tenantId',
+    vehicleId: 'vehicleId',
+    status: 'status',
+    description: 'description',
+    startedAt: 'startedAt',
+    finishedAt: 'finishedAt',
+    cost: 'cost',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
 };
 exports.SortOrder = {
     asc: 'asc',

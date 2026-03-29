@@ -65,6 +65,10 @@ let AuthService = class AuthService {
         const concurrentSessionCount = await this.countActiveSessions(user.id);
         const issuedToken = this.authTokenService.issueToken();
         const expiresAt = this.createSessionExpiry();
+        const normalizedPermissions = this.normalizePermissions(user.permissions);
+        const effectivePermissions = normalizedPermissions.length > 0
+            ? (0, internal_user_access_1.filterPermissionsForRole)(user.internalRole, normalizedPermissions)
+            : (0, internal_user_access_1.getPermissionsForRole)(user.internalRole);
         const createdSessionRows = await this.prisma.$queryRaw `
       INSERT INTO "InternalSession" (
         id,
@@ -104,9 +108,7 @@ let AuthService = class AuthService {
                 status: user.internalStatus,
                 isActive: user.isActive,
                 accessLevel,
-                permissions: this.normalizePermissions(user.permissions).length > 0
-                    ? this.normalizePermissions(user.permissions)
-                    : (0, internal_user_access_1.getPermissionsForRole)(user.internalRole),
+                permissions: effectivePermissions,
             },
         });
         return this.toResponse(context, this.getLoginSuccessMessage(accessLevel), issuedToken.rawToken);
@@ -159,6 +161,10 @@ let AuthService = class AuthService {
             });
         }
         const concurrentSessionCount = await this.countActiveSessions(session.userPkId, session.tokenId);
+        const normalizedPermissions = this.normalizePermissions(session.permissions);
+        const effectivePermissions = normalizedPermissions.length > 0
+            ? (0, internal_user_access_1.filterPermissionsForRole)(session.internalRole, normalizedPermissions)
+            : (0, internal_user_access_1.getPermissionsForRole)(session.internalRole);
         await this.prisma.$executeRaw `
       UPDATE "InternalSession"
       SET "lastSeenAt" = NOW(), "updatedAt" = NOW()
@@ -177,9 +183,7 @@ let AuthService = class AuthService {
                 status: session.internalStatus,
                 isActive: session.isActive,
                 accessLevel: this.getAccessLevel(session.internalStatus),
-                permissions: this.normalizePermissions(session.permissions).length > 0
-                    ? this.normalizePermissions(session.permissions)
-                    : (0, internal_user_access_1.getPermissionsForRole)(session.internalRole),
+                permissions: effectivePermissions,
             },
         });
     }

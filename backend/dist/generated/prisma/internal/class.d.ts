@@ -28,7 +28,34 @@ export interface PrismaClient<in LogOpts extends Prisma.LogLevel = never, in out
     $extends: runtime.Types.Extensions.ExtendsHook<"extends", Prisma.TypeMapCb<OmitOpts>, ExtArgs, runtime.Types.Utils.Call<Prisma.TypeMapCb<OmitOpts>, {
         extArgs: ExtArgs;
     }>>;
-    get station(): Prisma.StationDelegate<ExtArgs, {
+    get tenant(): Prisma.TenantDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get user(): Prisma.UserDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get tenantUser(): Prisma.TenantUserDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get customerProfile(): Prisma.CustomerProfileDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get location(): Prisma.LocationDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get vehicle(): Prisma.VehicleDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get reservation(): Prisma.ReservationDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get rental(): Prisma.RentalDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get payment(): Prisma.PaymentDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get vehicleMaintenance(): Prisma.VehicleMaintenanceDelegate<ExtArgs, {
         omit: OmitOpts;
     }>;
 }

@@ -1,5 +1,9 @@
 generator client {
   provider = "prisma-client-js"
+}
+
+generator customClient {
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
@@ -40,6 +44,11 @@ enum InternalPermission {
 enum InternalUserDeletionAuditMode {
   DELETED
   DEACTIVATED
+}
+
+enum InternalUserManagementAuditOutcome {
+  UPDATED
+  PARTIAL
 }
 
 enum TenantUserRole {
@@ -204,6 +213,20 @@ model InternalUserDeletionAuditLog {
   targetUserIdentifier String
   summary              String
   createdAt            DateTime                      @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([targetUserId, createdAt])
+}
+
+model InternalUserManagementAuditLog {
+  id                   String                             @id @default(cuid())
+  outcome              InternalUserManagementAuditOutcome
+  actorUserId          String
+  actorUserIdentifier  String
+  targetUserId         String
+  targetUserIdentifier String
+  summary              String
+  createdAt            DateTime                           @default(now())
 
   @@index([actorUserId, createdAt])
   @@index([targetUserId, createdAt])

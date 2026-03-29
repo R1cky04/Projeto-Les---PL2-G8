@@ -106,6 +106,68 @@
       />
     </main>
 
+    <main v-else-if="currentFeature === 'VEHICLE_MANAGEMENT'" class="auth-module-shell">
+      <header class="module-shell-header">
+        <div>
+          <h1>Rent-a-<span class="brand-blue">Car</span> Management</h1>
+        </div>
+
+        <div class="module-shell-actions">
+          <button class="auth-secondary-button is-active" type="button" @click="returnToWorkspace">
+            Voltar ao painel
+          </button>
+          <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
+            Terminar sessao
+          </button>
+        </div>
+      </header>
+
+      <section class="station-module-toolbar">
+        <div class="station-module-toolbar-head">
+          <div class="station-module-toolbar-copy">
+            <h2>Veiculos</h2>
+            <p>
+              {{
+                vehicleModuleView === 'MANAGE'
+                  ? 'Consulte e edite veiculos existentes, incluindo estado, quilometragem e preco diario.'
+                  : 'Preencha os dados obrigatorios para criar um novo veiculo no sistema.'
+              }}
+            </p>
+          </div>
+
+          <div class="station-module-toolbar-actions">
+            <button
+              class="auth-primary-button station-toggle-create"
+              v-if="vehicleModuleView === 'MANAGE' && authState?.user?.role === 'IT'"
+              type="button"
+              @click="setVehicleModuleView('CREATE')"
+            >
+              Criar veiculo
+            </button>
+
+            <button
+              v-else-if="vehicleModuleView === 'CREATE'"
+              class="auth-secondary-button station-toggle-back"
+              type="button"
+              @click="setVehicleModuleView('MANAGE')"
+            >
+              Voltar a gerir veiculos
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <ManageVehicle
+        v-if="vehicleModuleView === 'MANAGE'"
+        :session-token="sessionToken"
+        :session-user-role="authState?.user?.role || ''"
+      />
+      <CreateVehicle
+        v-else
+        :session-token="sessionToken"
+      />
+    </main>
+
     <main v-else-if="currentFeature === 'IMPRO_MANAGEMENT'" class="auth-module-shell">
       <header class="module-shell-header">
         <div>
@@ -117,7 +179,7 @@
             Voltar ao painel
           </button>
           <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
-            Terminar sessão
+            Terminar sessao
           </button>
         </div>
       </header>
@@ -166,7 +228,9 @@ import {
   mapLoginApiErrors,
   validateLoginForm,
 } from '../utils/loginForm'
+import CreateVehicle from '../components/CreateVehicle.vue'
 import CreateStation from '../components/CreateStation.vue'
+import ManageVehicle from '../components/ManageVehicle.vue'
 import ManageStation from '../components/ManageStation.vue'
 import InternalUsersView from './InternalUsersView.vue'
 
@@ -175,9 +239,11 @@ import InternalUsersView from './InternalUsersView.vue'
 export default {
   name: 'InternalPortalView',
   components: {
+    CreateVehicle,
     CreateStation,
     ImproOperationsView,
     InternalLoginPanel,
+    ManageVehicle,
     ManageStation,
     InternalUsersView,
     InternalWorkspaceHome,
@@ -193,6 +259,7 @@ export default {
       sessionToken: '',
       currentFeature: '',
       stationModuleView: 'MANAGE',
+      vehicleModuleView: 'MANAGE',
       workspaceMessage: '',
     }
   },
@@ -252,6 +319,7 @@ export default {
         this.authState = null
         this.loginForm = createLoginForm()
         this.currentFeature = ''
+        this.vehicleModuleView = 'MANAGE'
         this.workspaceMessage = ''
         this.fieldErrors = {}
         this.submitError = ''
@@ -262,7 +330,8 @@ export default {
         featureKey === 'INTERNAL_USERS' ||
         featureKey === 'STATION_MANAGEMENT' ||
         featureKey === 'IMPRO_MANAGEMENT' ||
-        featureKey === 'FLEET_OPERATIONS'
+        featureKey === 'FLEET_OPERATIONS' ||
+        featureKey === 'VEHICLE_MANAGEMENT'
       ) {
         const normalizedFeatureKey =
           featureKey === 'FLEET_OPERATIONS' ? 'IMPRO_MANAGEMENT' : featureKey
@@ -285,9 +354,25 @@ export default {
           return
         }
 
+        if (
+          normalizedFeatureKey === 'VEHICLE_MANAGEMENT' &&
+          !['IT', 'ADMIN', 'STAFF', 'FLEET'].includes(this.authState?.user?.role)
+        ) {
+          this.workspaceMessage =
+            'A funcionalidade de veiculos exige perfil IT, ADMIN, STAFF ou FLEET.'
+          return
+        }
+
         this.currentFeature = normalizedFeatureKey
         if (normalizedFeatureKey === 'STATION_MANAGEMENT') {
           this.stationModuleView = 'MANAGE'
+          this.$nextTick(() => {
+            this.scrollToModuleTop()
+          })
+        }
+
+        if (normalizedFeatureKey === 'VEHICLE_MANAGEMENT') {
+          this.vehicleModuleView = 'MANAGE'
           this.$nextTick(() => {
             this.scrollToModuleTop()
           })
@@ -315,6 +400,12 @@ export default {
         this.scrollToModuleTop()
       })
     },
+    setVehicleModuleView(view) {
+      this.vehicleModuleView = view
+      this.$nextTick(() => {
+        this.scrollToModuleTop()
+      })
+    },
     scrollToModuleTop() {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
       if (document?.documentElement) {
@@ -329,6 +420,7 @@ export default {
       this.sessionToken = sessionToken
       this.currentFeature = ''
       this.stationModuleView = 'MANAGE'
+      this.vehicleModuleView = 'MANAGE'
       this.workspaceMessage = ''
       this.submitError = ''
       this.fieldErrors = {}

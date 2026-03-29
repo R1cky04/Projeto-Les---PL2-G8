@@ -16,6 +16,7 @@ exports.InternalUsersController = void 0;
 const common_1 = require("@nestjs/common");
 const auth_session_guard_1 = require("../auth/auth-session.guard");
 const create_internal_user_dto_1 = require("./dto/create-internal-user.dto");
+const update_internal_user_dto_1 = require("./dto/update-internal-user.dto");
 const internal_users_service_1 = require("./internal-users.service");
 const it_master_guard_1 = require("./it-master.guard");
 let InternalUsersController = class InternalUsersController {
@@ -28,6 +29,9 @@ let InternalUsersController = class InternalUsersController {
     }
     findAll(page, pageSize, search) {
         return this.internalUsersService.findAll(page, pageSize, search);
+    }
+    update(id, payload, request) {
+        return this.internalUsersService.update(id, payload, request.auth.user);
     }
     remove(id, request) {
         return this.internalUsersService.remove(id, request.auth.user);
@@ -50,6 +54,15 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], InternalUsersController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_internal_user_dto_1.UpdateInternalUserDto, Object]),
+    __metadata("design:returntype", Promise)
+], InternalUsersController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id')),

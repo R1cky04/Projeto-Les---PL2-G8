@@ -60,7 +60,10 @@
         v-for="user in users"
         :key="user.id"
         class="user-row"
-        :class="{ 'is-inactive': !user.isActive }"
+        :class="{
+          'is-inactive': !user.isActive,
+          'is-selected': selectedUserId === user.id,
+        }"
       >
         <div class="user-info">
           <div class="user-main">
@@ -75,11 +78,21 @@
             ></span>
             {{ activityLabel(user.isActive) }}
             <span class="separator">|</span>
+            {{ statusLabel(user.internalStatus) }}
+            <span class="separator">|</span>
             Criado em {{ formatDate(user.createdAt) }}
           </div>
         </div>
 
         <div class="user-actions">
+          <button
+            class="action-button manage-button"
+            type="button"
+            @click="$emit('select', user)"
+          >
+            {{ selectedUserId === user.id ? 'A editar' : 'Gerir' }}
+          </button>
+
           <button
             v-if="user.isActive"
             class="action-button delete-button"
@@ -126,9 +139,12 @@
 </template>
 
 <script>
-import { getInternalUserActivityLabel } from '../../utils/internalUserPresentation'
+import {
+  getInternalUserActivityLabel,
+  getInternalUserStatusLabel,
+} from '../../utils/internalUserPresentation'
 
-// Read-only list panel used by IT to select which internal account to remove.
+// Directory panel for search, selection and deletion within the IT module.
 export default {
   name: 'InternalUserListPanel',
   props: {
@@ -141,6 +157,10 @@ export default {
       default: false,
     },
     deletingUserId: {
+      type: String,
+      default: null,
+    },
+    selectedUserId: {
       type: String,
       default: null,
     },
@@ -165,6 +185,7 @@ export default {
     },
   },
   emits: [
+    'select',
     'delete',
     'page-change',
     'search',
@@ -179,6 +200,9 @@ export default {
     },
     activityLabel(isActive) {
       return getInternalUserActivityLabel(isActive)
+    },
+    statusLabel(status) {
+      return getInternalUserStatusLabel(status)
     },
     formatDate(dateValue) {
       if (!dateValue) {

@@ -15,12 +15,20 @@ const internal_users_module_1 = require("./internal-users/internal-users.module"
 const prisma_module_1 = require("./prisma/prisma.module");
 const impro_module_1 = require("./impro/impro.module");
 const station_module_1 = require("./station/station.module");
+const vehicle_module_1 = require("./vehicle/vehicle.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, auth_module_1.AuthModule, station_module_1.StationModule, internal_users_module_1.InternalUsersModule, impro_module_1.ImproModule],
+        imports: [
+            prisma_module_1.PrismaModule,
+            auth_module_1.AuthModule,
+            station_module_1.StationModule,
+            vehicle_module_1.VehicleModule,
+            internal_users_module_1.InternalUsersModule,
+            impro_module_1.ImproModule,
+        ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],
     })

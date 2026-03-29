@@ -15,6 +15,13 @@ export async function postJson(path, options = {}) {
   })
 }
 
+export async function putJson(path, options = {}) {
+  return executeJsonRequest(path, {
+    method: 'PUT',
+    ...options,
+  })
+}
+
 export async function deleteJson(path, options = {}) {
   return executeJsonRequest(path, {
     method: 'DELETE',

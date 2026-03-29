@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getPermissionsForRole = getPermissionsForRole;
+exports.filterPermissionsForRole = filterPermissionsForRole;
 exports.requiresItValidation = requiresItValidation;
 exports.getInitialStatusForRole = getInitialStatusForRole;
 const internal_user_enums_1 = require("./internal-user.enums");
@@ -38,9 +39,6 @@ const ROLE_PERMISSIONS = {
         internal_user_enums_1.InternalPermission.MAINTENANCE_WRITE,
         internal_user_enums_1.InternalPermission.TRANSFER_WRITE,
         internal_user_enums_1.InternalPermission.INCIDENT_WRITE,
-        internal_user_enums_1.InternalPermission.USER_READ,
-        internal_user_enums_1.InternalPermission.USER_CREATE,
-        internal_user_enums_1.InternalPermission.USER_ACTIVATE,
     ],
 };
 const RESTRICTED_ROLES = new Set([
@@ -49,6 +47,10 @@ const RESTRICTED_ROLES = new Set([
 ]);
 function getPermissionsForRole(role) {
     return [...ROLE_PERMISSIONS[role]];
+}
+function filterPermissionsForRole(role, permissions) {
+    const allowedPermissions = new Set(getPermissionsForRole(role));
+    return Array.from(new Set(permissions.filter((permission) => allowedPermissions.has(permission))));
 }
 function requiresItValidation(role) {
     return RESTRICTED_ROLES.has(role);

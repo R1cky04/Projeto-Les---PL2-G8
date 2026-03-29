@@ -6,10 +6,18 @@ import { InternalUsersModule } from './internal-users/internal-users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ImproModule } from './impro/impro.module';
 import { StationModule } from './station/station.module';
+import { VehicleModule } from './vehicle/vehicle.module';
 
 // Root module wiring shared infrastructure and feature modules.
 @Module({
-  imports: [PrismaModule, AuthModule, StationModule, InternalUsersModule, ImproModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    StationModule,
+    VehicleModule,
+    InternalUsersModule,
+    ImproModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

@@ -9,9 +9,11 @@
           :users="users"
           :loading="loadingUsers"
           :deleting-user-id="deletingUserId"
+          :selected-user-id="selectedUserId"
           :pagination="pagination"
           :search-draft="searchDraft"
           :active-search-term="searchTerm"
+          @select="selectUser"
           @delete="confirmDeleteUser"
           @page-change="loadUsers"
           @search="applySearch"
@@ -21,6 +23,7 @@
         />
 
         <InternalUserFormPanel
+          v-if="!selectedUser"
           :user-id="form.userId"
           :password="form.password"
           :role="form.role"
@@ -35,6 +38,33 @@
           @update:userId="form.userId = $event"
           @update:password="form.password = $event"
           @update:role="form.role = $event"
+        />
+
+        <InternalUserManagementPanel
+          v-else
+          :selected-user="selectedUser"
+          :user-id="managementForm.userId"
+          :password="managementForm.password"
+          :role="managementForm.role"
+          :status="managementForm.status"
+          :is-active="managementForm.isActive"
+          :role-options="roleOptions"
+          :status-options="statusOptions"
+          :field-errors="managementFieldErrors"
+          :submit-error="managementSubmitError"
+          :success-message="managementSuccessMessage"
+          :warnings="managementWarnings"
+          :is-submitting="isUpdatingUser"
+          @submit="submitManagementForm"
+          @reset="resetManagementForm"
+          @clear-selection="clearManagementSelection"
+          @update:user-id="managementForm.userId = $event"
+          @update:userId="managementForm.userId = $event"
+          @update:password="managementForm.password = $event"
+          @update:role="managementForm.role = $event"
+          @update:status="managementForm.status = $event"
+          @update:is-active="managementForm.isActive = $event"
+          @update:isActive="managementForm.isActive = $event"
         />
 
         <InternalUserCreatedCard
@@ -52,11 +82,14 @@
 import InternalUserCreatedCard from '../components/internal-users/InternalUserCreatedCard.vue'
 import InternalUserFormPanel from '../components/internal-users/InternalUserFormPanel.vue'
 import InternalUserListPanel from '../components/internal-users/InternalUserListPanel.vue'
+import InternalUserManagementPanel from '../components/internal-users/InternalUserManagementPanel.vue'
 import { ROLE_OPTIONS } from '../constants/internalUserRoles'
+import { INTERNAL_USER_STATUS_OPTIONS } from '../constants/internalUserStatuses'
 import {
   createInternalUser,
   deleteInternalUser,
   fetchInternalUsers,
+  updateInternalUser,
 } from '../services/internalUsersApi'
 import {
   buildCreateInternalUserPayload,
@@ -64,6 +97,12 @@ import {
   mapInternalUserApiErrors,
   validateInternalUserForm,
 } from '../utils/internalUserForm'
+import {
+  buildInternalUserManagementForm,
+  buildUpdateInternalUserPayload,
+  createInternalUserManagementForm,
+  validateInternalUserManagementForm,
+} from '../utils/internalUserManagementForm'
 import {
   getInternalUserDeletionPrompt,
   getInternalUserDeletionResultMessage,
@@ -73,8 +112,6 @@ const DEFAULT_ROLE = ROLE_OPTIONS[0]?.value || ''
 const USERS_PAGE_SIZE = 10
 
 function createUsersPagination() {
-  // Keep pagination state explicit so create/delete flows can reset or step back
-  // without inferring values from the rendered list.
   return {
     page: 1,
     pageSize: USERS_PAGE_SIZE,
@@ -85,14 +122,15 @@ function createUsersPagination() {
   }
 }
 
-// IT workspace for provisioning and deletion. The parent owns authentication;
-// this view owns module-local state and feedback.
+// Module orchestrator for IT user administration. List, create and update
+// flows share the same authenticated directory state here.
 export default {
   name: 'InternalUsersView',
   components: {
     InternalUserCreatedCard,
     InternalUserFormPanel,
     InternalUserListPanel,
+    InternalUserManagementPanel,
   },
   props: {
     sessionToken: {
@@ -111,19 +149,32 @@ export default {
   data() {
     return {
       roleOptions: ROLE_OPTIONS,
+      statusOptions: INTERNAL_USER_STATUS_OPTIONS,
       form: createInternalUserForm(DEFAULT_ROLE),
+      managementForm: createInternalUserManagementForm(),
       isSubmitting: false,
+      isUpdatingUser: false,
       fieldErrors: {},
+      managementFieldErrors: {},
       submitError: '',
       successMessage: '',
+      managementSubmitError: '',
+      managementSuccessMessage: '',
+      managementWarnings: [],
       createdUser: null,
       searchDraft: '',
       searchTerm: '',
       users: [],
+      selectedUserId: null,
       loadingUsers: false,
       deletingUserId: null,
       pagination: createUsersPagination(),
     }
+  },
+  computed: {
+    selectedUser() {
+      return this.users.find((user) => user.id === this.selectedUserId) || null
+    },
   },
   async created() {
     await this.loadUsers(1)
@@ -132,6 +183,7 @@ export default {
     async loadUsers(
       page = this.pagination.page,
       search = this.searchTerm,
+      options = {},
     ) {
       this.loadingUsers = true
 
@@ -144,12 +196,55 @@ export default {
 
         this.users = response.items
         this.pagination = response.pagination
+        this.syncSelectedUser(Boolean(options.refreshSelectedForm))
       } catch (error) {
-        this.submitError =
+        const message =
           error.message || 'Nao foi possivel carregar a lista de utilizadores.'
+
+        this.submitError = message
+        this.managementSubmitError = message
       } finally {
         this.loadingUsers = false
       }
+    },
+
+    syncSelectedUser(refreshSelectedForm = false) {
+      if (!this.selectedUserId) {
+        return
+      }
+
+      const matchingUser =
+        this.users.find((user) => user.id === this.selectedUserId) || null
+
+      if (!matchingUser) {
+        this.clearManagementSelection()
+        return
+      }
+
+      if (refreshSelectedForm) {
+        this.managementForm = buildInternalUserManagementForm(matchingUser)
+      }
+    },
+
+    selectUser(user) {
+      this.selectedUserId = user.id
+      this.managementForm = buildInternalUserManagementForm(user)
+      this.managementFieldErrors = {}
+      this.managementSubmitError = ''
+      this.managementSuccessMessage = ''
+      this.managementWarnings = []
+      this.createdUser = null
+      this.submitError = ''
+      this.successMessage = ''
+    },
+
+    clearManagementSelection() {
+      this.selectedUserId = null
+      this.managementForm = createInternalUserManagementForm()
+      this.managementFieldErrors = {}
+      this.managementSubmitError = ''
+      this.managementSuccessMessage = ''
+      this.managementWarnings = []
     },
 
     async applySearch() {
@@ -200,6 +295,49 @@ export default {
       }
     },
 
+    async submitManagementForm() {
+      this.managementSuccessMessage = ''
+      this.managementSubmitError = ''
+      this.managementWarnings = []
+
+      const validationErrors = validateInternalUserManagementForm(
+        this.managementForm,
+      )
+
+      if (Object.keys(validationErrors).length > 0) {
+        this.managementFieldErrors = validationErrors
+        return
+      }
+
+      this.managementFieldErrors = {}
+      this.isUpdatingUser = true
+
+      try {
+        const response = await updateInternalUser(
+          this.managementForm.id,
+          buildUpdateInternalUserPayload(this.managementForm),
+          this.sessionToken,
+        )
+
+        this.managementWarnings = Array.isArray(response.warnings)
+          ? response.warnings
+          : []
+        this.managementSuccessMessage = response.message
+        this.managementForm = buildInternalUserManagementForm(response.user)
+        this.selectedUserId = response.user.id
+        this.createdUser = null
+        await this.loadUsers(this.pagination.page, this.searchTerm, {
+          refreshSelectedForm: true,
+        })
+      } catch (error) {
+        this.managementFieldErrors = mapInternalUserApiErrors(error.errors)
+        this.managementSubmitError =
+          error.message || 'Nao foi possivel atualizar o utilizador.'
+      } finally {
+        this.isUpdatingUser = false
+      }
+    },
+
     async confirmDeleteUser(user) {
       if (!window.confirm(getInternalUserDeletionPrompt(user.userId))) {
         return
@@ -208,15 +346,19 @@ export default {
       this.deletingUserId = user.id
       this.submitError = ''
       this.successMessage = ''
+      this.managementSubmitError = ''
+      this.managementSuccessMessage = ''
 
       try {
         const response = await deleteInternalUser(user.id, this.sessionToken)
-        // If the last row on the current page disappears, move back one page so
-        // the list never leaves the user stranded on an empty slice.
         const targetPage =
           this.users.length === 1 && this.pagination.page > 1
             ? this.pagination.page - 1
             : this.pagination.page
+
+        if (this.selectedUserId === user.id) {
+          this.clearManagementSelection()
+        }
 
         this.createdUser = null
         this.successMessage = getInternalUserDeletionResultMessage(response.mode)
@@ -234,6 +376,19 @@ export default {
       this.submitError = ''
       this.successMessage = ''
       this.createdUser = null
+    },
+
+    resetManagementForm() {
+      if (!this.selectedUser) {
+        this.clearManagementSelection()
+        return
+      }
+
+      this.managementForm = buildInternalUserManagementForm(this.selectedUser)
+      this.managementFieldErrors = {}
+      this.managementSubmitError = ''
+      this.managementSuccessMessage = ''
+      this.managementWarnings = []
     },
   },
 }

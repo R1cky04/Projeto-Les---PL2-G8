@@ -1,4 +1,4 @@
-import { getJson, postJson, deleteJson } from './apiClient'
+import { deleteJson, getJson, postJson, putJson } from './apiClient'
 
 function createPagination(page, pageSize, totalItems) {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
@@ -74,5 +74,13 @@ export function deleteInternalUser(id, sessionToken) {
   return deleteJson(`/internal-users/${id}`, {
     token: sessionToken,
     fallbackMessage: 'Nao foi possivel eliminar o utilizador.',
+  })
+}
+
+export function updateInternalUser(id, payload, sessionToken) {
+  return putJson(`/internal-users/${id}`, {
+    body: payload,
+    token: sessionToken,
+    fallbackMessage: 'Nao foi possivel atualizar o utilizador.',
   })
 }

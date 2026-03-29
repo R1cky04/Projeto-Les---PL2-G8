@@ -133,6 +133,8 @@
 <script>
 import axios from 'axios';
 
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:3000';
+
 export default {
   name: 'ManageStation',
   props: {
@@ -183,7 +185,7 @@ export default {
     },
     async loadStations() {
       try {
-        const res = await axios.get('http://localhost:3000/stations', this.buildAuthConfig());
+        const res = await axios.get(`${API_BASE_URL}/stations`, this.buildAuthConfig());
         this.stations = res.data;
 
         if (!this.selectedStation && this.stations.length > 0) {
@@ -211,8 +213,8 @@ export default {
     },
     async handleSearch() {
       const url = this.searchTerm 
-        ? `http://localhost:3000/stations/search/${this.searchTerm}` 
-        : 'http://localhost:3000/stations';
+        ? `${API_BASE_URL}/stations/search/${this.searchTerm}` 
+        : `${API_BASE_URL}/stations`;
       try {
         const res = await axios.get(url, this.buildAuthConfig());
         this.stations = res.data;
@@ -268,7 +270,7 @@ export default {
       this.submitting = true;
       try {
         const res = await axios.put(
-          `http://localhost:3000/stations/${this.selectedStation.id}`,
+          `${API_BASE_URL}/stations/${this.selectedStation.id}`,
           this.editForm,
           this.buildAuthConfig(),
         );
@@ -290,7 +292,7 @@ export default {
       if (confirm("Confirmar a remoção permanente desta unidade?")) {
         try {
           await axios.delete(
-            `http://localhost:3000/stations/${this.selectedStation.id}`,
+            `${API_BASE_URL}/stations/${this.selectedStation.id}`,
             this.buildAuthConfig(),
           );
           this.showToast('Unidade removida do sistema.', 'success');

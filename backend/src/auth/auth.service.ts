@@ -9,7 +9,10 @@ import {
   InternalUserStatus,
 } from '../internal-users/internal-user.enums';
 import { PrismaService } from '../prisma/prisma.service';
-import { getPermissionsForRole } from '../internal-users/internal-user-access';
+import {
+  filterPermissionsForRole,
+  getPermissionsForRole,
+} from '../internal-users/internal-user-access';
 import { PasswordHasherService } from '../internal-users/password-hasher.service';
 import {
   AuthenticatedSessionContext,
@@ -106,6 +109,11 @@ export class AuthService {
     const concurrentSessionCount = await this.countActiveSessions(user.id);
     const issuedToken = this.authTokenService.issueToken();
     const expiresAt = this.createSessionExpiry();
+    const normalizedPermissions = this.normalizePermissions(user.permissions);
+    const effectivePermissions =
+      normalizedPermissions.length > 0
+        ? filterPermissionsForRole(user.internalRole, normalizedPermissions)
+        : getPermissionsForRole(user.internalRole);
 
     const createdSessionRows = await this.prisma.$queryRaw<{ id: string }[]>`
       INSERT INTO "InternalSession" (
@@ -147,10 +155,7 @@ export class AuthService {
         status: user.internalStatus,
         isActive: user.isActive,
         accessLevel,
-        permissions:
-          this.normalizePermissions(user.permissions).length > 0
-            ? this.normalizePermissions(user.permissions)
-            : getPermissionsForRole(user.internalRole),
+        permissions: effectivePermissions,
       },
     });
 
@@ -221,6 +226,11 @@ export class AuthService {
       session.userPkId,
       session.tokenId,
     );
+    const normalizedPermissions = this.normalizePermissions(session.permissions);
+    const effectivePermissions =
+      normalizedPermissions.length > 0
+        ? filterPermissionsForRole(session.internalRole, normalizedPermissions)
+        : getPermissionsForRole(session.internalRole);
 
     await this.prisma.$executeRaw`
       UPDATE "InternalSession"
@@ -241,10 +251,7 @@ export class AuthService {
         status: session.internalStatus,
         isActive: session.isActive,
         accessLevel: this.getAccessLevel(session.internalStatus),
-        permissions:
-          this.normalizePermissions(session.permissions).length > 0
-            ? this.normalizePermissions(session.permissions)
-            : getPermissionsForRole(session.internalRole),
+        permissions: effectivePermissions,
       },
     });
   }

@@ -74,6 +74,10 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "modulePathIgnorePatterns": [
+      "<rootDir>/generated/",
+      "<rootDir>/prisma.bak/"
+    ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

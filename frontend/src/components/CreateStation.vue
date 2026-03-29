@@ -70,6 +70,8 @@
 <script>
 import axios from 'axios';
 
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:3000';
+
 export default {
   name: 'CreateStation',
   props: {
@@ -106,7 +108,7 @@ export default {
 
       this.loading = true;
       try {
-        await axios.post('http://localhost:3000/stations', this.form, this.buildAuthConfig());
+        await axios.post(`${API_BASE_URL}/stations`, this.form, this.buildAuthConfig());
         this.showFeedback('Estação registada com sucesso!', 'success');
         this.resetForm();
       } catch (err) {
