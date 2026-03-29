@@ -196,9 +196,11 @@ export default {
     canManageImpros() {
       const role = this.authState?.user?.role
       return role === 'FLEET' || role === 'ADMIN' || role === 'IT'
+    },
     canManageVehicles() {
       return ['IT', 'ADMIN', 'STAFF', 'FLEET'].includes(this.authState?.user?.role)
     },
   },
 }
 </script>
+

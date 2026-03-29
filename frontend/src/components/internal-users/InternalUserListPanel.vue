@@ -224,3 +224,4 @@ export default {
 </script>
 
 <style scoped src="../../styles/components/internal-user-list-panel.css"></style>
+
