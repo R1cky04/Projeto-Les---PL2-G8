@@ -1,5 +1,4 @@
 import * as runtime from "@prisma/client/runtime/client";
-import type * as Prisma from "../models.js";
 import { type PrismaClient } from "./class.js";
 export type * from '../models.js';
 export type DMMF = typeof runtime.DMMF;
@@ -155,10 +154,7 @@ export type MaybeTupleToUnion<T> = T extends any[] ? TupleToUnion<T> : T;
 export type PickEnumerable<T, K extends Enumerable<keyof T> | keyof T> = Prisma__Pick<T, MaybeTupleToUnion<K>>;
 export type ExcludeUnderscoreKeys<T extends string> = T extends `_${string}` ? never : T;
 export type FieldRef<Model, FieldType> = runtime.FieldRef<Model, FieldType>;
-type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRef<Model, FieldType>;
-export declare const ModelName: {
-    readonly Station: "Station";
-};
+export declare const ModelName: {};
 export type ModelName = (typeof ModelName)[keyof typeof ModelName];
 export interface TypeMapCb<GlobalOmitOptions = {}> extends runtime.Types.Utils.Fn<{
     extArgs: runtime.Types.Extensions.InternalArgs;
@@ -170,85 +166,10 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         omit: GlobalOmitOptions;
     };
     meta: {
-        modelProps: "station";
+        modelProps: never;
         txIsolationLevel: TransactionIsolationLevel;
     };
-    model: {
-        Station: {
-            payload: Prisma.$StationPayload<ExtArgs>;
-            fields: Prisma.StationFieldRefs;
-            operations: {
-                findUnique: {
-                    args: Prisma.StationFindUniqueArgs<ExtArgs>;
-                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload> | null;
-                };
-                findUniqueOrThrow: {
-                    args: Prisma.StationFindUniqueOrThrowArgs<ExtArgs>;
-                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
-                };
-                findFirst: {
-                    args: Prisma.StationFindFirstArgs<ExtArgs>;
-                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload> | null;
-                };
-                findFirstOrThrow: {
-                    args: Prisma.StationFindFirstOrThrowArgs<ExtArgs>;
-                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
-                };
-                findMany: {
-                    args: Prisma.StationFindManyArgs<ExtArgs>;
-                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>[];
-                };
-                create: {
-                    args: Prisma.StationCreateArgs<ExtArgs>;
-                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
-                };
-                createMany: {
-                    args: Prisma.StationCreateManyArgs<ExtArgs>;
-                    result: BatchPayload;
-                };
-                createManyAndReturn: {
-                    args: Prisma.StationCreateManyAndReturnArgs<ExtArgs>;
-                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>[];
-                };
-                delete: {
-                    args: Prisma.StationDeleteArgs<ExtArgs>;
-                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
-                };
-                update: {
-                    args: Prisma.StationUpdateArgs<ExtArgs>;
-                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
-                };
-                deleteMany: {
-                    args: Prisma.StationDeleteManyArgs<ExtArgs>;
-                    result: BatchPayload;
-                };
-                updateMany: {
-                    args: Prisma.StationUpdateManyArgs<ExtArgs>;
-                    result: BatchPayload;
-                };
-                updateManyAndReturn: {
-                    args: Prisma.StationUpdateManyAndReturnArgs<ExtArgs>;
-                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>[];
-                };
-                upsert: {
-                    args: Prisma.StationUpsertArgs<ExtArgs>;
-                    result: runtime.Types.Utils.PayloadToResult<Prisma.$StationPayload>;
-                };
-                aggregate: {
-                    args: Prisma.StationAggregateArgs<ExtArgs>;
-                    result: runtime.Types.Utils.Optional<Prisma.AggregateStation>;
-                };
-                groupBy: {
-                    args: Prisma.StationGroupByArgs<ExtArgs>;
-                    result: runtime.Types.Utils.Optional<Prisma.StationGroupByOutputType>[];
-                };
-                count: {
-                    args: Prisma.StationCountArgs<ExtArgs>;
-                    result: runtime.Types.Utils.Optional<Prisma.StationCountAggregateOutputType> | number;
-                };
-            };
-        };
-    };
+    model: {};
 } & {
     other: {
         payload: any;
@@ -279,39 +200,6 @@ export declare const TransactionIsolationLevel: {
     readonly Serializable: "Serializable";
 };
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel];
-export declare const StationScalarFieldEnum: {
-    readonly id: "id";
-    readonly name: "name";
-    readonly location: "location";
-    readonly capacity: "capacity";
-    readonly createdAt: "createdAt";
-    readonly updatedAt: "updatedAt";
-    readonly createdBy: "createdBy";
-};
-export type StationScalarFieldEnum = (typeof StationScalarFieldEnum)[keyof typeof StationScalarFieldEnum];
-export declare const SortOrder: {
-    readonly asc: "asc";
-    readonly desc: "desc";
-};
-export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder];
-export declare const QueryMode: {
-    readonly default: "default";
-    readonly insensitive: "insensitive";
-};
-export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode];
-export declare const NullsOrder: {
-    readonly first: "first";
-    readonly last: "last";
-};
-export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder];
-export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>;
-export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>;
-export type StringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String'>;
-export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String[]'>;
-export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>;
-export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>;
-export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>;
-export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>;
 export type BatchPayload = {
     count: number;
 };
@@ -335,9 +223,7 @@ export type PrismaClientOptions = ({
     omit?: GlobalOmitConfig;
     comments?: runtime.SqlCommenterPlugin[];
 };
-export type GlobalOmitConfig = {
-    station?: Prisma.StationOmit;
-};
+export type GlobalOmitConfig = {};
 export type LogLevel = 'info' | 'query' | 'warn' | 'error';
 export type LogDefinition = {
     level: LogLevel;
