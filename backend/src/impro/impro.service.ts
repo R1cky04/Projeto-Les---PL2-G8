@@ -6,6 +6,7 @@ import {
 import { InternalPermission } from '../internal-users/internal-user.enums';
 import type { AuthenticatedUserDto } from '../auth/auth.types';
 import { StationService } from '../station/station.service';
+import { VehicleService, type Vehicle } from '../vehicle/vehicle.service';
 import { CloseImproDto } from './dto/close-impro.dto';
 import { CreateImproDto } from './dto/create-impro.dto';
 import { UpdateImproDto } from './dto/update-impro.dto';
@@ -30,6 +31,11 @@ export interface TransferVehicle {
   status: VehicleTransferStatus;
   hasActiveContract: boolean;
   maintenanceScheduledAt?: Date | null;
+}
+
+interface TransferVehicleContext {
+  source: Vehicle;
+  transfer: TransferVehicle;
 }
 
 export interface ImproHistoryEntry {
@@ -68,48 +74,25 @@ export interface ImproListResponse {
 export class ImproService {
   private impros: ImproRecord[] = [];
 
-  private vehicles: TransferVehicle[] = [
-    {
-      id: 101,
-      plate: 'AA-11-BB',
-      model: 'Toyota Corolla',
-      currentStationId: 1,
-      status: 'AVAILABLE',
-      hasActiveContract: false,
-      maintenanceScheduledAt: null,
-    },
-    {
-      id: 102,
-      plate: 'CC-22-DD',
-      model: 'Renault Clio',
-      currentStationId: 2,
-      status: 'AVAILABLE',
-      hasActiveContract: false,
-      maintenanceScheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2),
-    },
-    {
-      id: 103,
-      plate: 'EE-33-FF',
-      model: 'Peugeot 208',
-      currentStationId: 1,
-      status: 'AVAILABLE',
-      hasActiveContract: true,
-      maintenanceScheduledAt: null,
-    },
-  ];
-
   private nextImproId = 1;
 
-  constructor(private readonly stationService: StationService) {}
+  constructor(
+    private readonly stationService: StationService,
+    private readonly vehicleService: VehicleService,
+  ) {}
 
   async listVehicles(plate?: string): Promise<TransferVehicle[]> {
+    const vehicles = (await this.vehicleService.findAll()).map((vehicle) =>
+      this.toTransferVehicle(vehicle),
+    );
+
     const normalizedPlate = (plate || '').trim().toLowerCase();
 
     if (!normalizedPlate) {
-      return this.vehicles;
+      return vehicles;
     }
 
-    return this.vehicles.filter((vehicle) =>
+    return vehicles.filter((vehicle) =>
       vehicle.plate.toLowerCase().includes(normalizedPlate),
     );
   }
@@ -131,7 +114,8 @@ export class ImproService {
     await this.ensureStationExists(payload.originStationId);
     await this.ensureStationExists(payload.destinationStationId);
 
-    const vehicle = this.getVehicleOrFail(payload.vehicleId);
+    const vehicleContext = await this.getVehicleOrFail(payload.vehicleId);
+    const vehicle = vehicleContext.transfer;
 
     if (vehicle.hasActiveContract) {
       throw new BadRequestException({
@@ -221,7 +205,11 @@ export class ImproService {
     this.impros.push(impro);
     this.nextImproId += 1;
 
-    vehicle.status = status === 'IN_TRANSFER' ? 'IN_TRANSFER' : 'AVAILABLE';
+    if (status === 'IN_TRANSFER') {
+      await this.vehicleService.update(vehicle.id, { status: 'RESERVED' }, this.resolveActorLabel(actor));
+    } else if (vehicle.status !== 'MAINTENANCE') {
+      await this.vehicleService.update(vehicle.id, { status: 'AVAILABLE' }, this.resolveActorLabel(actor));
+    }
 
     return impro;
   }
@@ -344,17 +332,17 @@ export class ImproService {
 
       impro.transferDate = transferDate;
 
-      const vehicle = this.getVehicleOrFail(impro.vehicleId);
+      const vehicle = (await this.getVehicleOrFail(impro.vehicleId)).transfer;
       if (transferDate.getTime() > Date.now()) {
         impro.status = 'SCHEDULED';
         if (vehicle.status !== 'MAINTENANCE') {
-          vehicle.status = 'AVAILABLE';
+          await this.vehicleService.update(vehicle.id, { status: 'AVAILABLE' }, this.resolveActorLabel(actor));
         }
         warnings.push('Transferencia atualizada para data futura.');
       } else {
         impro.status = 'IN_TRANSFER';
         if (vehicle.status !== 'MAINTENANCE') {
-          vehicle.status = 'IN_TRANSFER';
+          await this.vehicleService.update(vehicle.id, { status: 'RESERVED' }, this.resolveActorLabel(actor));
         }
       }
     }
@@ -410,8 +398,12 @@ export class ImproService {
       });
     }
 
-    const vehicle = this.getVehicleOrFail(impro.vehicleId);
-    vehicle.currentStationId = impro.destinationStationId;
+    const vehicle = (await this.getVehicleOrFail(impro.vehicleId)).transfer;
+    await this.vehicleService.transferToStation(
+      vehicle.id,
+      impro.destinationStationId,
+      this.resolveActorLabel(actor),
+    );
 
     const closureWarnings: string[] = [];
     const arrivedLate =
@@ -423,10 +415,10 @@ export class ImproService {
     }
 
     if (payload.vehicleDamaged) {
-      vehicle.status = 'MAINTENANCE';
+      await this.vehicleService.update(vehicle.id, { status: 'MAINTENANCE' }, this.resolveActorLabel(actor));
       closureWarnings.push('Veiculo com danos foi encaminhado para manutencao.');
     } else {
-      vehicle.status = 'AVAILABLE';
+      await this.vehicleService.update(vehicle.id, { status: 'AVAILABLE' }, this.resolveActorLabel(actor));
     }
 
     impro.actualArrivalDate = actualArrivalDate;
@@ -470,17 +462,38 @@ export class ImproService {
     return impro;
   }
 
-  private getVehicleOrFail(id: number): TransferVehicle {
-    const vehicle = this.vehicles.find((item) => item.id === id);
+  private async getVehicleOrFail(id: number): Promise<TransferVehicleContext> {
+    const vehicle = await this.vehicleService.findOne(id);
+    const transferVehicle = this.toTransferVehicle(vehicle);
 
-    if (!vehicle) {
-      throw new NotFoundException({
-        message: 'Veiculo nao encontrado.',
-        code: 'VEHICLE_NOT_FOUND',
-      });
+    return {
+      source: vehicle,
+      transfer: transferVehicle,
+    };
+  }
+
+  private toTransferVehicle(vehicle: Vehicle): TransferVehicle {
+    return {
+      id: vehicle.id,
+      plate: vehicle.plateNumber,
+      model: `${vehicle.brand} ${vehicle.model}`,
+      currentStationId: vehicle.stationId,
+      status: this.toTransferStatus(vehicle.status),
+      hasActiveContract: vehicle.status === 'RENTED',
+      maintenanceScheduledAt: null,
+    };
+  }
+
+  private toTransferStatus(status: Vehicle['status']): VehicleTransferStatus {
+    if (status === 'RESERVED') {
+      return 'IN_TRANSFER';
     }
 
-    return vehicle;
+    if (status === 'MAINTENANCE') {
+      return 'MAINTENANCE';
+    }
+
+    return 'AVAILABLE';
   }
 
   private async ensureStationExists(id: number): Promise<void> {

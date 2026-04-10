@@ -6,22 +6,22 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ImproModule = void 0;
+exports.RentalModule = void 0;
 const common_1 = require("@nestjs/common");
 const auth_module_1 = require("../auth/auth.module");
 const station_module_1 = require("../station/station.module");
 const vehicle_module_1 = require("../vehicle/vehicle.module");
-const impro_controller_1 = require("./impro.controller");
-const impro_guard_1 = require("./impro.guard");
-const impro_service_1 = require("./impro.service");
-let ImproModule = class ImproModule {
+const rental_controller_1 = require("./rental.controller");
+const rental_management_guard_1 = require("./rental-management.guard");
+const rental_service_1 = require("./rental.service");
+let RentalModule = class RentalModule {
 };
-exports.ImproModule = ImproModule;
-exports.ImproModule = ImproModule = __decorate([
+exports.RentalModule = RentalModule;
+exports.RentalModule = RentalModule = __decorate([
     (0, common_1.Module)({
         imports: [auth_module_1.AuthModule, station_module_1.StationModule, vehicle_module_1.VehicleModule],
-        controllers: [impro_controller_1.ImproController],
-        providers: [impro_service_1.ImproService, impro_guard_1.ImproGuard],
+        controllers: [rental_controller_1.RentalController],
+        providers: [rental_service_1.RentalService, rental_management_guard_1.RentalManagementGuard],
     })
-], ImproModule);
-//# sourceMappingURL=impro.module.js.map
+], RentalModule);
+//# sourceMappingURL=rental.module.js.map

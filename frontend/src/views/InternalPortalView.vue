@@ -168,6 +168,39 @@
       />
     </main>
 
+    <main v-else-if="currentFeature === 'RENTALS'" class="auth-module-shell">
+      <header class="module-shell-header">
+        <div>
+          <h1>Rent-a-<span class="brand-blue">Car</span> Management</h1>
+        </div>
+
+        <div class="module-shell-actions">
+          <button class="auth-secondary-button is-active" type="button" @click="returnToWorkspace">
+            Voltar ao painel
+          </button>
+          <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
+            Terminar sessao
+          </button>
+        </div>
+      </header>
+
+      <section class="station-module-toolbar">
+        <div class="station-module-toolbar-head">
+          <div class="station-module-toolbar-copy">
+            <h2>Contratos</h2>
+            <p>
+              Crie contratos diretos de aluguer, associe cliente e viatura disponível, e deixe o valor estimado ser calculado automaticamente com base no período escolhido.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <RentalContractsView
+        :session-token="sessionToken"
+        :session-user-role="authState?.user?.role || ''"
+      />
+    </main>
+
     <main v-else-if="currentFeature === 'IMPRO_MANAGEMENT'" class="auth-module-shell">
       <header class="module-shell-header">
         <div>
@@ -232,6 +265,7 @@ import CreateVehicle from '../components/CreateVehicle.vue'
 import CreateStation from '../components/CreateStation.vue'
 import ManageVehicle from '../components/ManageVehicle.vue'
 import ManageStation from '../components/ManageStation.vue'
+import RentalContractsView from '../components/rentals/RentalContractsView.vue'
 import InternalUsersView from './InternalUsersView.vue'
 
 // Root authenticated container. It owns session restore, login/logout and the
@@ -245,6 +279,7 @@ export default {
     InternalLoginPanel,
     ManageVehicle,
     ManageStation,
+    RentalContractsView,
     InternalUsersView,
     InternalWorkspaceHome,
   },
@@ -330,6 +365,7 @@ export default {
         featureKey === 'INTERNAL_USERS' ||
         featureKey === 'STATION_MANAGEMENT' ||
         featureKey === 'IMPRO_MANAGEMENT' ||
+        featureKey === 'RENTALS' ||
         featureKey === 'FLEET_OPERATIONS' ||
         featureKey === 'VEHICLE_MANAGEMENT'
       ) {
@@ -363,6 +399,15 @@ export default {
           return
         }
 
+        if (
+          normalizedFeatureKey === 'RENTALS' &&
+          !['IT', 'ADMIN', 'STAFF', 'FLEET'].includes(this.authState?.user?.role)
+        ) {
+          this.workspaceMessage =
+            'A funcionalidade de contratos exige perfil IT, ADMIN, STAFF ou FLEET.'
+          return
+        }
+
         this.currentFeature = normalizedFeatureKey
         if (normalizedFeatureKey === 'STATION_MANAGEMENT') {
           this.stationModuleView = 'MANAGE'
@@ -379,6 +424,12 @@ export default {
         }
 
         if (normalizedFeatureKey === 'IMPRO_MANAGEMENT') {
+          this.$nextTick(() => {
+            this.scrollToModuleTop()
+          })
+        }
+
+        if (normalizedFeatureKey === 'RENTALS') {
           this.$nextTick(() => {
             this.scrollToModuleTop()
           })

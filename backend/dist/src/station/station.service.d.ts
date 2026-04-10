@@ -20,6 +20,7 @@ export declare class StationService {
     findOne(id: number): Promise<Station>;
     search(searchTerm: string): Promise<Station[]>;
     update(id: number, updateStationDto: UpdateStationDto, updatedBy?: string): Promise<Station>;
+    adjustAllocatedVehicles(id: number, delta: number, actorLabel?: string): Promise<Station>;
     delete(id: number, deletedBy?: string): Promise<Station>;
     private logAudit;
 }

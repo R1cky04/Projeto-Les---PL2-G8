@@ -1,9 +1,13 @@
 import 'dotenv/config';
+import { join } from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-// Prisma bootstrap for Prisma 7 + PostgreSQL driver adapters.
+const { PrismaClient } = require(join(process.cwd(), 'generated', 'prisma')) as {
+  PrismaClient: new (...args: any[]) => any;
+};
+
+// Prisma bootstrap for PostgreSQL.
 @Injectable()
 export class PrismaService
   extends PrismaClient

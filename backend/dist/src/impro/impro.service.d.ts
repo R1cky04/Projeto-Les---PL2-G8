@@ -1,5 +1,6 @@
 import type { AuthenticatedUserDto } from '../auth/auth.types';
 import { StationService } from '../station/station.service';
+import { VehicleService } from '../vehicle/vehicle.service';
 import { CloseImproDto } from './dto/close-impro.dto';
 import { CreateImproDto } from './dto/create-impro.dto';
 import { UpdateImproDto } from './dto/update-impro.dto';
@@ -53,10 +54,10 @@ export interface ImproListResponse {
 }
 export declare class ImproService {
     private readonly stationService;
+    private readonly vehicleService;
     private impros;
-    private vehicles;
     private nextImproId;
-    constructor(stationService: StationService);
+    constructor(stationService: StationService, vehicleService: VehicleService);
     listVehicles(plate?: string): Promise<TransferVehicle[]>;
     listStations(): Promise<import("../station/station.service").Station[]>;
     create(payload: CreateImproDto, actor: AuthenticatedUserDto): Promise<ImproRecord>;
@@ -66,6 +67,8 @@ export declare class ImproService {
     private buildImproCode;
     private getImproOrFail;
     private getVehicleOrFail;
+    private toTransferVehicle;
+    private toTransferStatus;
     private ensureStationExists;
     private parseFilterDate;
     private resolveActorLabel;

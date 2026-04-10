@@ -13,48 +13,23 @@ exports.ImproService = void 0;
 const common_1 = require("@nestjs/common");
 const internal_user_enums_1 = require("../internal-users/internal-user.enums");
 const station_service_1 = require("../station/station.service");
+const vehicle_service_1 = require("../vehicle/vehicle.service");
 let ImproService = class ImproService {
     stationService;
+    vehicleService;
     impros = [];
-    vehicles = [
-        {
-            id: 101,
-            plate: 'AA-11-BB',
-            model: 'Toyota Corolla',
-            currentStationId: 1,
-            status: 'AVAILABLE',
-            hasActiveContract: false,
-            maintenanceScheduledAt: null,
-        },
-        {
-            id: 102,
-            plate: 'CC-22-DD',
-            model: 'Renault Clio',
-            currentStationId: 2,
-            status: 'AVAILABLE',
-            hasActiveContract: false,
-            maintenanceScheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2),
-        },
-        {
-            id: 103,
-            plate: 'EE-33-FF',
-            model: 'Peugeot 208',
-            currentStationId: 1,
-            status: 'AVAILABLE',
-            hasActiveContract: true,
-            maintenanceScheduledAt: null,
-        },
-    ];
     nextImproId = 1;
-    constructor(stationService) {
+    constructor(stationService, vehicleService) {
         this.stationService = stationService;
+        this.vehicleService = vehicleService;
     }
     async listVehicles(plate) {
+        const vehicles = (await this.vehicleService.findAll()).map((vehicle) => this.toTransferVehicle(vehicle));
         const normalizedPlate = (plate || '').trim().toLowerCase();
         if (!normalizedPlate) {
-            return this.vehicles;
+            return vehicles;
         }
-        return this.vehicles.filter((vehicle) => vehicle.plate.toLowerCase().includes(normalizedPlate));
+        return vehicles.filter((vehicle) => vehicle.plate.toLowerCase().includes(normalizedPlate));
     }
     async listStations() {
         return this.stationService.findAll();
@@ -69,7 +44,8 @@ let ImproService = class ImproService {
         }
         await this.ensureStationExists(payload.originStationId);
         await this.ensureStationExists(payload.destinationStationId);
-        const vehicle = this.getVehicleOrFail(payload.vehicleId);
+        const vehicleContext = await this.getVehicleOrFail(payload.vehicleId);
+        const vehicle = vehicleContext.transfer;
         if (vehicle.hasActiveContract) {
             throw new common_1.BadRequestException({
                 message: 'O veiculo tem contrato ativo e nao pode ser transferido.',
@@ -144,7 +120,12 @@ let ImproService = class ImproService {
         };
         this.impros.push(impro);
         this.nextImproId += 1;
-        vehicle.status = status === 'IN_TRANSFER' ? 'IN_TRANSFER' : 'AVAILABLE';
+        if (status === 'IN_TRANSFER') {
+            await this.vehicleService.update(vehicle.id, { status: 'RESERVED' }, this.resolveActorLabel(actor));
+        }
+        else if (vehicle.status !== 'MAINTENANCE') {
+            await this.vehicleService.update(vehicle.id, { status: 'AVAILABLE' }, this.resolveActorLabel(actor));
+        }
         return impro;
     }
     async findAll(filters = {}) {
@@ -238,18 +219,18 @@ let ImproService = class ImproService {
                 });
             }
             impro.transferDate = transferDate;
-            const vehicle = this.getVehicleOrFail(impro.vehicleId);
+            const vehicle = (await this.getVehicleOrFail(impro.vehicleId)).transfer;
             if (transferDate.getTime() > Date.now()) {
                 impro.status = 'SCHEDULED';
                 if (vehicle.status !== 'MAINTENANCE') {
-                    vehicle.status = 'AVAILABLE';
+                    await this.vehicleService.update(vehicle.id, { status: 'AVAILABLE' }, this.resolveActorLabel(actor));
                 }
                 warnings.push('Transferencia atualizada para data futura.');
             }
             else {
                 impro.status = 'IN_TRANSFER';
                 if (vehicle.status !== 'MAINTENANCE') {
-                    vehicle.status = 'IN_TRANSFER';
+                    await this.vehicleService.update(vehicle.id, { status: 'RESERVED' }, this.resolveActorLabel(actor));
                 }
             }
         }
@@ -295,8 +276,8 @@ let ImproService = class ImproService {
                 code: 'INVALID_ACTUAL_ARRIVAL_DATE',
             });
         }
-        const vehicle = this.getVehicleOrFail(impro.vehicleId);
-        vehicle.currentStationId = impro.destinationStationId;
+        const vehicle = (await this.getVehicleOrFail(impro.vehicleId)).transfer;
+        await this.vehicleService.transferToStation(vehicle.id, impro.destinationStationId, this.resolveActorLabel(actor));
         const closureWarnings = [];
         const arrivedLate = Boolean(impro.plannedArrivalDate) &&
             actualArrivalDate.getTime() > new Date(impro.plannedArrivalDate).getTime();
@@ -304,11 +285,11 @@ let ImproService = class ImproService {
             closureWarnings.push('Veiculo chegou com atraso face a chegada prevista.');
         }
         if (payload.vehicleDamaged) {
-            vehicle.status = 'MAINTENANCE';
+            await this.vehicleService.update(vehicle.id, { status: 'MAINTENANCE' }, this.resolveActorLabel(actor));
             closureWarnings.push('Veiculo com danos foi encaminhado para manutencao.');
         }
         else {
-            vehicle.status = 'AVAILABLE';
+            await this.vehicleService.update(vehicle.id, { status: 'AVAILABLE' }, this.resolveActorLabel(actor));
         }
         impro.actualArrivalDate = actualArrivalDate;
         impro.status = 'CLOSED';
@@ -343,15 +324,33 @@ let ImproService = class ImproService {
         }
         return impro;
     }
-    getVehicleOrFail(id) {
-        const vehicle = this.vehicles.find((item) => item.id === id);
-        if (!vehicle) {
-            throw new common_1.NotFoundException({
-                message: 'Veiculo nao encontrado.',
-                code: 'VEHICLE_NOT_FOUND',
-            });
+    async getVehicleOrFail(id) {
+        const vehicle = await this.vehicleService.findOne(id);
+        const transferVehicle = this.toTransferVehicle(vehicle);
+        return {
+            source: vehicle,
+            transfer: transferVehicle,
+        };
+    }
+    toTransferVehicle(vehicle) {
+        return {
+            id: vehicle.id,
+            plate: vehicle.plateNumber,
+            model: `${vehicle.brand} ${vehicle.model}`,
+            currentStationId: vehicle.stationId,
+            status: this.toTransferStatus(vehicle.status),
+            hasActiveContract: vehicle.status === 'RENTED',
+            maintenanceScheduledAt: null,
+        };
+    }
+    toTransferStatus(status) {
+        if (status === 'RESERVED') {
+            return 'IN_TRANSFER';
         }
-        return vehicle;
+        if (status === 'MAINTENANCE') {
+            return 'MAINTENANCE';
+        }
+        return 'AVAILABLE';
     }
     async ensureStationExists(id) {
         await this.stationService.findOne(id);
@@ -384,6 +383,7 @@ let ImproService = class ImproService {
 exports.ImproService = ImproService;
 exports.ImproService = ImproService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [station_service_1.StationService])
+    __metadata("design:paramtypes", [station_service_1.StationService,
+        vehicle_service_1.VehicleService])
 ], ImproService);
 //# sourceMappingURL=impro.service.js.map

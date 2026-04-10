@@ -5,6 +5,7 @@ export interface Vehicle {
     plateNumber: string;
     brand: string;
     model: string;
+    stationId: number;
     category: string | null;
     year: number | null;
     seats: number | null;
@@ -23,6 +24,9 @@ export declare class VehicleService {
     private nextId;
     create(createVehicleDto: CreateVehicleDto, createdBy?: string): Promise<Vehicle>;
     findAll(): Promise<Vehicle[]>;
+    findAvailable(stationId?: number): Promise<Vehicle[]>;
+    markAsRented(id: number, updatedBy?: string): Promise<Vehicle>;
+    transferToStation(id: number, stationId: number, updatedBy?: string): Promise<Vehicle>;
     findOne(id: number): Promise<Vehicle>;
     search(searchTerm: string): Promise<Vehicle[]>;
     update(id: number, updateVehicleDto: UpdateVehicleDto, updatedBy?: string): Promise<Vehicle>;

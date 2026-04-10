@@ -72,11 +72,7 @@
           :disabled="feature.status !== 'AVAILABLE'"
           @click="$emit('open-feature', feature.key)"
         >
-          {{
-            feature.key === 'INTERNAL_USERS' || feature.key === 'FLEET_OPERATIONS'
-              ? 'Abrir modulo'
-              : 'Autorizado'
-          }}
+          {{ feature.status === 'AVAILABLE' ? 'Abrir modulo' : 'Nao disponivel' }}
         </button>
       </article>
 

@@ -28,7 +28,7 @@ const FEATURE_DEFINITIONS = [
     {
         key: 'RENTALS',
         label: 'Rentals',
-        description: 'Acompanhamento de alugueres e estado operacional associado.',
+        description: 'Gestao de contratos de aluguer com cliente, viatura, datas e valor estimado.',
         isEntitled: (user) => user.permissions.includes(internal_user_enums_1.InternalPermission.RENTAL_READ),
     },
     {

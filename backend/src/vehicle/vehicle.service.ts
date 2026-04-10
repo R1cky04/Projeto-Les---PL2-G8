@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   ConflictException,
   Injectable,
@@ -17,6 +17,7 @@ export interface Vehicle {
   plateNumber: string;
   brand: string;
   model: string;
+  stationId: number;
   category: string | null;
   year: number | null;
   seats: number | null;
@@ -39,6 +40,7 @@ export class VehicleService {
       plateNumber: 'AA-11-BB',
       brand: 'Toyota',
       model: 'Corolla',
+      stationId: 1,
       category: 'Compacto',
       year: 2021,
       seats: 5,
@@ -56,6 +58,7 @@ export class VehicleService {
       plateNumber: '23-CD-45',
       brand: 'Renault',
       model: 'Clio',
+      stationId: 2,
       category: 'Economico',
       year: 2020,
       seats: 5,
@@ -96,6 +99,7 @@ export class VehicleService {
       plateNumber: validUpdates.plateNumber!,
       brand: validUpdates.brand!,
       model: validUpdates.model!,
+      stationId: 1,
       category: validUpdates.category ?? null,
       year: validUpdates.year ?? null,
       seats: validUpdates.seats ?? null,
@@ -117,6 +121,53 @@ export class VehicleService {
 
   async findAll(): Promise<Vehicle[]> {
     return this.vehicles;
+  }
+
+  async findAvailable(stationId?: number): Promise<Vehicle[]> {
+    return this.vehicles.filter(
+      (vehicle) =>
+        vehicle.status === 'AVAILABLE' &&
+        (stationId === undefined || vehicle.stationId === stationId),
+    );
+  }
+
+  async markAsRented(id: number, updatedBy?: string): Promise<Vehicle> {
+    const vehicle = await this.findOne(id);
+
+    if (vehicle.status !== 'AVAILABLE') {
+      throw new BadRequestException('O veiculo selecionado nao esta disponivel para aluguer.');
+    }
+
+    return this.update(id, { status: 'RENTED' }, updatedBy);
+  }
+
+  async transferToStation(id: number, stationId: number, updatedBy?: string): Promise<Vehicle> {
+    const vehicleIndex = this.vehicles.findIndex((item) => item.id === id);
+
+    if (vehicleIndex === -1) {
+      throw new NotFoundException('Veiculo nao encontrado');
+    }
+
+    if (!Number.isInteger(stationId) || stationId < 1) {
+      throw new BadRequestException('Estacao de destino invalida.');
+    }
+
+    const currentVehicle = this.vehicles[vehicleIndex];
+    const updatedVehicle: Vehicle = {
+      ...currentVehicle,
+      stationId,
+      updatedAt: new Date(),
+    };
+
+    this.vehicles[vehicleIndex] = updatedVehicle;
+    this.logAudit(
+      'UPDATE',
+      id,
+      updatedBy || 'desconhecido',
+      `Veiculo transferido de estacao ${currentVehicle.stationId} para ${stationId}`,
+    );
+
+    return updatedVehicle;
   }
 
   async findOne(id: number): Promise<Vehicle> {
@@ -178,6 +229,7 @@ export class VehicleService {
     const updatedVehicle: Vehicle = {
       ...currentVehicle,
       ...validUpdates,
+      stationId: currentVehicle.stationId,
       category: validUpdates.category === undefined ? currentVehicle.category : validUpdates.category,
       updatedAt: new Date(),
       partialWarnings: errors.length > 0 ? errors : undefined,

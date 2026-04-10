@@ -93,7 +93,7 @@ let StationService = class StationService {
             });
         }
         const normalizedName = validUpdates.name;
-        const existingStation = this.stations.find(s => s.name.toLowerCase() === normalizedName.toLowerCase());
+        const existingStation = this.stations.find((station) => station.name.toLowerCase() === normalizedName.toLowerCase());
         if (existingStation) {
             throw new common_1.ConflictException('Já existe uma estação com este nome.');
         }
@@ -115,7 +115,7 @@ let StationService = class StationService {
         return this.stations;
     }
     async findOne(id) {
-        const station = this.stations.find(s => s.id === id);
+        const station = this.stations.find((stationItem) => stationItem.id === id);
         if (!station) {
             throw new common_1.NotFoundException('Estação não encontrada');
         }
@@ -123,11 +123,11 @@ let StationService = class StationService {
     }
     async search(searchTerm) {
         const term = searchTerm.toLowerCase();
-        return this.stations.filter(s => s.name.toLowerCase().includes(term) ||
-            s.location.toLowerCase().includes(term));
+        return this.stations.filter((station) => station.name.toLowerCase().includes(term) ||
+            station.location.toLowerCase().includes(term));
     }
     async update(id, updateStationDto, updatedBy) {
-        const stationIndex = this.stations.findIndex(s => s.id === id);
+        const stationIndex = this.stations.findIndex((station) => station.id === id);
         if (stationIndex === -1) {
             throw new common_1.NotFoundException('Estação não encontrada');
         }
@@ -139,7 +139,8 @@ let StationService = class StationService {
             allocatedVehicles: updateStationDto.allocatedVehicles,
         }, station);
         if (validUpdates.name && validUpdates.name !== station.name) {
-            const nameExists = this.stations.find(s => s.name.toLowerCase() === validUpdates.name.toLowerCase() && s.id !== id);
+            const nameExists = this.stations.find((stationItem) => stationItem.name.toLowerCase() === validUpdates.name.toLowerCase() &&
+                stationItem.id !== id);
             if (nameExists) {
                 throw new common_1.ConflictException('Já existe uma estação com este nome.');
             }
@@ -161,8 +162,30 @@ let StationService = class StationService {
         this.logAudit('UPDATE', id, updatedBy || 'desconhecido', `Estacao atualizada: ${previousStation.name} -> ${updatedStation.name}; localizacao: ${previousStation.location} -> ${updatedStation.location}; capacidade: ${previousStation.capacity} -> ${updatedStation.capacity}; alocados: ${previousStation.allocatedVehicles} -> ${updatedStation.allocatedVehicles}`);
         return updatedStation;
     }
+    async adjustAllocatedVehicles(id, delta, actorLabel) {
+        const stationIndex = this.stations.findIndex((station) => station.id === id);
+        if (stationIndex === -1) {
+            throw new common_1.NotFoundException('Estação não encontrada');
+        }
+        const station = this.stations[stationIndex];
+        const nextAllocatedVehicles = station.allocatedVehicles + delta;
+        if (nextAllocatedVehicles < 0) {
+            throw new common_1.BadRequestException('Os veículos alocados não podem ser negativos.');
+        }
+        if (nextAllocatedVehicles > station.capacity) {
+            throw new common_1.BadRequestException('Os veículos alocados não podem exceder a capacidade da estação.');
+        }
+        const updatedStation = {
+            ...station,
+            allocatedVehicles: nextAllocatedVehicles,
+            updatedAt: new Date(),
+        };
+        this.stations[stationIndex] = updatedStation;
+        this.logAudit('UPDATE', id, actorLabel || 'desconhecido', `Estação ajustada: alocados ${station.allocatedVehicles} -> ${updatedStation.allocatedVehicles}`);
+        return updatedStation;
+    }
     async delete(id, deletedBy) {
-        const stationIndex = this.stations.findIndex(s => s.id === id);
+        const stationIndex = this.stations.findIndex((station) => station.id === id);
         if (stationIndex === -1) {
             throw new common_1.NotFoundException('Estação não encontrada');
         }

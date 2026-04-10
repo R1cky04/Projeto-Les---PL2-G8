@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   ConflictException,
   BadRequestException,
@@ -134,7 +134,9 @@ export class StationService {
 
     const normalizedName = validUpdates.name!;
 
-    const existingStation = this.stations.find(s => s.name.toLowerCase() === normalizedName.toLowerCase());
+    const existingStation = this.stations.find(
+      (station) => station.name.toLowerCase() === normalizedName.toLowerCase(),
+    );
     if (existingStation) {
       throw new ConflictException('Já existe uma estação com este nome.');
     }
@@ -161,23 +163,29 @@ export class StationService {
   }
 
   async findOne(id: number): Promise<Station> {
-    const station = this.stations.find(s => s.id === id);
+    const station = this.stations.find((stationItem) => stationItem.id === id);
     if (!station) {
       throw new NotFoundException('Estação não encontrada');
     }
+
     return station;
   }
 
   async search(searchTerm: string): Promise<Station[]> {
     const term = searchTerm.toLowerCase();
     return this.stations.filter(
-      s => s.name.toLowerCase().includes(term) ||
-           s.location.toLowerCase().includes(term)
+      (station) =>
+        station.name.toLowerCase().includes(term) ||
+        station.location.toLowerCase().includes(term),
     );
   }
 
-  async update(id: number, updateStationDto: UpdateStationDto, updatedBy?: string): Promise<Station> {
-    const stationIndex = this.stations.findIndex(s => s.id === id);
+  async update(
+    id: number,
+    updateStationDto: UpdateStationDto,
+    updatedBy?: string,
+  ): Promise<Station> {
+    const stationIndex = this.stations.findIndex((station) => station.id === id);
     if (stationIndex === -1) {
       throw new NotFoundException('Estação não encontrada');
     }
@@ -196,7 +204,9 @@ export class StationService {
 
     if (validUpdates.name && validUpdates.name !== station.name) {
       const nameExists = this.stations.find(
-        s => s.name.toLowerCase() === validUpdates.name!.toLowerCase() && s.id !== id,
+        (stationItem) =>
+          stationItem.name.toLowerCase() === validUpdates.name!.toLowerCase() &&
+          stationItem.id !== id,
       );
       if (nameExists) {
         throw new ConflictException('Já existe uma estação com este nome.');
@@ -212,7 +222,7 @@ export class StationService {
 
     const previousStation = { ...station };
 
-    const updatedStation = {
+    const updatedStation: Station = {
       ...station,
       ...validUpdates,
       updatedAt: new Date(),
@@ -230,8 +240,49 @@ export class StationService {
     return updatedStation;
   }
 
+  async adjustAllocatedVehicles(
+    id: number,
+    delta: number,
+    actorLabel?: string,
+  ): Promise<Station> {
+    const stationIndex = this.stations.findIndex((station) => station.id === id);
+
+    if (stationIndex === -1) {
+      throw new NotFoundException('Estação não encontrada');
+    }
+
+    const station = this.stations[stationIndex];
+    const nextAllocatedVehicles = station.allocatedVehicles + delta;
+
+    if (nextAllocatedVehicles < 0) {
+      throw new BadRequestException('Os veículos alocados não podem ser negativos.');
+    }
+
+    if (nextAllocatedVehicles > station.capacity) {
+      throw new BadRequestException(
+        'Os veículos alocados não podem exceder a capacidade da estação.',
+      );
+    }
+
+    const updatedStation: Station = {
+      ...station,
+      allocatedVehicles: nextAllocatedVehicles,
+      updatedAt: new Date(),
+    };
+
+    this.stations[stationIndex] = updatedStation;
+    this.logAudit(
+      'UPDATE',
+      id,
+      actorLabel || 'desconhecido',
+      `Estação ajustada: alocados ${station.allocatedVehicles} -> ${updatedStation.allocatedVehicles}`,
+    );
+
+    return updatedStation;
+  }
+
   async delete(id: number, deletedBy?: string): Promise<Station> {
-    const stationIndex = this.stations.findIndex(s => s.id === id);
+    const stationIndex = this.stations.findIndex((station) => station.id === id);
     if (stationIndex === -1) {
       throw new NotFoundException('Estação não encontrada');
     }

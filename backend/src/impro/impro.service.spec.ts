@@ -1,6 +1,7 @@
 import { InternalPermission, InternalUserRole, InternalUserStatus } from '../internal-users/internal-user.enums';
 import type { AuthenticatedUserDto } from '../auth/auth.types';
 import { StationService } from '../station/station.service';
+import { VehicleService } from '../vehicle/vehicle.service';
 import { ImproService } from './impro.service';
 
 function buildActor(): AuthenticatedUserDto {
@@ -21,14 +22,14 @@ describe('ImproService', () => {
   let actor: AuthenticatedUserDto;
 
   beforeEach(() => {
-    service = new ImproService(new StationService());
+    service = new ImproService(new StationService(), new VehicleService());
     actor = buildActor();
   });
 
   it('creates impro and marks vehicle as in transfer', async () => {
     const impro = await service.create(
       {
-        vehicleId: 101,
+        vehicleId: 1,
         originStationId: 1,
         destinationStationId: 2,
       },
@@ -38,7 +39,7 @@ describe('ImproService', () => {
     expect(impro.status).toBe('IN_TRANSFER');
 
     const vehicles = await service.listVehicles();
-    expect(vehicles.find((vehicle) => vehicle.id === 101)?.status).toBe('IN_TRANSFER');
+    expect(vehicles.find((vehicle) => vehicle.id === 1)?.status).toBe('IN_TRANSFER');
   });
 
   it('schedules impro for a future date', async () => {
@@ -46,7 +47,7 @@ describe('ImproService', () => {
 
     const impro = await service.create(
       {
-        vehicleId: 102,
+        vehicleId: 2,
         originStationId: 2,
         destinationStationId: 1,
         transferDate: future,
@@ -58,13 +59,13 @@ describe('ImproService', () => {
     expect(impro.warnings).toContain('Transferencia agendada para data futura.');
 
     const vehicles = await service.listVehicles();
-    expect(vehicles.find((vehicle) => vehicle.id === 102)?.status).toBe('AVAILABLE');
+    expect(vehicles.find((vehicle) => vehicle.id === 2)?.status).toBe('MAINTENANCE');
   });
 
   it('closes impro and returns vehicle to available status at destination', async () => {
     const impro = await service.create(
       {
-        vehicleId: 101,
+        vehicleId: 1,
         originStationId: 1,
         destinationStationId: 2,
       },
@@ -76,7 +77,7 @@ describe('ImproService', () => {
     expect(closedImpro.status).toBe('CLOSED');
 
     const vehicles = await service.listVehicles();
-    expect(vehicles.find((vehicle) => vehicle.id === 101)).toMatchObject({
+    expect(vehicles.find((vehicle) => vehicle.id === 1)).toMatchObject({
       currentStationId: 2,
       status: 'AVAILABLE',
     });
@@ -85,7 +86,7 @@ describe('ImproService', () => {
   it('marks vehicle as maintenance when closing damaged transfer', async () => {
     const impro = await service.create(
       {
-        vehicleId: 101,
+        vehicleId: 1,
         originStationId: 1,
         destinationStationId: 2,
       },
@@ -106,13 +107,13 @@ describe('ImproService', () => {
     );
 
     const vehicles = await service.listVehicles();
-    expect(vehicles.find((vehicle) => vehicle.id === 101)?.status).toBe('MAINTENANCE');
+    expect(vehicles.find((vehicle) => vehicle.id === 1)?.status).toBe('MAINTENANCE');
   });
 
   it('filters history by vehicle plate', async () => {
     await service.create(
       {
-        vehicleId: 101,
+        vehicleId: 1,
         originStationId: 1,
         destinationStationId: 2,
       },
@@ -121,7 +122,7 @@ describe('ImproService', () => {
 
     await service.create(
       {
-        vehicleId: 102,
+        vehicleId: 2,
         originStationId: 2,
         destinationStationId: 1,
         transferDate: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
