@@ -1,4 +1,19 @@
-import { getJson, postJson } from './apiClient'
+import { getJson, patchJson, postJson } from './apiClient'
+
+function buildRentalQuery(filters = {}) {
+  const searchParams = new URLSearchParams()
+
+  if (filters.status) {
+    searchParams.set('status', filters.status)
+  }
+
+  if (filters.search) {
+    searchParams.set('search', filters.search)
+  }
+
+  const query = searchParams.toString()
+  return query ? `?${query}` : ''
+}
 
 export function fetchRentalContext(sessionToken) {
   return getJson('/rentals/context', {
@@ -7,8 +22,8 @@ export function fetchRentalContext(sessionToken) {
   })
 }
 
-export function fetchRentalContracts(sessionToken) {
-  return getJson('/rentals', {
+export function fetchRentalContracts(sessionToken, filters = {}) {
+  return getJson(`/rentals${buildRentalQuery(filters)}`, {
     token: sessionToken,
     fallbackMessage: 'Nao foi possivel carregar os contratos.',
   })
@@ -19,5 +34,13 @@ export function createRentalContract(payload, sessionToken) {
     body: payload,
     token: sessionToken,
     fallbackMessage: 'Nao foi possivel criar o contrato.',
+  })
+}
+
+export function updateRentalContract(rentalId, payload, sessionToken) {
+  return patchJson(`/rentals/${rentalId}`, {
+    body: payload,
+    token: sessionToken,
+    fallbackMessage: 'Nao foi possivel atualizar o contrato.',
   })
 }
