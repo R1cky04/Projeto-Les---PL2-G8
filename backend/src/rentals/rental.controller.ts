@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { AuthSessionGuard } from '../auth/auth-session.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
+import { CloseRentalDto } from './dto/close-rental.dto';
 import { CreateRentalDto } from './dto/create-rental.dto';
 import { UpdateRentalDto } from './dto/update-rental.dto';
 import { RentalManagementGuard } from './rental-management.guard';
@@ -55,5 +56,14 @@ export class RentalController {
     @Req() request: AuthenticatedRequest,
   ): Promise<RentalRecord> {
     return this.rentalService.update(id, updateRentalDto, request.auth?.user);
+  }
+
+  @Patch(':id/close')
+  async close(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() closeRentalDto: CloseRentalDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<RentalRecord> {
+    return this.rentalService.close(id, closeRentalDto, request.auth?.user);
   }
 }

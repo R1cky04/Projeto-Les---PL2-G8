@@ -235,6 +235,59 @@
               </button>
             </div>
           </form>
+
+          <form class="rental-form" @submit.prevent="submitCloseRental">
+            <div class="rental-card-head">
+              <div>
+                <span class="rental-card-eyebrow">Encerramento</span>
+                <h3>Encerrar contrato</h3>
+              </div>
+            </div>
+
+            <div class="rental-field-grid rental-field-grid-3">
+              <label class="rental-field">
+                <span>Km devolucao</span>
+                <input
+                  v-model.number="closeForm.returnOdometerKm"
+                  type="number"
+                  min="0"
+                />
+              </label>
+
+              <label class="rental-field">
+                <span>Estacao real devolucao</span>
+                <select v-model.number="closeForm.actualReturnStationId">
+                  <option :value="0">Manter estacao prevista</option>
+                  <option
+                    v-for="station in stations"
+                    :key="`close-station-${station.id}`"
+                    :value="station.id"
+                  >
+                    {{ station.name }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="rental-field">
+                <span>Notas finais</span>
+                <input
+                  v-model.trim="closeForm.finalNotes"
+                  type="text"
+                  placeholder="Observacoes finais do encerramento"
+                />
+              </label>
+            </div>
+
+            <div class="rental-actions rental-form-actions">
+              <button
+                class="rental-submit-button"
+                type="submit"
+                :disabled="isClosing"
+              >
+                {{ isClosing ? 'A encerrar contrato...' : 'Encerrar contrato' }}
+              </button>
+            </div>
+          </form>
         </article>
 
         <div v-else class="rental-empty rental-management-empty">
@@ -248,6 +301,7 @@
 
 <script>
 import {
+  closeRentalContract,
   fetchRentalContracts,
   updateRentalContract,
 } from '../../services/rentalsApi'
@@ -267,6 +321,14 @@ function createEditForm() {
     customerEmail: '',
     customerPhone: '',
     customerDocumentNumber: '',
+  }
+}
+
+function createCloseForm() {
+  return {
+    returnOdometerKm: '',
+    actualReturnStationId: 0,
+    finalNotes: '',
   }
 }
 
@@ -292,12 +354,14 @@ export default {
       selectedRentalId: 0,
       searchTerm: '',
       editForm: createEditForm(),
+      closeForm: createCloseForm(),
       banner: {
         message: '',
         type: 'info',
       },
       isLoading: false,
       isSubmitting: false,
+      isClosing: false,
     }
   },
   computed: {
@@ -432,6 +496,11 @@ export default {
         customerEmail: rental.customerEmail || '',
         customerPhone: rental.customerPhone || '',
         customerDocumentNumber: rental.customerDocumentNumber || '',
+      }
+      this.closeForm = {
+        returnOdometerKm: rental.pickupOdometerKm,
+        actualReturnStationId: rental.returnStationId,
+        finalNotes: rental.finalNotes || '',
       }
     },
     extractCustomerNamePart(fullName, segment) {
@@ -618,6 +687,67 @@ export default {
         )
       } finally {
         this.isSubmitting = false
+      }
+    },
+    validateCloseForm() {
+      if (!this.selectedRental) {
+        return 'Selecione um contrato ativo.'
+      }
+
+      const returnOdometerKm = Number(this.closeForm.returnOdometerKm)
+
+      if (!Number.isInteger(returnOdometerKm) || returnOdometerKm < 0) {
+        return 'Indique uma quilometragem de devolucao valida.'
+      }
+
+      if (returnOdometerKm < Number(this.selectedRental.pickupOdometerKm)) {
+        return 'A quilometragem de devolucao nao pode ser inferior a inicial.'
+      }
+
+      return ''
+    },
+    async submitCloseRental() {
+      const validationError = this.validateCloseForm()
+
+      if (validationError) {
+        this.showBanner(validationError, 'error')
+        return
+      }
+
+      this.isClosing = true
+
+      try {
+        const payload = {
+          returnOdometerKm: Number(this.closeForm.returnOdometerKm),
+          ...(Number(this.closeForm.actualReturnStationId) > 0
+            ? { actualReturnStationId: Number(this.closeForm.actualReturnStationId) }
+            : {}),
+          finalNotes: this.normalizeText(this.closeForm.finalNotes),
+        }
+
+        const closedRental = await closeRentalContract(
+          this.selectedRental.id,
+          payload,
+          this.sessionToken,
+        )
+
+        this.showBanner(
+          `Contrato ${closedRental.contractNumber} encerrado com sucesso.`,
+          'success',
+        )
+
+        this.$emit('contracts-changed')
+        await this.loadActiveRentals()
+      } catch (error) {
+        this.showBanner(
+          this.extractApiError(
+            error,
+            'Nao foi possivel encerrar o contrato selecionado.',
+          ),
+          'error',
+        )
+      } finally {
+        this.isClosing = false
       }
     },
     showBanner(message, type) {

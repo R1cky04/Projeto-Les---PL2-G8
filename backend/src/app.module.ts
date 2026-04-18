@@ -6,6 +6,7 @@ import { InternalUsersModule } from './internal-users/internal-users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ImproModule } from './impro/impro.module';
 import { RentalModule } from './rentals/rental.module';
+import { ReservationModule } from './reservations/reservation.module';
 import { StationModule } from './station/station.module';
 import { VehicleModule } from './vehicle/vehicle.module';
 
@@ -19,6 +20,7 @@ import { VehicleModule } from './vehicle/vehicle.module';
     InternalUsersModule,
     ImproModule,
     RentalModule,
+    ReservationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

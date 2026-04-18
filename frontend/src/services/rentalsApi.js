@@ -44,3 +44,11 @@ export function updateRentalContract(rentalId, payload, sessionToken) {
     fallbackMessage: 'Nao foi possivel atualizar o contrato.',
   })
 }
+
+export function closeRentalContract(rentalId, payload, sessionToken) {
+  return patchJson(`/rentals/${rentalId}/close`, {
+    body: payload,
+    token: sessionToken,
+    fallbackMessage: 'Nao foi possivel encerrar o contrato.',
+  })
+}

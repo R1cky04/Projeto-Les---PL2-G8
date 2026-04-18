@@ -10,6 +10,7 @@ import { StationService } from '../station/station.service';
 import { VehicleService, type Vehicle } from '../vehicle/vehicle.service';
 import { CreateRentalDto } from './dto/create-rental.dto';
 import { UpdateRentalDto } from './dto/update-rental.dto';
+import { CloseRentalDto } from './dto/close-rental.dto';
 
 export interface RentalCustomer {
   id: number;
@@ -48,6 +49,10 @@ export interface RentalRecord {
   vehicleCondition: string;
   status: 'OPEN' | 'CLOSED' | 'CANCELLED';
   notes: string | null;
+  returnOdometerKm: number | null;
+  closedAt: Date | null;
+  finalAmount: number | null;
+  finalNotes: string | null;
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
@@ -258,6 +263,10 @@ export class RentalService {
       vehicleCondition: payload.vehicleCondition.trim(),
       status: 'OPEN',
       notes: this.normalizeNullableText(payload.notes),
+      returnOdometerKm: null,
+      closedAt: null,
+      finalAmount: null,
+      finalNotes: null,
       createdAt: now,
       updatedAt: now,
       createdBy,
@@ -394,6 +403,72 @@ export class RentalService {
     );
 
     return updatedRental;
+  }
+
+  async close(
+    id: number,
+    payload: CloseRentalDto,
+    actor?: AuthenticatedUserDto,
+  ): Promise<RentalRecord> {
+    const rentalIndex = this.rentals.findIndex((item) => item.id === id);
+
+    if (rentalIndex === -1) {
+      throw new NotFoundException('Contrato nao encontrado.');
+    }
+
+    const currentRental = this.rentals[rentalIndex];
+
+    if (currentRental.status !== 'OPEN') {
+      throw new BadRequestException({
+        message: 'Apenas contratos ativos podem ser encerrados.',
+        code: 'RENTAL_NOT_ACTIVE',
+      });
+    }
+
+    const now = new Date();
+    const actorLabel = this.resolveActorLabel(actor);
+    const returnStation = payload.actualReturnStationId
+      ? await this.stationService.findOne(payload.actualReturnStationId)
+      : null;
+
+    const actualDays = this.calculateRentalDays(currentRental.pickupAt, now);
+    const finalAmount = Number((actualDays * currentRental.dailyRate).toFixed(2));
+
+    const closedRental: RentalRecord = {
+      ...currentRental,
+      status: 'CLOSED',
+      returnOdometerKm: payload.returnOdometerKm,
+      closedAt: now,
+      finalAmount,
+      finalNotes: this.normalizeNullableText(payload.finalNotes),
+      ...(returnStation
+        ? { returnStationId: returnStation.id, returnStationName: returnStation.name }
+        : {}),
+      updatedAt: now,
+    };
+
+    this.rentals[rentalIndex] = closedRental;
+
+    await this.vehicleService.update(currentRental.vehicleId, { status: 'AVAILABLE' }, actorLabel);
+
+    try {
+      await this.stationService.adjustAllocatedVehicles(
+        closedRental.returnStationId,
+        1,
+        actorLabel,
+      );
+    } catch {
+      // Best-effort station adjustment; do not roll back the close itself.
+    }
+
+    this.logAudit(
+      'CLOSE',
+      closedRental.id,
+      actorLabel,
+      `Contrato ${closedRental.contractNumber} encerrado. Km devolucao: ${payload.returnOdometerKm}. Valor final: ${finalAmount}.`,
+    );
+
+    return closedRental;
   }
 
   private resolveCustomer(
