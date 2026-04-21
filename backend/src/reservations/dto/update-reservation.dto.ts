@@ -16,9 +16,21 @@ export class UpdateReservationDto {
 
   @IsOptional()
   @IsString()
-  customerName?: string;
+  customerFirstName?: string;
+
+  @IsOptional()
+  @IsString()
+  customerLastName?: string;
 
   @IsOptional()
   @IsString()
   customerEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  customerPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  customerDocumentNumber?: string;
 }

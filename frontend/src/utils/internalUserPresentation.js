@@ -37,9 +37,15 @@ export function getInternalUserActivityLabel(isActive) {
 }
 
 export function getInternalUserStatusLabel(status) {
-  return status === 'PENDING_IT_VALIDATION'
-    ? 'Pendente de validacao IT'
-    : 'Ativa'
+  if (status === 'PENDING_IT_VALIDATION') {
+    return 'Pendente de validacao IT'
+  }
+
+  if (status === 'BLOCKED') {
+    return 'Bloqueada'
+  }
+
+  return 'Ativa'
 }
 
 export function shouldShowPermissionCompatibilityGuide(warnings) {

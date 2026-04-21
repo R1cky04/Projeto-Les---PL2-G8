@@ -222,7 +222,7 @@
           <div class="station-module-toolbar-copy">
             <h2>Reservas</h2>
             <p>
-              Crie, atualize e cancele reservas com validacao de datas e estacao de devolucao.
+              Crie reservas com pesquisa de cliente, validacao de disponibilidade e sugestoes de alternativa por estacao.
             </p>
           </div>
         </div>

@@ -65,7 +65,16 @@ export interface RentalContextResponse {
   recentRentals: RentalRecord[];
 }
 
-interface CustomerSelectionResult {
+export interface CustomerSelectionPayload {
+  customerId?: number;
+  customerFirstName?: string;
+  customerLastName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  customerDocumentNumber?: string;
+}
+
+export interface CustomerSelectionResult {
   customer: RentalCustomer;
   created: boolean;
 }
@@ -134,6 +143,24 @@ export class RentalService {
       })),
       recentRentals: recentRentals.slice(0, 6),
     };
+  }
+
+  async listCustomers(search?: string): Promise<RentalCustomer[]> {
+    const normalizedSearch = search?.trim().toLowerCase() || '';
+
+    return [...this.customers]
+      .filter((customer) => {
+        if (!normalizedSearch) {
+          return true;
+        }
+
+        return this.buildSearchableCustomerText(customer).includes(
+          normalizedSearch,
+        );
+      })
+      .sort((left, right) =>
+        this.buildCustomerName(left).localeCompare(this.buildCustomerName(right)),
+      );
   }
 
   async findAll(options: RentalListOptions = {}): Promise<RentalRecord[]> {
@@ -207,7 +234,7 @@ export class RentalService {
 
     const station = await this.stationService.findOne(payload.stationId);
     const vehicle = await this.vehicleService.findOne(payload.vehicleId);
-    const customerSelection = this.resolveCustomer(payload, actor);
+    const customerSelection = this.resolveCustomerSelection(payload, actor);
 
     if (vehicle.stationId !== station.id) {
       throw new BadRequestException({
@@ -471,8 +498,8 @@ export class RentalService {
     return closedRental;
   }
 
-  private resolveCustomer(
-    payload: CreateRentalDto,
+  resolveCustomerSelection(
+    payload: CustomerSelectionPayload,
     actor?: AuthenticatedUserDto,
   ): CustomerSelectionResult {
     if (payload.customerId !== undefined) {
@@ -656,6 +683,18 @@ export class RentalService {
 
   private buildCustomerName(customer: RentalCustomer): string {
     return `${customer.firstName} ${customer.lastName}`.trim();
+  }
+
+  private buildSearchableCustomerText(customer: RentalCustomer): string {
+    return [
+      this.buildCustomerName(customer),
+      customer.email,
+      customer.phone,
+      customer.documentNumber,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
   }
 
   private buildSearchableRentalText(rental: RentalRecord): string {

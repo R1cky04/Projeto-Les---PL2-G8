@@ -8,4 +8,8 @@ export const INTERNAL_USER_STATUS_OPTIONS = [
     value: 'PENDING_IT_VALIDATION',
     label: 'Pendente de validacao IT',
   },
+  {
+    value: 'BLOCKED',
+    label: 'Bloqueada',
+  },
 ]

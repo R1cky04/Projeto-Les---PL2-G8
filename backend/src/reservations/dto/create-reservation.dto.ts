@@ -3,7 +3,11 @@ import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 export class CreateReservationDto {
   @IsInt()
   @Min(1)
-  stationId: number;
+  pickupStationId: number;
+
+  @IsInt()
+  @Min(1)
+  returnStationId: number;
 
   @IsInt()
   @Min(1)
@@ -16,12 +20,29 @@ export class CreateReservationDto {
   expectedReturnAt: string;
 
   @IsOptional()
+  @IsInt()
+  @Min(1)
+  customerId?: number;
+
+  @IsOptional()
   @IsString()
-  customerName?: string;
+  customerFirstName?: string;
+
+  @IsOptional()
+  @IsString()
+  customerLastName?: string;
 
   @IsOptional()
   @IsString()
   customerEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  customerPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  customerDocumentNumber?: string;
 
   @IsOptional()
   @IsString()

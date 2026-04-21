@@ -75,7 +75,14 @@ function buildApiError(response, responseBody, fallbackMessage) {
 
   error.status = response.status
   error.code = responseBody?.code
-  error.errors = Array.isArray(responseBody?.errors) ? responseBody.errors : []
+  error.errors = Array.isArray(responseBody?.errors)
+    ? responseBody.errors
+    : Array.isArray(responseBody?.details)
+      ? responseBody.details
+      : []
+  error.alternatives = Array.isArray(responseBody?.alternatives)
+    ? responseBody.alternatives
+    : []
 
   return error
 }

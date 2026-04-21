@@ -113,6 +113,8 @@ function parseStatus(status: unknown): InternalUserStatus | null {
       return InternalUserStatus.ACTIVE;
     case InternalUserStatus.PENDING_IT_VALIDATION:
       return InternalUserStatus.PENDING_IT_VALIDATION;
+    case InternalUserStatus.BLOCKED:
+      return InternalUserStatus.BLOCKED;
     default:
       return null;
   }

@@ -23,6 +23,7 @@ enum InternalUserRole {
 enum InternalUserStatus {
   ACTIVE
   PENDING_IT_VALIDATION
+  BLOCKED
 }
 
 // Explicit permission surface inherited from each internal role.
@@ -177,6 +178,7 @@ model User {
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   sessions             InternalSession[]
+  legacySessions       LegacyInternalUserSession[] @relation("LegacyInternalUserSessions")
   memberships          TenantUser[]
   customerProfiles     CustomerProfile[]
   createdReservations  Reservation[]        @relation("ReservationCreatedBy")
@@ -202,6 +204,25 @@ model InternalSession {
 
   @@index([userId])
   @@index([expiresAt, revokedAt])
+}
+
+// Legacy authentication table kept in the Docker database. It remains mapped so
+// Prisma does not try to drop it during db push.
+model LegacyInternalUserSession {
+  id               String    @id(map: "InternalUserSession_pkey")
+  ownerId          String    @map("ownerId")
+  sessionTokenHash String    @unique(map: "InternalUserSession_sessionTokenHash_key") @map("sessionTokenHash")
+  deviceLabel      String?   @map("deviceLabel")
+  isActive         Boolean   @map("isActive")
+  createdAt        DateTime  @map("createdAt")
+  lastSeenAt       DateTime  @map("lastSeenAt")
+  expiresAt        DateTime  @map("expiresAt")
+  endedAt          DateTime? @map("endedAt")
+  owner            User      @relation("LegacyInternalUserSessions", fields: [ownerId], references: [id], onDelete: Cascade, map: "InternalUserSession_ownerId_fkey")
+
+  @@index([ownerId, isActive], map: "InternalUserSession_ownerId_isActive_idx")
+  @@index([expiresAt], map: "InternalUserSession_expiresAt_idx")
+  @@map("InternalUserSession")
 }
 
 model InternalUserDeletionAuditLog {
