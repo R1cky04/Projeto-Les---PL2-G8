@@ -2,44 +2,59 @@
   <section class="auth-workspace">
     <header class="workspace-header">
       <div>
-        <p class="auth-eyebrow">Sessao interna</p>
+        <p class="auth-eyebrow">{{ $t('workspace.sessionInternal') }}</p>
         <h1>{{ authState.user.fullName || authState.user.userId }}</h1>
         <p class="workspace-subtitle">
           {{ roleLabel(authState.user.role) }} | {{ accessLevelLabel(authState.user.accessLevel) }}
         </p>
       </div>
 
-      <button class="auth-secondary-button" type="button" @click="$emit('logout')">
-        Terminar sessao
-      </button>
+      <div class="workspace-header-actions">
+        <label class="workspace-language-picker" for="workspace-language-select">
+          <span>{{ $t('language.label') }}</span>
+          <select
+            id="workspace-language-select"
+            :value="$localeState.locale"
+            @change="handleLocaleChange"
+          >
+            <option v-for="locale in $supportedLocales" :key="locale" :value="locale">
+              {{ languageLabel(locale) }}
+            </option>
+          </select>
+        </label>
+
+        <button class="auth-secondary-button" type="button" @click="$emit('logout')">
+          {{ $t('portal.logout') }}
+        </button>
+      </div>
     </header>
 
     <section class="workspace-summary-grid">
       <article class="auth-card summary-card">
-        <p class="summary-label">User ID</p>
+        <p class="summary-label">{{ $t('workspace.userId') }}</p>
         <strong>{{ authState.user.userId }}</strong>
       </article>
 
       <article class="auth-card summary-card">
-        <p class="summary-label">Estado</p>
+        <p class="summary-label">{{ $t('workspace.status') }}</p>
         <strong>{{ authState.user.status }}</strong>
       </article>
 
       <article class="auth-card summary-card">
-        <p class="summary-label">Expira em</p>
+        <p class="summary-label">{{ $t('workspace.expiresAt') }}</p>
         <strong>{{ formatExpiry(authState.session.expiresAt) }}</strong>
       </article>
 
       <article class="auth-card summary-card">
-        <p class="summary-label">Sessoes paralelas</p>
+        <p class="summary-label">{{ $t('workspace.parallelSessions') }}</p>
         <strong>{{ authState.session.concurrentSessionCount }}</strong>
       </article>
     </section>
 
     <article v-if="authState.session.warnings.length > 0" class="auth-card workspace-alerts">
-      <p class="summary-label">Avisos da sessao</p>
+      <p class="summary-label">{{ $t('workspace.sessionWarnings') }}</p>
       <ul class="alert-list">
-        <li v-for="warning in authState.session.warnings" :key="warning">
+        <li v-for="warning in translatedSessionWarnings()" :key="warning">
           {{ warning }}
         </li>
       </ul>
@@ -54,8 +69,8 @@
       >
         <div class="feature-head">
           <div>
-            <h2>{{ feature.label }}</h2>
-            <p>{{ feature.description }}</p>
+            <h2>{{ featureTitle(feature) }}</h2>
+            <p>{{ featureDescription(feature) }}</p>
           </div>
           <span class="feature-status">
             {{ featureStatusLabel(feature.status) }}
@@ -63,7 +78,7 @@
         </div>
 
         <p v-if="feature.reason" class="feature-reason">
-          {{ feature.reason }}
+          {{ featureReason(feature) }}
         </p>
 
         <button
@@ -72,23 +87,23 @@
           :disabled="feature.status !== 'AVAILABLE'"
           @click="$emit('open-feature', feature.key)"
         >
-          {{ feature.status === 'AVAILABLE' ? 'Abrir modulo' : 'Nao disponivel' }}
+          {{ feature.status === 'AVAILABLE' ? $t('workspace.openModule') : $t('workspace.unavailable') }}
         </button>
       </article>
 
       <article class="auth-card feature-card feature-card-available">
         <div class="feature-head">
           <div>
-            <h2>Gerir Estacoes</h2>
-            <p>Aceda a um unico modulo para consultar, editar e, se necessario, criar novas estacoes.</p>
+            <h2>{{ $t('workspace.manageStations') }}</h2>
+            <p>{{ $t('workspace.manageStationsDesc') }}</p>
           </div>
           <span class="feature-status">
-            {{ canManageStations() ? 'Disponivel' : 'Acesso IT' }}
+            {{ canManageStations() ? featureStatusLabel('AVAILABLE') : $t('workspace.accessIt') }}
           </span>
         </div>
 
         <p v-if="!canManageStations()" class="feature-reason">
-          Apenas o perfil IT autenticado com permissao de gestao de estacoes pode aceder a este modulo.
+          {{ $t('workspace.manageStationsReason') }}
         </p>
 
         <button
@@ -97,23 +112,23 @@
           :disabled="!canManageStations()"
           @click="$emit('open-feature', 'STATION_MANAGEMENT')"
         >
-          {{ canManageStations() ? 'Abrir modulo' : 'Nao autorizado' }}
+          {{ canManageStations() ? $t('workspace.openModule') : $t('workspace.notAuthorized') }}
         </button>
       </article>
 
       <article class="auth-card feature-card feature-card-available">
         <div class="feature-head">
           <div>
-            <h2>Gerir Impros</h2>
-            <p>Crie e acompanhe transferencias de veiculos entre estacoes com historico.</p>
+            <h2>{{ $t('workspace.manageImpros') }}</h2>
+            <p>{{ $t('workspace.manageImprosDesc') }}</p>
           </div>
           <span class="feature-status">
-            {{ canManageImpros() ? 'Disponivel' : 'Acesso Frota/Admin' }}
+            {{ canManageImpros() ? featureStatusLabel('AVAILABLE') : $t('workspace.accessFleetAdmin') }}
           </span>
         </div>
 
         <p v-if="!canManageImpros()" class="feature-reason">
-          Apenas os perfis Frota, Admin ou IT com permissao de transferencia podem aceder ao modulo de impros.
+          {{ $t('workspace.manageImprosReason') }}
         </p>
 
         <button
@@ -122,23 +137,23 @@
           :disabled="!canManageImpros()"
           @click="$emit('open-feature', 'IMPRO_MANAGEMENT')"
         >
-          {{ canManageImpros() ? 'Abrir modulo' : 'Nao autorizado' }}
+          {{ canManageImpros() ? $t('workspace.openModule') : $t('workspace.notAuthorized') }}
         </button>
       </article>
 
       <article class="auth-card feature-card feature-card-available">
         <div class="feature-head">
           <div>
-            <h2>Gerir Veiculos</h2>
-            <p>Gestao da frota com edicao para IT, ADMIN, STAFF e FLEET; criacao e eliminacao apenas para IT.</p>
+            <h2>{{ $t('workspace.manageVehicles') }}</h2>
+            <p>{{ $t('workspace.manageVehiclesDesc') }}</p>
           </div>
           <span class="feature-status">
-            {{ canManageVehicles() ? 'Disponivel' : 'Sem perfil' }}
+            {{ canManageVehicles() ? featureStatusLabel('AVAILABLE') : $t('workspace.noProfile') }}
           </span>
         </div>
 
         <p v-if="!canManageVehicles()" class="feature-reason">
-          O modulo de veiculos esta disponivel para IT, ADMIN, STAFF e FLEET.
+          {{ $t('workspace.manageVehiclesReason') }}
         </p>
 
         <button
@@ -147,7 +162,7 @@
           :disabled="!canManageVehicles()"
           @click="$emit('open-feature', 'VEHICLE_MANAGEMENT')"
         >
-          {{ canManageVehicles() ? 'Abrir modulo' : 'Nao autorizado' }}
+          {{ canManageVehicles() ? $t('workspace.openModule') : $t('workspace.notAuthorized') }}
         </button>
       </article>
     </section>
@@ -155,12 +170,31 @@
 </template>
 
 <script>
+import { getLocaleState } from '../../services/i18n'
 import {
   formatSessionExpiry,
   getAccessLevelLabel,
   getFeatureStatusLabel,
   getRoleLabel,
 } from '../../utils/authPresentation'
+
+const SESSION_WARNING_TRANSLATIONS = {
+  pt: {
+    'Conta autenticada com acesso limitado enquanto aguarda validacao final do IT ou administrador.': 'Conta autenticada com acesso limitado enquanto aguarda validacao final do IT ou administrador.',
+    'Ja existe pelo menos uma sessao ativa com o mesmo User ID noutro dispositivo.': 'Ja existe pelo menos uma sessao ativa com o mesmo User ID noutro dispositivo.',
+    'Algumas funcionalidades estao temporariamente indisponiveis.': 'Algumas funcionalidades estao temporariamente indisponiveis.',
+  },
+  en: {
+    'Conta autenticada com acesso limitado enquanto aguarda validacao final do IT ou administrador.': 'Authenticated account with limited access while awaiting final validation by IT or an administrator.',
+    'Ja existe pelo menos uma sessao ativa com o mesmo User ID noutro dispositivo.': 'There is already at least one active session with the same User ID on another device.',
+    'Algumas funcionalidades estao temporariamente indisponiveis.': 'Some features are temporarily unavailable.',
+  },
+  es: {
+    'Conta autenticada com acesso limitado enquanto aguarda validacao final do IT ou administrador.': 'Cuenta autenticada con acceso limitado mientras espera la validacion final de IT o de un administrador.',
+    'Ja existe pelo menos uma sessao ativa com o mesmo User ID noutro dispositivo.': 'Ya existe al menos una sesion activa con el mismo User ID en otro dispositivo.',
+    'Algumas funcionalidades estao temporariamente indisponiveis.': 'Algunas funcionalidades estan temporalmente no disponibles.',
+  },
+}
 
 // Workspace home focuses on authenticated session presentation and feature
 // discovery; navigation remains in the parent container.
@@ -174,6 +208,18 @@ export default {
   },
   emits: ['logout', 'open-feature'],
   methods: {
+    handleLocaleChange(event) {
+      this.$setLocale(event.target.value)
+    },
+    languageLabel(locale) {
+      if (locale === 'en') {
+        return this.$t('language.english')
+      }
+      if (locale === 'es') {
+        return this.$t('language.spanish')
+      }
+      return this.$t('language.portuguese')
+    },
     roleLabel(role) {
       return getRoleLabel(role)
     },
@@ -185,6 +231,26 @@ export default {
     },
     formatExpiry(value) {
       return formatSessionExpiry(value)
+    },
+    translatedSessionWarnings() {
+      const locale = getLocaleState().locale
+      const translations = SESSION_WARNING_TRANSLATIONS[locale] || SESSION_WARNING_TRANSLATIONS.pt
+
+      return (this.authState?.session?.warnings || []).map(
+        (warning) => translations[warning] || warning,
+      )
+    },
+    featureTitle(feature) {
+      const mapped = this.$t(`workspace.feature.${feature.key}.title`)
+      return mapped.startsWith('workspace.feature.') ? feature.label : mapped
+    },
+    featureDescription(feature) {
+      const mapped = this.$t(`workspace.feature.${feature.key}.description`)
+      return mapped.startsWith('workspace.feature.') ? feature.description : mapped
+    },
+    featureReason(feature) {
+      const mapped = this.$t(`workspace.feature.${feature.key}.reason`)
+      return mapped.startsWith('workspace.feature.') ? feature.reason : mapped
     },
     canManageStations() {
       return this.authState?.user?.role === 'IT'

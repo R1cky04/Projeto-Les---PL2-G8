@@ -3,47 +3,47 @@
     <div class="panel-head">
       <div>
         <div class="management-icon">IT</div>
-        <h2>Gerir Utilizador</h2>
+        <h2>{{ $t('internalUsers.manageUser') }}</h2>
         <p class="management-intro">
-          Visualize os dados atuais e ajuste o acesso do utilizador selecionado.
+          {{ $t('internalUsers.manageIntro') }}
         </p>
       </div>
 
       <button class="ghost-button" type="button" @click="$emit('clear-selection')">
-        Novo Utilizador
+        {{ $t('internalUsers.newUser') }}
       </button>
     </div>
 
     <div v-if="!selectedUser" class="management-empty">
-      Selecione um utilizador da lista para editar o User ID, a password, o tipo e o estado da conta.
+      {{ $t('internalUsers.selectUserToEdit') }}
     </div>
 
     <template v-else>
       <div class="management-overview">
         <div class="overview-card">
-          <span>Conta selecionada</span>
+          <span>{{ $t('internalUsers.selectedAccount') }}</span>
           <strong>{{ selectedUser.userId }}</strong>
         </div>
 
         <div class="overview-card">
-          <span>Perfil atual</span>
+          <span>{{ $t('internalUsers.currentProfile') }}</span>
           <strong>{{ roleLabel(selectedUser.internalRole) }}</strong>
         </div>
 
         <div class="overview-card">
-          <span>Estado atual</span>
+          <span>{{ $t('internalUsers.currentStatus') }}</span>
           <strong>{{ statusLabel(selectedUser.internalStatus) }}</strong>
         </div>
 
         <div class="overview-card">
-          <span>Criado em</span>
+          <span>{{ $t('internalUsers.createdAt') }}</span>
           <strong>{{ formatDate(selectedUser.createdAt) }}</strong>
         </div>
       </div>
 
       <form class="form-grid" novalidate @submit.prevent="$emit('submit')">
         <label class="field">
-          <span>User ID</span>
+          <span>{{ $t('internalUsers.userIdLabel') }}</span>
           <input
             :value="userId"
             autocomplete="username"
@@ -56,7 +56,7 @@
         </label>
 
         <label class="field">
-          <span>Nova password</span>
+          <span>{{ $t('internalUsers.newPassword') }}</span>
           <input
             :value="password"
             autocomplete="new-password"
@@ -64,7 +64,7 @@
             @input="$emit('update:password', $event.target.value)"
           >
           <small class="field-hint">
-            Deixe em branco para manter a password atual.
+            {{ $t('internalUsers.keepPasswordHint') }}
           </small>
           <small v-if="fieldErrors.password" class="field-error">
             {{ fieldErrors.password }}
@@ -72,7 +72,7 @@
         </label>
 
         <label class="field">
-          <span>Tipo de utilizador</span>
+          <span>{{ $t('internalUsers.userType') }}</span>
           <select
             :value="role"
             :disabled="isProtectedItAccount"
@@ -92,7 +92,7 @@
         </label>
 
         <label class="field">
-          <span>Estado da conta</span>
+          <span>{{ $t('internalUsers.accountStatus') }}</span>
           <select
             :value="status"
             :disabled="isProtectedItAccount"
@@ -112,7 +112,7 @@
         </label>
 
         <div class="field field-boolean">
-          <span>Disponibilidade da conta</span>
+          <span>{{ $t('internalUsers.accountAvailability') }}</span>
           <label class="toggle-field">
             <input
               :checked="isActive"
@@ -120,7 +120,7 @@
               type="checkbox"
               @change="emitIsActiveUpdate($event.target.checked)"
             >
-            <span>{{ isActive ? 'Conta ativa' : 'Conta desativada' }}</span>
+            <span>{{ isActive ? $t('internalUsers.accountActive') : $t('internalUsers.accountDeactivated') }}</span>
           </label>
           <small v-if="fieldErrors.isActive" class="field-error">
             {{ fieldErrors.isActive }}
@@ -128,7 +128,7 @@
         </div>
 
         <div class="field field-full">
-          <span>Permissoes atuais</span>
+          <span>{{ $t('internalUsers.currentPermissions') }}</span>
           <div class="current-permissions">
             <span
               v-for="permission in selectedUser.permissions"
@@ -141,9 +141,9 @@
         </div>
 
         <div class="field field-full">
-          <span>Permissoes herdadas pelo tipo selecionado</span>
+          <span>{{ $t('internalUsers.inheritedPermissionsForRole') }}</span>
           <p class="field-hint">
-            Estas permissoes sao aplicadas automaticamente com base no tipo escolhido.
+            {{ $t('internalUsers.inheritedPermissionsHint') }}
           </p>
           <div class="current-permissions">
             <span
@@ -163,11 +163,11 @@
         </ul>
 
         <p v-if="isProtectedItAccount" class="banner banner-info">
-          A conta selecionada pertence ao perfil IT reservado. O User ID e a password podem ser atualizados, mas o tipo, o estado e a ativacao ficam protegidos, e as permissoes continuam herdadas automaticamente do perfil IT.
+          {{ $t('internalUsers.protectedItInfo') }}
         </p>
 
         <details class="permission-guide">
-          <summary>Ver permissoes disponiveis por perfil</summary>
+          <summary>{{ $t('internalUsers.viewPermissionsByRole') }}</summary>
 
           <div class="permission-guide-grid">
             <article
@@ -200,11 +200,11 @@
 
         <div class="form-actions form-actions-inline">
           <button class="ghost-button" type="button" :disabled="isSubmitting" @click="$emit('reset')">
-            Repor dados
+            {{ $t('internalUsers.resetData') }}
           </button>
 
           <button class="primary-button" type="submit" :disabled="isSubmitting">
-            {{ isSubmitting ? 'A guardar...' : 'Guardar alteracoes' }}
+            {{ isSubmitting ? $t('internalUsers.saving') : $t('internalUsers.saveChanges') }}
           </button>
         </div>
       </form>
@@ -222,6 +222,7 @@ import {
   getRolePermissionValues,
   INTERNAL_USER_ROLE_PERMISSION_GUIDE,
 } from '../../constants/internalUserRolePermissionGuide'
+import { getDateLocale } from '../../services/i18n'
 
 // Stateless editor for the IT management sprint. The parent owns all state and
 // decides when the selected account changes.
@@ -308,7 +309,7 @@ export default {
       return [
         {
           value: 'IT',
-          label: 'IT (reservado)',
+          label: this.$t('internalUsers.itReservedRole'),
         },
         ...this.roleOptions,
       ]
@@ -337,14 +338,14 @@ export default {
     },
     formatDate(dateValue) {
       if (!dateValue) {
-        return 'N/A'
+        return this.$t('internalUsers.notAvailable')
       }
 
       const parsedDate = new Date(dateValue)
 
       return Number.isNaN(parsedDate.getTime())
-        ? 'N/A'
-        : parsedDate.toLocaleDateString('pt-PT', {
+        ? this.$t('internalUsers.notAvailable')
+        : parsedDate.toLocaleDateString(getDateLocale(), {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',

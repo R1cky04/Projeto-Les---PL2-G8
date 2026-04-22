@@ -5,8 +5,8 @@
         <div class="icon-wrap">
           <span class="icon">🚗</span>
         </div>
-        <h2>Novo Veiculo</h2>
-        <p>Registe novas viaturas no parque interno.</p>
+        <h2>{{ tr('title') }}</h2>
+        <p>{{ tr('subtitle') }}</p>
       </header>
 
       <form @submit.prevent="submitForm" class="modern-form">
@@ -18,7 +18,7 @@
             required
             placeholder=" "
           />
-          <label for="plateNumber">Matricula</label>
+          <label for="plateNumber">{{ tr('plateLabel') }}</label>
           <span class="highlight"></span>
         </div>
 
@@ -30,7 +30,7 @@
             required
             placeholder=" "
           />
-          <label for="brand">Marca</label>
+          <label for="brand">{{ tr('brandLabel') }}</label>
           <span class="highlight"></span>
         </div>
 
@@ -42,7 +42,7 @@
             required
             placeholder=" "
           />
-          <label for="model">Modelo</label>
+          <label for="model">{{ tr('modelLabel') }}</label>
           <span class="highlight"></span>
         </div>
 
@@ -56,12 +56,12 @@
             required
             placeholder=" "
           />
-          <label for="dailyRate">Preco Diario (EUR)</label>
+          <label for="dailyRate">{{ tr('dailyRateLabel') }}</label>
           <span class="highlight"></span>
         </div>
 
         <button type="submit" class="btn-gradient" :disabled="loading">
-          <span v-if="!loading">Registar Veiculo</span>
+          <span v-if="!loading">{{ tr('submit') }}</span>
           <div v-else class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
         </button>
       </form>
@@ -78,8 +78,51 @@
 
 <script>
 import axios from 'axios'
+import { getLocaleState } from '../services/i18n'
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:3000'
+
+const TRANSLATIONS = {
+  pt: {
+    title: 'Novo Veiculo',
+    subtitle: 'Registe novas viaturas no parque interno.',
+    plateLabel: 'Matricula',
+    brandLabel: 'Marca',
+    modelLabel: 'Modelo',
+    dailyRateLabel: 'Preco Diario (EUR)',
+    submit: 'Registar Veiculo',
+    dailyRatePositive: 'O preco diario deve ser superior a zero.',
+    createdSuccess: 'Veiculo criado com sucesso!',
+    serverErrorPrefix: 'Erro: {message}',
+    serverCommunicationError: 'Erro ao comunicar com o servidor.',
+  },
+  en: {
+    title: 'New Vehicle',
+    subtitle: 'Register new vehicles in the internal fleet.',
+    plateLabel: 'Plate Number',
+    brandLabel: 'Brand',
+    modelLabel: 'Model',
+    dailyRateLabel: 'Daily Rate (EUR)',
+    submit: 'Register Vehicle',
+    dailyRatePositive: 'Daily rate must be greater than zero.',
+    createdSuccess: 'Vehicle created successfully!',
+    serverErrorPrefix: 'Error: {message}',
+    serverCommunicationError: 'Unable to communicate with the server.',
+  },
+  es: {
+    title: 'Nuevo Vehiculo',
+    subtitle: 'Registre nuevos vehiculos en la flota interna.',
+    plateLabel: 'Matricula',
+    brandLabel: 'Marca',
+    modelLabel: 'Modelo',
+    dailyRateLabel: 'Precio Diario (EUR)',
+    submit: 'Registrar Vehiculo',
+    dailyRatePositive: 'El precio diario debe ser mayor que cero.',
+    createdSuccess: 'Vehiculo creado con exito.',
+    serverErrorPrefix: 'Error: {message}',
+    serverCommunicationError: 'No se pudo comunicar con el servidor.',
+  },
+}
 
 export default {
   name: 'CreateVehicle',
@@ -100,9 +143,23 @@ export default {
       loading: false,
       message: '',
       messageType: '',
+      localeState: getLocaleState(),
     }
   },
   methods: {
+    tr(key, params = {}) {
+      const locale = this.localeState.locale
+      const template =
+        (TRANSLATIONS[locale] && TRANSLATIONS[locale][key]) ||
+        TRANSLATIONS.pt[key] ||
+        key
+
+      return Object.entries(params).reduce(
+        (result, [paramKey, value]) =>
+          result.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(value)),
+        template,
+      )
+    },
     buildAuthConfig() {
       if (!this.sessionToken) {
         return {}
@@ -116,7 +173,7 @@ export default {
     },
     async submitForm() {
       if (!this.form.dailyRate || this.form.dailyRate <= 0) {
-        this.showFeedback('O preco diario deve ser superior a zero.', 'error')
+        this.showFeedback(this.tr('dailyRatePositive'), 'error')
         return
       }
 
@@ -132,7 +189,7 @@ export default {
           },
           this.buildAuthConfig(),
         )
-        this.showFeedback('Veiculo criado com sucesso!', 'success')
+        this.showFeedback(this.tr('createdSuccess'), 'success')
         this.resetForm()
       } catch (err) {
         const details = err?.response?.data?.details
@@ -143,7 +200,9 @@ export default {
           err?.message
 
         this.showFeedback(
-          backendMessage ? `Erro: ${backendMessage}` : 'Erro ao comunicar com o servidor.',
+          backendMessage
+            ? this.tr('serverErrorPrefix', { message: backendMessage })
+            : this.tr('serverCommunicationError'),
           'error',
         )
       } finally {

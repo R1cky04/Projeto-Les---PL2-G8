@@ -5,8 +5,8 @@
         <div class="icon-wrap">
           <span class="icon">🏢</span>
         </div>
-        <h2>Nova Estação</h2>
-        <p>Expanda a rede de mobilidade Rent-a-Car.</p>
+        <h2>{{ tr('title') }}</h2>
+        <p>{{ tr('subtitle') }}</p>
       </header>
 
       <form @submit.prevent="submitForm" class="modern-form">
@@ -18,7 +18,7 @@
             required 
             placeholder=" "
           />
-          <label for="name">Nome da Estação</label>
+          <label for="name">{{ tr('nameLabel') }}</label>
           <span class="highlight"></span>
         </div>
 
@@ -30,7 +30,7 @@
             required 
             placeholder=" "
           />
-          <label for="location">Localização / Morada</label>
+          <label for="location">{{ tr('locationLabel') }}</label>
           <span class="highlight"></span>
         </div>
 
@@ -43,7 +43,7 @@
             required 
             placeholder=" "
           />
-          <label for="capacity">Capacidade Máxima</label>
+          <label for="capacity">{{ tr('capacityLabel') }}</label>
           <span class="highlight"></span>
           <div class="cap-visual" v-if="form.capacity > 0">
             <span>🚘</span>
@@ -52,7 +52,7 @@
         </div>
 
         <button type="submit" class="btn-gradient" :disabled="loading">
-          <span v-if="!loading">Registar Estação</span>
+          <span v-if="!loading">{{ tr('submit') }}</span>
           <div v-else class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
         </button>
       </form>
@@ -69,8 +69,48 @@
 
 <script>
 import axios from 'axios';
+import { getLocaleState } from '../services/i18n';
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:3000';
+
+const TRANSLATIONS = {
+  pt: {
+    title: 'Nova Estacao',
+    subtitle: 'Expanda a rede de mobilidade Rent-a-Car.',
+    nameLabel: 'Nome da Estacao',
+    locationLabel: 'Localizacao / Morada',
+    capacityLabel: 'Capacidade Maxima',
+    submit: 'Registar Estacao',
+    capacityPositive: 'A capacidade deve ser positiva.',
+    createdSuccess: 'Estacao registada com sucesso!',
+    serverErrorPrefix: 'Erro: {message}',
+    serverCommunicationError: 'Erro ao comunicar com o servidor.',
+  },
+  en: {
+    title: 'New Station',
+    subtitle: 'Expand the Rent-a-Car mobility network.',
+    nameLabel: 'Station Name',
+    locationLabel: 'Location / Address',
+    capacityLabel: 'Maximum Capacity',
+    submit: 'Register Station',
+    capacityPositive: 'Capacity must be positive.',
+    createdSuccess: 'Station registered successfully!',
+    serverErrorPrefix: 'Error: {message}',
+    serverCommunicationError: 'Unable to communicate with the server.',
+  },
+  es: {
+    title: 'Nueva Estacion',
+    subtitle: 'Amplie la red de movilidad Rent-a-Car.',
+    nameLabel: 'Nombre de la Estacion',
+    locationLabel: 'Ubicacion / Direccion',
+    capacityLabel: 'Capacidad Maxima',
+    submit: 'Registrar Estacion',
+    capacityPositive: 'La capacidad debe ser positiva.',
+    createdSuccess: 'Estacion registrada con exito.',
+    serverErrorPrefix: 'Error: {message}',
+    serverCommunicationError: 'No se pudo comunicar con el servidor.',
+  },
+};
 
 export default {
   name: 'CreateStation',
@@ -85,10 +125,23 @@ export default {
       form: { name: '', location: '', capacity: null },
       loading: false,
       message: '',
-      messageType: ''
+      messageType: '',
+      localeState: getLocaleState(),
     };
   },
   methods: {
+    tr(key, params = {}) {
+      const locale = this.localeState.locale;
+      const template =
+        (TRANSLATIONS[locale] && TRANSLATIONS[locale][key]) ||
+        TRANSLATIONS.pt[key] ||
+        key;
+
+      return Object.entries(params).reduce(
+        (result, [paramKey, value]) => result.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(value)),
+        template,
+      );
+    },
     buildAuthConfig() {
       if (!this.sessionToken) {
         return {};
@@ -102,14 +155,14 @@ export default {
     },
     async submitForm() {
       if (this.form.capacity <= 0) {
-        this.showFeedback('A capacidade deve ser positiva.', 'error');
+        this.showFeedback(this.tr('capacityPositive'), 'error');
         return;
       }
 
       this.loading = true;
       try {
         await axios.post(`${API_BASE_URL}/stations`, this.form, this.buildAuthConfig());
-        this.showFeedback('Estação registada com sucesso!', 'success');
+        this.showFeedback(this.tr('createdSuccess'), 'success');
         this.resetForm();
       } catch (err) {
         const details = err?.response?.data?.details;
@@ -121,8 +174,8 @@ export default {
 
         this.showFeedback(
           backendMessage
-            ? `Erro: ${backendMessage}`
-            : 'Erro ao comunicar com o servidor.',
+            ? this.tr('serverErrorPrefix', { message: backendMessage })
+            : this.tr('serverCommunicationError'),
           'error'
         );
       } finally {

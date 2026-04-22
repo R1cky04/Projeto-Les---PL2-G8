@@ -199,7 +199,7 @@ export default {
         this.syncSelectedUser(Boolean(options.refreshSelectedForm))
       } catch (error) {
         const message =
-          error.message || 'Nao foi possivel carregar a lista de utilizadores.'
+          error.message || this.$t('internalUsers.errors.loadUsers')
 
         this.submitError = message
         this.managementSubmitError = message
@@ -289,7 +289,7 @@ export default {
         await this.loadUsers(1)
       } catch (error) {
         this.fieldErrors = mapInternalUserApiErrors(error.errors)
-        this.submitError = error.message || 'Nao foi possivel criar o utilizador.'
+        this.submitError = error.message || this.$t('internalUsers.errors.createUser')
       } finally {
         this.isSubmitting = false
       }
@@ -332,7 +332,7 @@ export default {
       } catch (error) {
         this.managementFieldErrors = mapInternalUserApiErrors(error.errors)
         this.managementSubmitError =
-          error.message || 'Nao foi possivel atualizar o utilizador.'
+          error.message || this.$t('internalUsers.errors.updateUser')
       } finally {
         this.isUpdatingUser = false
       }
@@ -364,7 +364,7 @@ export default {
         this.successMessage = getInternalUserDeletionResultMessage(response.mode)
         await this.loadUsers(targetPage)
       } catch (error) {
-        this.submitError = error.message || 'Erro ao eliminar utilizador.'
+        this.submitError = error.message || this.$t('internalUsers.errors.deleteUser')
       } finally {
         this.deletingUserId = null
       }

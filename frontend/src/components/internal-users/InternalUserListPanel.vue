@@ -2,19 +2,19 @@
   <article class="panel panel-list">
     <div class="panel-head">
       <div>
-        <p class="panel-label">Utilizadores internos ({{ pagination.totalItems }})</p>
-        <h2>Gestao de equipa</h2>
+        <p class="panel-label">{{ $t('internalUsers.internalUsersCount', { count: pagination.totalItems }) }}</p>
+        <h2>{{ $t('internalUsers.teamManagement') }}</h2>
       </div>
     </div>
 
     <form class="search-toolbar" @submit.prevent="$emit('search')">
       <label class="search-field">
-        <span class="search-label">Pesquisar por User ID</span>
+        <span class="search-label">{{ $t('internalUsers.searchByUserId') }}</span>
         <input
           class="search-input"
           type="search"
           :value="searchDraft"
-          placeholder="ex: staff.lisboa"
+          :placeholder="$t('internalUsers.userIdPlaceholder')"
           @input="emitSearchDraftUpdate($event.target.value)"
         />
       </label>
@@ -25,7 +25,7 @@
           type="submit"
           :disabled="loading"
         >
-          Pesquisar
+          {{ $t('internalUsers.search') }}
         </button>
 
         <button
@@ -34,24 +34,24 @@
           :disabled="loading || (!searchDraft && !activeSearchTerm)"
           @click="$emit('clear-search')"
         >
-          Limpar
+          {{ $t('internalUsers.clear') }}
         </button>
       </div>
     </form>
 
     <p v-if="activeSearchTerm" class="search-feedback">
-      Filtro ativo: "{{ activeSearchTerm }}"
+      {{ $t('internalUsers.activeFilter', { term: activeSearchTerm }) }}
     </p>
 
     <div v-if="loading" class="list-loading">
-      A carregar utilizadores...
+      {{ $t('internalUsers.loadingUsers') }}
     </div>
 
     <div v-else-if="users.length === 0" class="list-empty">
       {{
         activeSearchTerm
-          ? 'Nenhum utilizador encontrado para a pesquisa atual.'
-          : 'Nenhum utilizador interno encontrado.'
+          ? $t('internalUsers.noUsersForSearch')
+          : $t('internalUsers.noInternalUsers')
       }}
     </div>
 
@@ -80,7 +80,7 @@
             <span class="separator">|</span>
             {{ statusLabel(user.internalStatus) }}
             <span class="separator">|</span>
-            Criado em {{ formatDate(user.createdAt) }}
+            {{ $t('internalUsers.createdAt') }} {{ formatDate(user.createdAt) }}
           </div>
         </div>
 
@@ -90,7 +90,7 @@
             type="button"
             @click="$emit('select', user)"
           >
-            {{ selectedUserId === user.id ? 'A editar' : 'Gerir' }}
+            {{ selectedUserId === user.id ? $t('internalUsers.editing') : $t('internalUsers.manage') }}
           </button>
 
           <button
@@ -99,10 +99,10 @@
             :disabled="deletingUserId === user.id"
             @click="$emit('delete', user)"
           >
-            {{ deletingUserId === user.id ? 'A remover...' : 'Remover' }}
+            {{ deletingUserId === user.id ? $t('internalUsers.removing') : $t('internalUsers.remove') }}
           </button>
 
-          <span v-else class="deactivated-label">Removido</span>
+          <span v-else class="deactivated-label">{{ $t('internalUsers.removed') }}</span>
         </div>
       </div>
 
@@ -111,7 +111,7 @@
         class="list-pagination"
       >
         <p class="pagination-summary">
-          Pagina {{ pagination.page }} de {{ pagination.totalPages }}
+          {{ $t('internalUsers.pageOf', { page: pagination.page, totalPages: pagination.totalPages }) }}
         </p>
 
         <div class="pagination-actions">
@@ -121,7 +121,7 @@
             :disabled="!pagination.hasPreviousPage || loading"
             @click="$emit('page-change', pagination.page - 1)"
           >
-            Anterior
+            {{ $t('internalUsers.previous') }}
           </button>
 
           <button
@@ -130,7 +130,7 @@
             :disabled="!pagination.hasNextPage || loading"
             @click="$emit('page-change', pagination.page + 1)"
           >
-            Seguinte
+            {{ $t('internalUsers.next') }}
           </button>
         </div>
       </footer>
@@ -143,6 +143,7 @@ import {
   getInternalUserActivityLabel,
   getInternalUserStatusLabel,
 } from '../../utils/internalUserPresentation'
+import { getDateLocale } from '../../services/i18n'
 
 // Directory panel for search, selection and deletion within the IT module.
 export default {
@@ -206,14 +207,14 @@ export default {
     },
     formatDate(dateValue) {
       if (!dateValue) {
-        return 'N/A'
+        return this.$t('internalUsers.notAvailable')
       }
 
       const parsedDate = new Date(dateValue)
 
       return Number.isNaN(parsedDate.getTime())
-        ? 'N/A'
-        : parsedDate.toLocaleDateString('pt-PT', {
+        ? this.$t('internalUsers.notAvailable')
+        : parsedDate.toLocaleDateString(getDateLocale(), {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',

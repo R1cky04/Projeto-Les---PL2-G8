@@ -7,9 +7,9 @@
         >
           IT
         </div>
-        <h2>Novo Utilizador</h2>
+        <h2>{{ $t('internalUsers.newUser') }}</h2>
         <p style="color: var(--muted); font-size: 0.95rem; margin-top: 8px;">
-          Expanda a equipa do Rent-a-Car.
+          {{ $t('internalUsers.newUserIntro') }}
         </p>
       </div>
 
@@ -19,17 +19,17 @@
         :disabled="isSubmitting"
         @click="$emit('reset')"
       >
-        Limpar
+        {{ $t('internalUsers.clear') }}
       </button>
     </div>
 
     <form class="form-grid" novalidate @submit.prevent="$emit('submit')">
       <label class="field">
-        <span>User ID</span>
+        <span>{{ $t('internalUsers.userIdLabel') }}</span>
         <input
           :value="userId"
           autocomplete="username"
-          placeholder="ex: staff.lisboa"
+          :placeholder="$t('internalUsers.userIdPlaceholder')"
           type="text"
           @input="emitUserIdUpdate($event.target.value)"
         >
@@ -39,11 +39,11 @@
       </label>
 
       <label class="field">
-        <span>Password</span>
+        <span>{{ $t('internalUsers.password') }}</span>
         <input
           :value="password"
           autocomplete="new-password"
-          placeholder="Minimo 8 caracteres com complexidade"
+          :placeholder="$t('internalUsers.passwordPlaceholder')"
           type="password"
           @input="$emit('update:password', $event.target.value)"
         >
@@ -53,7 +53,7 @@
       </label>
 
       <label class="field field-full">
-        <span>Tipo de utilizador</span>
+        <span>{{ $t('internalUsers.userType') }}</span>
         <select
           :value="role"
           @change="$emit('update:role', $event.target.value)"
@@ -81,7 +81,7 @@
 
       <div class="form-actions">
         <button class="primary-button" type="submit" :disabled="isSubmitting">
-          {{ isSubmitting ? 'A registar...' : 'Registar utilizador' }}
+          {{ isSubmitting ? $t('internalUsers.registering') : $t('internalUsers.registerUser') }}
         </button>
       </div>
     </form>

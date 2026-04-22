@@ -2,9 +2,9 @@
   <div class="auth-portal">
     <main v-if="isRestoringSession" class="auth-loading-shell">
       <section class="auth-card auth-loading-card">
-        <p class="auth-eyebrow">Portal interno</p>
-        <h1>A restaurar sessao</h1>
-        <p>Validacao em curso das credenciais atuais e das funcionalidades disponiveis.</p>
+        <p class="auth-eyebrow">{{ $t('portal.loadingEyebrow') }}</p>
+        <h1>{{ $t('portal.loadingTitle') }}</h1>
+        <p>{{ $t('portal.loadingDescription') }}</p>
       </section>
     </main>
 
@@ -25,15 +25,15 @@
     <main v-else-if="currentFeature === 'INTERNAL_USERS'" class="auth-module-shell">
       <header class="module-shell-header">
         <div>
-          <h1>Rent-a-<span class="brand-blue">Car</span> Management</h1>
+          <h1>{{ $t('portal.appTitle') }}</h1>
         </div>
 
         <div class="module-shell-actions">
           <button class="auth-secondary-button is-active" type="button" @click="returnToWorkspace">
-            Voltar ao painel
+            {{ $t('portal.backToPanel') }}
           </button>
           <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
-            Terminar sessão
+            {{ $t('portal.logout') }}
           </button>
         </div>
       </header>
@@ -48,15 +48,15 @@
     <main v-else-if="currentFeature === 'STATION_MANAGEMENT'" class="auth-module-shell">
       <header class="module-shell-header">
         <div>
-          <h1>Rent-a-<span class="brand-blue">Car</span> Management</h1>
+          <h1>{{ $t('portal.appTitle') }}</h1>
         </div>
 
         <div class="module-shell-actions">
           <button class="auth-secondary-button is-active" type="button" @click="returnToWorkspace">
-            Voltar ao painel
+            {{ $t('portal.backToPanel') }}
           </button>
           <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
-            Terminar sessão
+            {{ $t('portal.logout') }}
           </button>
         </div>
       </header>
@@ -64,12 +64,12 @@
       <section class="station-module-toolbar">
         <div class="station-module-toolbar-head">
           <div class="station-module-toolbar-copy">
-            <h2>Estacoes</h2>
+            <h2>{{ $t('portal.stationsTitle') }}</h2>
             <p>
               {{
                 stationModuleView === 'MANAGE'
-                  ? 'Consulte e atualize estacoes existentes. Use o atalho de criacao quando precisar de registar uma nova estacao.'
-                  : 'Preencha os dados obrigatorios e submeta para registar uma nova estacao na rede.'
+                  ? $t('portal.stationsManageDescription')
+                  : $t('portal.stationsCreateDescription')
               }}
             </p>
           </div>
@@ -81,7 +81,7 @@
               type="button"
               @click="setStationModuleView('CREATE')"
             >
-              Criar estacao
+              {{ $t('portal.createStation') }}
             </button>
 
             <button
@@ -90,7 +90,7 @@
               type="button"
               @click="setStationModuleView('MANAGE')"
             >
-              Voltar a gerir estacoes
+              {{ $t('portal.backToManageStations') }}
             </button>
           </div>
         </div>
@@ -109,15 +109,15 @@
     <main v-else-if="currentFeature === 'VEHICLE_MANAGEMENT'" class="auth-module-shell">
       <header class="module-shell-header">
         <div>
-          <h1>Rent-a-<span class="brand-blue">Car</span> Management</h1>
+          <h1>{{ $t('portal.appTitle') }}</h1>
         </div>
 
         <div class="module-shell-actions">
           <button class="auth-secondary-button is-active" type="button" @click="returnToWorkspace">
-            Voltar ao painel
+            {{ $t('portal.backToPanel') }}
           </button>
           <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
-            Terminar sessao
+            {{ $t('portal.logout') }}
           </button>
         </div>
       </header>
@@ -125,12 +125,12 @@
       <section class="station-module-toolbar">
         <div class="station-module-toolbar-head">
           <div class="station-module-toolbar-copy">
-            <h2>Veiculos</h2>
+            <h2>{{ $t('portal.vehiclesTitle') }}</h2>
             <p>
               {{
                 vehicleModuleView === 'MANAGE'
-                  ? 'Consulte e edite veiculos existentes, incluindo estado, quilometragem e preco diario.'
-                  : 'Preencha os dados obrigatorios para criar um novo veiculo no sistema.'
+                  ? $t('portal.vehiclesManageDescription')
+                  : $t('portal.vehiclesCreateDescription')
               }}
             </p>
           </div>
@@ -142,7 +142,7 @@
               type="button"
               @click="setVehicleModuleView('CREATE')"
             >
-              Criar veiculo
+              {{ $t('portal.createVehicle') }}
             </button>
 
             <button
@@ -151,7 +151,7 @@
               type="button"
               @click="setVehicleModuleView('MANAGE')"
             >
-              Voltar a gerir veiculos
+              {{ $t('portal.backToManageVehicles') }}
             </button>
           </div>
         </div>
@@ -171,15 +171,15 @@
     <main v-else-if="currentFeature === 'RENTALS'" class="auth-module-shell">
       <header class="module-shell-header">
         <div>
-          <h1>Rent-a-<span class="brand-blue">Car</span> Management</h1>
+          <h1>{{ $t('portal.appTitle') }}</h1>
         </div>
 
         <div class="module-shell-actions">
           <button class="auth-secondary-button is-active" type="button" @click="returnToWorkspace">
-            Voltar ao painel
+            {{ $t('portal.backToPanel') }}
           </button>
           <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
-            Terminar sessao
+            {{ $t('portal.logout') }}
           </button>
         </div>
       </header>
@@ -187,9 +187,9 @@
       <section class="station-module-toolbar">
         <div class="station-module-toolbar-head">
           <div class="station-module-toolbar-copy">
-            <h2>Contratos</h2>
+            <h2>{{ $t('portal.rentalsTitle') }}</h2>
             <p>
-              Crie contratos diretos de aluguer, associe cliente e viatura disponível, e deixe o valor estimado ser calculado automaticamente com base no período escolhido.
+              {{ $t('portal.rentalsDescription') }}
             </p>
           </div>
         </div>
@@ -204,15 +204,15 @@
     <main v-else-if="currentFeature === 'IMPRO_MANAGEMENT'" class="auth-module-shell">
       <header class="module-shell-header">
         <div>
-          <h1>Rent-a-<span class="brand-blue">Car</span> Management</h1>
+          <h1>{{ $t('portal.appTitle') }}</h1>
         </div>
 
         <div class="module-shell-actions">
           <button class="auth-secondary-button is-active" type="button" @click="returnToWorkspace">
-            Voltar ao painel
+            {{ $t('portal.backToPanel') }}
           </button>
           <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
-            Terminar sessao
+            {{ $t('portal.logout') }}
           </button>
         </div>
       </header>
@@ -220,10 +220,9 @@
       <section class="station-module-toolbar">
         <div class="station-module-toolbar-head">
           <div class="station-module-toolbar-copy">
-            <h2>Impros</h2>
+            <h2>{{ $t('portal.improsTitle') }}</h2>
             <p>
-              Crie transferencias entre estacoes e atualize dados operacionais
-              com historico auditavel.
+              {{ $t('portal.improsDescription') }}
             </p>
           </div>
         </div>
@@ -335,7 +334,7 @@ export default {
         this.loginForm = createLoginForm()
       } catch (error) {
         this.fieldErrors = mapLoginApiErrors(error.errors)
-        this.submitError = error.message || 'Nao foi possivel efetuar login.'
+        this.submitError = error.message || this.$t('portal.genericLoginError')
       } finally {
         this.isSubmitting = false
       }
@@ -363,21 +362,27 @@ export default {
     openFeature(featureKey) {
       if (
         featureKey === 'INTERNAL_USERS' ||
+        featureKey === 'CUSTOMERS' ||
+        featureKey === 'RESERVATIONS' ||
         featureKey === 'STATION_MANAGEMENT' ||
         featureKey === 'IMPRO_MANAGEMENT' ||
         featureKey === 'RENTALS' ||
         featureKey === 'FLEET_OPERATIONS' ||
-        featureKey === 'VEHICLE_MANAGEMENT'
+        featureKey === 'VEHICLE_MANAGEMENT' ||
+        featureKey === 'VEHICLES'
       ) {
         const normalizedFeatureKey =
-          featureKey === 'FLEET_OPERATIONS' ? 'IMPRO_MANAGEMENT' : featureKey
+          featureKey === 'FLEET_OPERATIONS'
+            ? 'IMPRO_MANAGEMENT'
+            : featureKey === 'VEHICLES'
+              ? 'VEHICLE_MANAGEMENT'
+              : featureKey
 
         if (
           normalizedFeatureKey === 'STATION_MANAGEMENT' &&
           this.authState?.user?.role !== 'IT'
         ) {
-          this.workspaceMessage =
-            'A funcionalidade de estacoes esta disponivel apenas para o perfil IT autenticado.'
+          this.workspaceMessage = this.$t('portal.stationOnlyIt')
           return
         }
 
@@ -385,8 +390,7 @@ export default {
           normalizedFeatureKey === 'IMPRO_MANAGEMENT' &&
           !['FLEET', 'ADMIN', 'IT'].includes(this.authState?.user?.role)
         ) {
-          this.workspaceMessage =
-            'A funcionalidade de impros esta disponivel apenas para os perfis Frota, Admin ou IT autenticados.'
+          this.workspaceMessage = this.$t('portal.improOnlyRoles')
           return
         }
 
@@ -394,8 +398,7 @@ export default {
           normalizedFeatureKey === 'VEHICLE_MANAGEMENT' &&
           !['IT', 'ADMIN', 'STAFF', 'FLEET'].includes(this.authState?.user?.role)
         ) {
-          this.workspaceMessage =
-            'A funcionalidade de veiculos exige perfil IT, ADMIN, STAFF ou FLEET.'
+          this.workspaceMessage = this.$t('portal.vehicleOnlyRoles')
           return
         }
 
@@ -403,8 +406,7 @@ export default {
           normalizedFeatureKey === 'RENTALS' &&
           !['IT', 'ADMIN', 'STAFF', 'FLEET'].includes(this.authState?.user?.role)
         ) {
-          this.workspaceMessage =
-            'A funcionalidade de contratos exige perfil IT, ADMIN, STAFF ou FLEET.'
+          this.workspaceMessage = this.$t('portal.rentalsOnlyRoles')
           return
         }
 
@@ -439,8 +441,7 @@ export default {
         return
       }
 
-      this.workspaceMessage =
-        'A autenticacao e as permissoes deste modulo ja estao resolvidas, mas a interface funcional ainda nao faz parte desta sprint.'
+      this.workspaceMessage = this.$t('portal.futureSprint')
     },
     returnToWorkspace() {
       this.currentFeature = ''

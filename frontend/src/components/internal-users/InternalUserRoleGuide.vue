@@ -2,8 +2,8 @@
   <article class="panel panel-guidance">
     <div class="panel-head">
       <div>
-        <p class="panel-label">Hierarquia</p>
-        <h2>Perfis e permissoes herdadas</h2>
+        <p class="panel-label">{{ $t('internalUsers.hierarchy') }}</p>
+        <h2>{{ $t('internalUsers.rolesAndInheritedPermissions') }}</h2>
       </div>
     </div>
 

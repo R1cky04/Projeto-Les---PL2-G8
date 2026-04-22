@@ -1,20 +1,19 @@
 <template>
   <section class="auth-card auth-login-card">
     <div class="auth-copy">
-      <h1>Entrar no portal interno</h1>
+      <h1>{{ $t('login.title') }}</h1>
       <p>
-        Autenticacao por User ID e password com validacao no backend, estado de
-        conta e carregamento de funcionalidades por perfil.
+        {{ $t('login.description') }}
       </p>
     </div>
 
     <form class="auth-form" novalidate @submit.prevent="$emit('submit')">
       <label class="auth-field">
-        <span>User ID</span>
+        <span>{{ $t('login.userIdLabel') }}</span>
         <input
           :value="userId"
           autocomplete="username"
-          placeholder="ex: it.master"
+          :placeholder="$t('login.userIdPlaceholder')"
           type="text"
           @input="emitUserIdUpdate($event.target.value)"
         >
@@ -24,11 +23,11 @@
       </label>
 
       <label class="auth-field">
-        <span>Password</span>
+        <span>{{ $t('login.passwordLabel') }}</span>
         <input
           :value="password"
           autocomplete="current-password"
-          placeholder="Password"
+          :placeholder="$t('login.passwordPlaceholder')"
           type="password"
           @input="$emit('update:password', $event.target.value)"
         >
@@ -43,7 +42,7 @@
 
       <div class="auth-actions">
         <button class="auth-primary-button" type="submit" :disabled="isSubmitting">
-          {{ isSubmitting ? 'A autenticar...' : 'Entrar' }}
+          {{ isSubmitting ? $t('login.authenticating') : $t('login.signIn') }}
         </button>
       </div>
     </form>

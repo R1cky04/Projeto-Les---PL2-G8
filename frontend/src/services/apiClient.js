@@ -52,11 +52,21 @@ async function executeJsonRequest(
     requestHeaders['Content-Type'] = 'application/json'
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers: requestHeaders,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: requestHeaders,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    const error = new Error(
+      'Nao foi possivel contactar a API. Verifica se o backend esta ativo em http://127.0.0.1:3000.',
+    )
+    error.code = 'API_UNREACHABLE'
+    throw error
+  }
+
   const responseBody = await parseJson(response)
 
   if (!response.ok) {
