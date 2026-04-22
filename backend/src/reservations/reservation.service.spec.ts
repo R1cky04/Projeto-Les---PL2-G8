@@ -167,4 +167,43 @@ describe('ReservationService', () => {
       ),
     ).rejects.toThrow(NotFoundException);
   });
+
+  it('filters reservations by report period, pickup station and status', async () => {
+    await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 2,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-10-10T09:00:00.000Z',
+        expectedReturnAt: '2026-10-12T09:00:00.000Z',
+      },
+      buildActor(),
+    );
+
+    const toCancel = await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 2,
+        pickupAt: '2026-12-10T09:00:00.000Z',
+        expectedReturnAt: '2026-12-11T09:00:00.000Z',
+      },
+      buildActor(),
+    );
+
+    await service.cancel(toCancel.id, buildActor());
+
+    const results = await service.findAll({
+      startDate: '2026-10-01T00:00:00.000Z',
+      endDate: '2026-10-31T23:59:59.999Z',
+      pickupStationId: '1',
+      status: 'CONFIRMED',
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].stationId).toBe(1);
+    expect(results[0].status).toBe('CONFIRMED');
+  });
 });

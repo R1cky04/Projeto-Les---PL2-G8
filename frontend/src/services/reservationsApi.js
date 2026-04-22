@@ -11,6 +11,18 @@ function buildReservationQuery(filters = {}) {
     searchParams.set('search', filters.search)
   }
 
+  if (filters.startDate) {
+    searchParams.set('startDate', filters.startDate)
+  }
+
+  if (filters.endDate) {
+    searchParams.set('endDate', filters.endDate)
+  }
+
+  if (filters.pickupStationId) {
+    searchParams.set('pickupStationId', String(filters.pickupStationId))
+  }
+
   const query = searchParams.toString()
   return query ? `?${query}` : ''
 }

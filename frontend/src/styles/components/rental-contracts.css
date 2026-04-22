@@ -546,6 +546,121 @@
   text-align: center;
 }
 
+.report-filters {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(8, 16, 29, 0.58);
+}
+
+.report-hint {
+  color: var(--rental-muted);
+  font-size: 0.8rem;
+}
+
+.report-summary-grid {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.report-summary-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(8, 16, 29, 0.64);
+}
+
+.report-summary-card span {
+  display: block;
+  color: var(--rental-muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.report-summary-card strong {
+  color: #fff;
+  font-size: 1.25rem;
+}
+
+.report-table-wrap {
+  margin-top: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(8, 16, 29, 0.7);
+  overflow: auto;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 920px;
+}
+
+.report-table th,
+.report-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.report-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(9, 20, 34, 0.96);
+  color: #cce2f5;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.report-table tbody tr:hover {
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.report-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.report-status-badge.is-confirmed {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #86efac;
+}
+
+.report-status-badge.is-cancelled {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.report-status-badge.is-completed {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #7dd3fc;
+}
+
+.report-status-badge.is-draft,
+.report-status-badge.is-no_show {
+  background: rgba(148, 163, 184, 0.16);
+  border-color: rgba(148, 163, 184, 0.34);
+  color: #cbd5e1;
+}
+
 @media (max-width: 1180px) {
   .rental-header {
     flex-direction: column;
@@ -565,6 +680,10 @@
   }
 
   .rental-summary-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -591,7 +710,8 @@
   .rental-field-grid-2,
   .rental-field-grid-3,
   .rental-vehicle-grid,
-  .rental-summary-strip {
+  .rental-summary-strip,
+  .report-summary-grid {
     grid-template-columns: 1fr;
   }
 

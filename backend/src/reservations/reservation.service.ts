@@ -69,6 +69,9 @@ export interface ReservationAvailabilityResponse {
 interface ReservationListOptions {
   search?: string;
   status?: string;
+  startDate?: string;
+  endDate?: string;
+  pickupStationId?: string;
 }
 
 interface ReservationAvailabilityInput {
@@ -200,11 +203,43 @@ export class ReservationService {
   async findAll(options: ReservationListOptions = {}): Promise<ReservationRecord[]> {
     const normalizedStatus = this.normalizeStatusFilter(options.status);
     const normalizedSearch = options.search?.trim().toLowerCase() || '';
+    const startDate = this.parseOptionalDate(
+      options.startDate,
+      'A data inicial do relatorio e invalida.',
+      'INVALID_REPORT_START_DATE',
+    );
+    const endDate = this.parseOptionalDate(
+      options.endDate,
+      'A data final do relatorio e invalida.',
+      'INVALID_REPORT_END_DATE',
+    );
+    const pickupStationId = options.pickupStationId
+      ? this.parsePositiveInteger(
+          options.pickupStationId,
+          'A estacao do relatorio e invalida.',
+          'INVALID_REPORT_STATION',
+        )
+      : null;
+
+    if (startDate && endDate && endDate.getTime() < startDate.getTime()) {
+      throw new BadRequestException({
+        message:
+          'A data final do relatorio deve ser igual ou posterior a data inicial.',
+        code: 'INVALID_REPORT_PERIOD',
+      });
+    }
 
     return [...this.reservations]
       .filter(
         (reservation) =>
           !normalizedStatus || reservation.status === normalizedStatus,
+      )
+      .filter(
+        (reservation) =>
+          !pickupStationId || reservation.stationId === pickupStationId,
+      )
+      .filter((reservation) =>
+        this.matchesReportPeriod(reservation, startDate, endDate),
       )
       .filter((reservation) => {
         if (!normalizedSearch) {
@@ -682,6 +717,27 @@ export class ReservationService {
     return parsed;
   }
 
+  private parseOptionalDate(
+    value: string | undefined,
+    message: string,
+    code: string,
+  ): Date | null {
+    if (!value) {
+      return null;
+    }
+
+    const parsed = new Date(value);
+
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException({
+        message,
+        code,
+      });
+    }
+
+    return parsed;
+  }
+
   private parsePositiveInteger(
     value: string | undefined,
     message: string,
@@ -731,6 +787,31 @@ export class ReservationService {
 
   private describeNullableValue(value: string | null): string {
     return value === null ? 'vazio' : value;
+  }
+
+  private matchesReportPeriod(
+    reservation: ReservationRecord,
+    startDate: Date | null,
+    endDate: Date | null,
+  ): boolean {
+    if (!startDate && !endDate) {
+      return true;
+    }
+
+    if (startDate && endDate) {
+      return this.periodsOverlap(
+        reservation.pickupAt,
+        reservation.expectedReturnAt,
+        startDate,
+        endDate,
+      );
+    }
+
+    if (startDate) {
+      return reservation.pickupAt.getTime() >= startDate.getTime();
+    }
+
+    return reservation.pickupAt.getTime() <= (endDate as Date).getTime();
   }
 
   private buildSuggestionMessage(

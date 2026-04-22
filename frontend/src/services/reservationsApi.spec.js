@@ -107,4 +107,21 @@ describe('reservationsApi', () => {
       fallbackMessage: 'Nao foi possivel cancelar a reserva.',
     })
   })
+
+  it('builds reservation report queries with period and station filters', () => {
+    fetchReservations('token-report', {
+      startDate: '2026-11-01T00:00:00.000Z',
+      endDate: '2026-11-30T23:59:59.999Z',
+      pickupStationId: 2,
+      status: 'CANCELLED',
+    })
+
+    expect(getJson).toHaveBeenCalledWith(
+      '/reservations?status=CANCELLED&startDate=2026-11-01T00%3A00%3A00.000Z&endDate=2026-11-30T23%3A59%3A59.999Z&pickupStationId=2',
+      {
+        token: 'token-report',
+        fallbackMessage: 'Nao foi possivel carregar as reservas.',
+      },
+    )
+  })
 })

@@ -364,6 +364,138 @@
         </div>
       </div>
     </section>
+
+    <section class="rental-card rental-recent-panel">
+      <div class="rental-card-head">
+        <div>
+          <span class="rental-card-eyebrow">Relatorios</span>
+          <h3>Relatorio de Reservas</h3>
+          <p class="rental-note">
+            Filtre por periodo, estacao e estado para gerar uma visao operacional.
+          </p>
+        </div>
+      </div>
+
+      <form class="rental-form report-filters" @submit.prevent="generateReservationsReport">
+        <div class="rental-field-grid rental-field-grid-3">
+          <label class="rental-field">
+            <span>Data inicial</span>
+            <input v-model="reportFilters.startDate" type="date" />
+          </label>
+
+          <label class="rental-field">
+            <span>Data final</span>
+            <input v-model="reportFilters.endDate" type="date" />
+          </label>
+        </div>
+
+        <div class="rental-field-grid rental-field-grid-2">
+          <label class="rental-field">
+            <span>Estacao</span>
+            <select v-model.number="reportFilters.pickupStationId">
+              <option :value="0">Todas as estacoes</option>
+              <option
+                v-for="station in reportStationOptions"
+                :key="`report-station-${station.id}`"
+                :value="station.id"
+              >
+                {{ station.name }}
+              </option>
+            </select>
+            <small v-if="reportStationOptions.length === 0" class="report-hint">
+              Nenhuma estacao carregada no contexto. O filtro permanece em "Todas as estacoes".
+            </small>
+          </label>
+
+          <label class="rental-field">
+            <span>Estado</span>
+            <select v-model="reportFilters.status">
+              <option value="">Todos</option>
+              <option value="CONFIRMED">Ativa</option>
+              <option value="CANCELLED">Cancelada</option>
+              <option value="COMPLETED">Concluida</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="rental-actions">
+          <button
+            class="rental-submit-button"
+            type="submit"
+            :disabled="isGeneratingReport"
+          >
+            {{ isGeneratingReport ? 'A gerar relatorio...' : 'Gerar relatorio' }}
+          </button>
+
+          <button
+            class="rental-ghost-button"
+            type="button"
+            :disabled="reportReservations.length === 0"
+            @click="exportReservationsReport"
+          >
+            Exportar CSV
+          </button>
+        </div>
+      </form>
+
+      <div class="report-summary-grid">
+        <article class="report-summary-card">
+          <span>Total resultados</span>
+          <strong>{{ reportReservations.length }}</strong>
+        </article>
+        <article class="report-summary-card">
+          <span>Ativas</span>
+          <strong>{{ reportStatusCounters.CONFIRMED }}</strong>
+        </article>
+        <article class="report-summary-card">
+          <span>Canceladas</span>
+          <strong>{{ reportStatusCounters.CANCELLED }}</strong>
+        </article>
+        <article class="report-summary-card">
+          <span>Concluidas</span>
+          <strong>{{ reportStatusCounters.COMPLETED }}</strong>
+        </article>
+      </div>
+
+      <p v-if="reportGeneratedAt" class="rental-note">
+        Relatorio gerado em {{ formatDate(reportGeneratedAt) }}.
+      </p>
+
+      <div v-if="reportReservations.length > 0" class="report-table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Reserva</th>
+              <th>Cliente</th>
+              <th>Estacao</th>
+              <th>Viatura</th>
+              <th>Levantamento</th>
+              <th>Devolucao</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="reservation in reportReservations" :key="`report-row-${reservation.id}`">
+              <td>{{ reservation.reservationNumber }}</td>
+              <td>{{ reservation.customerFullName }}</td>
+              <td>{{ reservation.stationName }}</td>
+              <td>{{ reservation.vehiclePlate }}</td>
+              <td>{{ formatDate(reservation.pickupAt) }}</td>
+              <td>{{ formatDate(reservation.expectedReturnAt) }}</td>
+              <td>
+                <span class="report-status-badge" :class="`is-${reservation.status.toLowerCase()}`">
+                  {{ formatReservationStatus(reservation.status) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-else class="rental-empty">
+        Nenhuma reserva corresponde aos filtros selecionados.
+      </div>
+    </section>
   </section>
 </template>
 
@@ -422,6 +554,15 @@ export default {
         message: '',
         type: 'info',
       },
+      reportFilters: {
+        startDate: '',
+        endDate: '',
+        pickupStationId: 0,
+        status: '',
+      },
+      reportReservations: [],
+      isGeneratingReport: false,
+      reportGeneratedAt: null,
     }
   },
   computed: {
@@ -523,6 +664,50 @@ export default {
     recentReservations() {
       return this.reservations.slice(0, 6)
     },
+    reportStationOptions() {
+      if (this.context.stations.length > 0) {
+        return this.context.stations
+      }
+
+      const stationsById = new Map()
+      this.reservations.forEach((reservation) => {
+        if (
+          Number.isInteger(reservation.stationId) &&
+          reservation.stationId > 0 &&
+          reservation.stationName
+        ) {
+          stationsById.set(reservation.stationId, {
+            id: reservation.stationId,
+            name: reservation.stationName,
+          })
+        }
+      })
+
+      return Array.from(stationsById.values()).sort((left, right) =>
+        left.name.localeCompare(right.name),
+      )
+    },
+    reportStatusCounters() {
+      return this.reportReservations.reduce(
+        (counters, reservation) => {
+          if (reservation.status === 'CONFIRMED') {
+            counters.CONFIRMED += 1
+          }
+          if (reservation.status === 'CANCELLED') {
+            counters.CANCELLED += 1
+          }
+          if (reservation.status === 'COMPLETED') {
+            counters.COMPLETED += 1
+          }
+          return counters
+        },
+        {
+          CONFIRMED: 0,
+          CANCELLED: 0,
+          COMPLETED: 0,
+        },
+      )
+    },
   },
   async mounted() {
     await this.loadContext()
@@ -535,6 +720,17 @@ export default {
     },
     formatMoney(value) {
       return formatRentalCurrency(value)
+    },
+    formatReservationStatus(status) {
+      const labels = {
+        CONFIRMED: 'Ativa',
+        CANCELLED: 'Cancelada',
+        COMPLETED: 'Concluida',
+        DRAFT: 'Rascunho',
+        NO_SHOW: 'No-show',
+      }
+
+      return labels[status] || status
     },
     showBanner(message, type) {
       this.banner = { message, type }
@@ -575,6 +771,75 @@ export default {
           'error',
         )
       }
+    },
+    async generateReservationsReport() {
+      this.isGeneratingReport = true
+
+      try {
+        const filters = {
+          status: this.reportFilters.status || undefined,
+          pickupStationId: this.reportFilters.pickupStationId || undefined,
+          startDate: this.reportFilters.startDate
+            ? new Date(`${this.reportFilters.startDate}T00:00:00.000Z`).toISOString()
+            : undefined,
+          endDate: this.reportFilters.endDate
+            ? new Date(`${this.reportFilters.endDate}T23:59:59.999Z`).toISOString()
+            : undefined,
+        }
+
+        this.reportReservations = await fetchReservations(this.sessionToken, filters)
+        this.reportGeneratedAt = new Date()
+      } catch (error) {
+        this.showBanner(
+          this.extractApiError(error, 'Relatorio nao gerado devido a erro do sistema.'),
+          'error',
+        )
+      } finally {
+        this.isGeneratingReport = false
+      }
+    },
+    exportReservationsReport() {
+      if (this.reportReservations.length === 0) {
+        return
+      }
+
+      const headers = [
+        'Numero',
+        'Cliente',
+        'Estado',
+        'Estacao',
+        'Viatura',
+        'Levantamento',
+        'Devolucao prevista',
+      ]
+      const rows = this.reportReservations.map((reservation) => [
+        reservation.reservationNumber,
+        reservation.customerFullName,
+        this.formatReservationStatus(reservation.status),
+        reservation.stationName,
+        reservation.vehiclePlate,
+        new Date(reservation.pickupAt).toISOString(),
+        new Date(reservation.expectedReturnAt).toISOString(),
+      ])
+      const csvContent = [headers, ...rows]
+        .map((row) =>
+          row
+            .map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`)
+            .join(','),
+        )
+        .join('\n')
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+
+      link.href = url
+      link.download = `relatorio-reservas-${stamp}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
     },
     initializeDefaults() {
       if (!this.form.pickupStationId && this.context.stations.length > 0) {

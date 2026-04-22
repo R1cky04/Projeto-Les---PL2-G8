@@ -51,8 +51,17 @@ export class ReservationController {
   async findAll(
     @Query('search') search?: string,
     @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('pickupStationId') pickupStationId?: string,
   ): Promise<ReservationRecord[]> {
-    return this.reservationService.findAll({ search, status });
+    return this.reservationService.findAll({
+      search,
+      status,
+      startDate,
+      endDate,
+      pickupStationId,
+    });
   }
 
   @Get(':id')
