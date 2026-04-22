@@ -98,7 +98,7 @@ export class AuthService {
       throw this.createInvalidCredentialsException();
     }
 
-    if (!user.isActive) {
+    if (this.isAccountBlocked(user.isActive, user.internalStatus)) {
       throw new ForbiddenException({
         message: 'A conta encontra-se bloqueada ou desativada.',
         code: 'ACCOUNT_BLOCKED',
@@ -215,7 +215,7 @@ export class AuthService {
       });
     }
 
-    if (!session.isActive) {
+    if (this.isAccountBlocked(session.isActive, session.internalStatus)) {
       throw new ForbiddenException({
         message: 'A conta encontra-se bloqueada ou desativada.',
         code: 'ACCOUNT_BLOCKED',
@@ -412,6 +412,13 @@ export class AuthService {
     return status === InternalUserStatus.PENDING_IT_VALIDATION
       ? 'LIMITED'
       : 'FULL';
+  }
+
+  private isAccountBlocked(
+    isActive: boolean,
+    status: InternalUserStatus,
+  ): boolean {
+    return !isActive || status === InternalUserStatus.BLOCKED;
   }
 
   private getLoginSuccessMessage(accessLevel: SessionAccessLevel): string {

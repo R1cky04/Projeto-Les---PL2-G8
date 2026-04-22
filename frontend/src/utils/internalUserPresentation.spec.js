@@ -40,6 +40,7 @@ describe('internalUserPresentation helpers', () => {
     expect(getInternalUserStatusLabel('PENDING_IT_VALIDATION')).toBe(
       'Pendente de validacao IT',
     )
+    expect(getInternalUserStatusLabel('BLOCKED')).toBe('Bloqueada')
   })
 
   it('detects when the permission compatibility helper should be shown', () => {

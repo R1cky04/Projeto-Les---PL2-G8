@@ -165,6 +165,31 @@
           {{ canManageVehicles() ? $t('workspace.openModule') : $t('workspace.notAuthorized') }}
         </button>
       </article>
+
+      <article class="auth-card feature-card feature-card-available">
+        <div class="feature-head">
+          <div>
+            <h2>Gerir Reservas</h2>
+            <p>Crie, atualize e cancele reservas com controlo operacional.</p>
+          </div>
+          <span class="feature-status">
+            {{ canManageReservations() ? 'Disponivel' : 'Sem perfil' }}
+          </span>
+        </div>
+
+        <p v-if="!canManageReservations()" class="feature-reason">
+          O modulo de reservas esta disponivel para IT, ADMIN, STAFF e FLEET.
+        </p>
+
+        <button
+          class="auth-primary-button feature-action"
+          type="button"
+          :disabled="!canManageReservations()"
+          @click="$emit('open-feature', 'RESERVATIONS')"
+        >
+          {{ canManageReservations() ? 'Abrir modulo' : 'Nao autorizado' }}
+        </button>
+      </article>
     </section>
   </section>
 </template>
@@ -260,6 +285,9 @@ export default {
       return role === 'FLEET' || role === 'ADMIN' || role === 'IT'
     },
     canManageVehicles() {
+      return ['IT', 'ADMIN', 'STAFF', 'FLEET'].includes(this.authState?.user?.role)
+    },
+    canManageReservations() {
       return ['IT', 'ADMIN', 'STAFF', 'FLEET'].includes(this.authState?.user?.role)
     },
   },

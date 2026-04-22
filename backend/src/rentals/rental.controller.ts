@@ -1,7 +1,20 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthSessionGuard } from '../auth/auth-session.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
+import { CloseRentalDto } from './dto/close-rental.dto';
 import { CreateRentalDto } from './dto/create-rental.dto';
+import { UpdateRentalDto } from './dto/update-rental.dto';
 import { RentalManagementGuard } from './rental-management.guard';
 import { RentalService, type RentalRecord, type RentalContextResponse } from './rental.service';
 
@@ -16,8 +29,16 @@ export class RentalController {
   }
 
   @Get()
-  async findAll(): Promise<RentalRecord[]> {
-    return this.rentalService.findAll();
+  async findAll(
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ): Promise<RentalRecord[]> {
+    return this.rentalService.findAll({ search, status });
+  }
+
+  @Get(':id')
+  async findOne(@Param('id', ParseIntPipe) id: number): Promise<RentalRecord> {
+    return this.rentalService.findOne(id);
   }
 
   @Post()
@@ -26,5 +47,23 @@ export class RentalController {
     @Req() request: AuthenticatedRequest,
   ): Promise<RentalRecord> {
     return this.rentalService.create(createRentalDto, request.auth?.user);
+  }
+
+  @Patch(':id')
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateRentalDto: UpdateRentalDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<RentalRecord> {
+    return this.rentalService.update(id, updateRentalDto, request.auth?.user);
+  }
+
+  @Patch(':id/close')
+  async close(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() closeRentalDto: CloseRentalDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<RentalRecord> {
+    return this.rentalService.close(id, closeRentalDto, request.auth?.user);
   }
 }

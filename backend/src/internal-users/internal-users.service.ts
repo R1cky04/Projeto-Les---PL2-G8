@@ -333,11 +333,7 @@ export class InternalUsersService {
         id: row.id,
         userId: row.userId,
         internalRole: row.role,
-        internalStatus: (
-          row.internalStatus === 'PENDING_IT_VALIDATION'
-            ? 'PENDING_IT_VALIDATION'
-            : 'ACTIVE'
-        ) as InternalUserStatus,
+        internalStatus: normalizeInternalUserStatus(row.internalStatus),
         permissions: row.permissions,
         requiresItValidation: row.requiresItValidation,
         isActive: row.isActive,
@@ -1354,9 +1350,13 @@ function normalizeInternalUserRole(value: string): InternalUserRole {
 }
 
 function normalizeInternalUserStatus(value: string): InternalUserStatus {
-  return value === InternalUserStatus.PENDING_IT_VALIDATION
-    ? InternalUserStatus.PENDING_IT_VALIDATION
-    : InternalUserStatus.ACTIVE;
+  if (
+    Object.values(InternalUserStatus).includes(value as InternalUserStatus)
+  ) {
+    return value as InternalUserStatus;
+  }
+
+  return InternalUserStatus.ACTIVE;
 }
 
 function normalizeInternalPermissions(values: string[]): InternalPermission[] {

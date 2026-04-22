@@ -201,6 +201,36 @@
       />
     </main>
 
+    <main v-else-if="currentFeature === 'RESERVATIONS'" class="auth-module-shell">
+      <header class="module-shell-header">
+        <div>
+          <h1>Rent-a-<span class="brand-blue">Car</span> Management</h1>
+        </div>
+
+        <div class="module-shell-actions">
+          <button class="auth-secondary-button is-active" type="button" @click="returnToWorkspace">
+            Voltar ao painel
+          </button>
+          <button class="auth-secondary-button" type="button" @click="logout" style="padding-left: 20px; padding-right: 20px;">
+            Terminar sessao
+          </button>
+        </div>
+      </header>
+
+      <section class="station-module-toolbar">
+        <div class="station-module-toolbar-head">
+          <div class="station-module-toolbar-copy">
+            <h2>Reservas</h2>
+            <p>
+              Crie reservas com pesquisa de cliente, validacao de disponibilidade e sugestoes de alternativa por estacao.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <ManageReservations :session-token="sessionToken" />
+    </main>
+
     <main v-else-if="currentFeature === 'IMPRO_MANAGEMENT'" class="auth-module-shell">
       <header class="module-shell-header">
         <div>
@@ -266,6 +296,7 @@ import ManageVehicle from '../components/ManageVehicle.vue'
 import ManageStation from '../components/ManageStation.vue'
 import RentalContractsView from '../components/rentals/RentalContractsView.vue'
 import InternalUsersView from './InternalUsersView.vue'
+import ManageReservations from '../components/reservations/ManageReservations.vue'
 
 // Root authenticated container. It owns session restore, login/logout and the
 // high-level navigation between the workspace and the IT module.
@@ -280,6 +311,7 @@ export default {
     ManageStation,
     RentalContractsView,
     InternalUsersView,
+    ManageReservations,
     InternalWorkspaceHome,
   },
   data() {

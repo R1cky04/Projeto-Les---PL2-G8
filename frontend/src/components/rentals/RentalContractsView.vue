@@ -274,12 +274,20 @@
         </div>
       </div>
     </section>
+    <ActiveRentalManagementPanel
+      :session-token="sessionToken"
+      :stations="context.stations"
+      :refresh-token="contractsRefreshToken"
+      @contracts-changed="handleContractsChanged"
+    />
   </section>
 </template>
 
 <script>
 import { createRentalContract, fetchRentalContext } from '../../services/rentalsApi'
+import ActiveRentalManagementPanel from './ActiveRentalManagementPanel.vue'
 import { getDateLocale, getLocaleState } from '../../services/i18n'
+import { formatRentalDateTimeLocal } from '../../utils/rentalFormatting'
 
 const TRANSLATIONS = {
   pt: {
@@ -511,15 +519,11 @@ function formatDateTimeLocal(value) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat(getDateLocale(), {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(Number(value || 0))
-}
-
 export default {
   name: 'RentalContractsView',
+  components: {
+    ActiveRentalManagementPanel,
+  },
   props: {
     sessionToken: {
       type: String,
@@ -563,6 +567,7 @@ export default {
         type: 'info',
       },
       localeState: getLocaleState(),
+      contractsRefreshToken: 0,
       isLoading: false,
       isSubmitting: false,
       createdContract: null,
@@ -679,7 +684,10 @@ export default {
       })
     },
     formatMoney(value) {
-      return formatCurrency(value)
+      return new Intl.NumberFormat(getDateLocale(), {
+        style: 'currency',
+        currency: 'EUR',
+      }).format(Number(value || 0))
     },
     extractApiError(error, fallbackMessage) {
       const details = error?.errors
@@ -710,11 +718,11 @@ export default {
       }
 
       if (!this.form.pickupAt) {
-        this.form.pickupAt = formatDateTimeLocal(new Date())
+        this.form.pickupAt = formatRentalDateTimeLocal(new Date())
       }
 
       if (!this.form.expectedReturnAt) {
-        this.form.expectedReturnAt = formatDateTimeLocal(
+        this.form.expectedReturnAt = formatRentalDateTimeLocal(
           new Date(Date.now() + 1000 * 60 * 60 * 24),
         )
       }
@@ -764,11 +772,11 @@ export default {
     },
     syncEstimate() {
       if (!this.form.pickupAt) {
-        this.form.pickupAt = formatDateTimeLocal(new Date())
+        this.form.pickupAt = formatRentalDateTimeLocal(new Date())
       }
 
       if (!this.form.expectedReturnAt) {
-        this.form.expectedReturnAt = formatDateTimeLocal(
+        this.form.expectedReturnAt = formatRentalDateTimeLocal(
           new Date(Date.now() + 1000 * 60 * 60 * 24),
         )
       }
@@ -777,8 +785,8 @@ export default {
       const start = new Date()
       const end = new Date(start.getTime() + days * 1000 * 60 * 60 * 24)
 
-      this.form.pickupAt = formatDateTimeLocal(start)
-      this.form.expectedReturnAt = formatDateTimeLocal(end)
+      this.form.pickupAt = formatRentalDateTimeLocal(start)
+      this.form.expectedReturnAt = formatRentalDateTimeLocal(end)
       this.syncEstimate()
     },
     clearNewCustomerForm() {
@@ -794,8 +802,8 @@ export default {
       this.selectedCustomerId = 0
       this.customerSearch = ''
       this.vehicleSearch = ''
-      this.form.pickupAt = formatDateTimeLocal(new Date())
-      this.form.expectedReturnAt = formatDateTimeLocal(
+      this.form.pickupAt = formatRentalDateTimeLocal(new Date())
+      this.form.expectedReturnAt = formatRentalDateTimeLocal(
         new Date(Date.now() + 1000 * 60 * 60 * 24),
       )
       this.form.pickupOdometerKm = null
@@ -886,6 +894,7 @@ export default {
         this.showBanner(this.tr('createSuccess', { contractNumber: response.contractNumber }), 'success')
         this.resetFormAfterSuccess()
         await this.loadContext()
+        this.contractsRefreshToken += 1
       } catch (error) {
         this.showBanner(
           this.extractApiError(error, this.tr('createError')),
@@ -897,6 +906,10 @@ export default {
     },
     showBanner(message, type) {
       this.banner = { message, type }
+    },
+    async handleContractsChanged() {
+      this.contractsRefreshToken += 1
+      await this.loadContext()
     },
   },
 }

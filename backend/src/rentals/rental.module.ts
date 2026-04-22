@@ -10,5 +10,6 @@ import { RentalService } from './rental.service';
   imports: [AuthModule, StationModule, VehicleModule],
   controllers: [RentalController],
   providers: [RentalService, RentalManagementGuard],
+  exports: [RentalService],
 })
 export class RentalModule {}

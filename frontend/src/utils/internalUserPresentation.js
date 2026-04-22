@@ -11,6 +11,7 @@ const LOCALE_MESSAGES = {
     activityActive: 'Conta ativa',
     activityDisabled: 'Conta desativada',
     statusPending: 'Pendente de validacao IT',
+    statusBlocked: 'Bloqueada',
     statusActive: 'Ativa',
     warningPermissionRemoved: 'Algumas permissoes foram removidas automaticamente',
   },
@@ -24,6 +25,7 @@ const LOCALE_MESSAGES = {
     activityActive: 'Active account',
     activityDisabled: 'Deactivated account',
     statusPending: 'Pending IT validation',
+    statusBlocked: 'Blocked',
     statusActive: 'Active',
     warningPermissionRemoved: 'Some permissions were removed automatically',
   },
@@ -37,6 +39,7 @@ const LOCALE_MESSAGES = {
     activityActive: 'Cuenta activa',
     activityDisabled: 'Cuenta desactivada',
     statusPending: 'Pendiente de validacion IT',
+    statusBlocked: 'Bloqueada',
     statusActive: 'Activa',
     warningPermissionRemoved: 'Algunos permisos fueron eliminados automaticamente',
   },
@@ -94,9 +97,15 @@ export function getInternalUserActivityLabel(isActive) {
 }
 
 export function getInternalUserStatusLabel(status) {
-  return status === 'PENDING_IT_VALIDATION'
-    ? tr('statusPending')
-    : tr('statusActive')
+  if (status === 'PENDING_IT_VALIDATION') {
+    return tr('statusPending')
+  }
+
+  if (status === 'BLOCKED') {
+    return tr('statusBlocked')
+  }
+
+  return tr('statusActive')
 }
 
 export function shouldShowPermissionCompatibilityGuide(warnings) {

@@ -8,6 +8,7 @@ export enum InternalUserRole {
 export enum InternalUserStatus {
   ACTIVE = 'ACTIVE',
   PENDING_IT_VALIDATION = 'PENDING_IT_VALIDATION',
+  BLOCKED = 'BLOCKED',
 }
 
 export enum InternalPermission {

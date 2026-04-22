@@ -71,4 +71,25 @@ describe('apiClient', () => {
       errors: [{ field: 'userId', message: 'Invalido.' }],
     })
   })
+
+  it('maps backend details and alternatives when the API returns them', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: jest.fn().mockResolvedValue({
+        message: 'O veiculo selecionado ja nao esta disponivel.',
+        code: 'VEHICLE_UNAVAILABLE',
+        details: ['Selecione outra viatura.'],
+        alternatives: [{ id: 4, plateNumber: '44-EF-66' }],
+      }),
+    })
+
+    await expect(getJson('/reservations/availability')).rejects.toMatchObject({
+      message: 'O veiculo selecionado ja nao esta disponivel.',
+      status: 400,
+      code: 'VEHICLE_UNAVAILABLE',
+      errors: ['Selecione outra viatura.'],
+      alternatives: [{ id: 4, plateNumber: '44-EF-66' }],
+    })
+  })
 })

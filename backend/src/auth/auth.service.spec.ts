@@ -185,6 +185,29 @@ describe('AuthService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('rejects legacy blocked statuses even when the active flag remains true', async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([
+      {
+        id: 'user-5',
+        userId: 'staff.legacy',
+        fullName: 'Staff Legacy',
+        passwordHash: passwordHasher.hash('StrongPwd1!'),
+        isInternal: true,
+        isActive: true,
+        internalRole: InternalUserRole.STAFF,
+        internalStatus: InternalUserStatus.BLOCKED,
+        permissions: [],
+      },
+    ]);
+
+    await expect(
+      service.login({
+        userId: 'staff.legacy',
+        password: 'StrongPwd1!',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('restores a session from a valid bearer token', async () => {
     authTokenService.parseToken.mockReturnValue({
       tokenId: 'token-restore',
@@ -197,7 +220,7 @@ describe('AuthService', () => {
           sessionId: 'session-restore',
           tokenId: 'token-restore',
           tokenHash: 'stored-hash',
-          expiresAt: new Date('2026-03-25T12:00:00.000Z'),
+          expiresAt: new Date('2026-12-25T12:00:00.000Z'),
           revokedAt: null,
           userPkId: 'user-restore',
           userId: 'admin.restore',
@@ -233,7 +256,7 @@ describe('AuthService', () => {
     const response = await service.logoutCurrentSession({
       sessionId: 'session-logout',
       tokenId: 'token-logout',
-      expiresAt: new Date('2026-03-25T12:00:00.000Z'),
+      expiresAt: new Date('2026-12-25T12:00:00.000Z'),
       concurrentSessionCount: 0,
       warnings: [],
       user: {
