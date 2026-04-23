@@ -1,9 +1,15 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  ExecutionContext,
+  INestApplication,
+  ValidationPipe,
+} from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { AuthSessionGuard } from '../src/auth/auth-session.guard';
+import type { AuthenticatedRequest } from '../src/auth/auth.types';
 import {
   InternalPermission,
   InternalUserRole,
@@ -14,6 +20,48 @@ import { ReservationManagementGuard } from '../src/reservations/reservation-mana
 
 describe('Reservations HTTP contract', () => {
   let app: INestApplication<App>;
+
+  interface ReservationContextBody {
+    customers: Array<{
+      id: number;
+      firstName: string;
+      lastName: string;
+    }>;
+    stations: unknown[];
+    recentReservations: unknown[];
+  }
+
+  interface ReservationAvailabilityBody {
+    pickupStationId: number;
+    pickupAt: string;
+    expectedReturnAt: string;
+    availableVehicles: Array<{
+      id: number;
+      plateNumber: string;
+      stationId: number;
+      stationName: string;
+    }>;
+    alternativeVehicles: unknown[];
+    suggestionMessage: string | null;
+  }
+
+  interface ReservationCreateBody {
+    id: number;
+    reservationNumber: string;
+    customerId: number;
+    customerFullName: string;
+    stationId: number;
+    returnStationId: number;
+    vehicleId: number;
+    status: string;
+    createdBy: string;
+  }
+
+  interface ReservationOverlapErrorBody {
+    message: string;
+    code: string;
+    alternatives: unknown[];
+  }
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -26,8 +74,10 @@ describe('Reservations HTTP contract', () => {
       })
       .overrideGuard(AuthSessionGuard)
       .useValue({
-        canActivate(context: any) {
-          const request = context.switchToHttp().getRequest();
+        canActivate(context: ExecutionContext) {
+          const request = context
+            .switchToHttp()
+            .getRequest<AuthenticatedRequest>();
           request.auth = {
             sessionId: 'session-contract',
             tokenId: 'token-contract',
@@ -71,12 +121,14 @@ describe('Reservations HTTP contract', () => {
       .set('Authorization', 'Bearer contract-token')
       .expect(200);
 
-    expect(response.body).toEqual({
+    const body = response.body as ReservationContextBody;
+
+    expect(body).toEqual({
       customers: expect.any(Array),
       stations: expect.any(Array),
       recentReservations: expect.any(Array),
     });
-    expect(response.body.customers[0]).toMatchObject({
+    expect(body.customers[0]).toMatchObject({
       id: expect.any(Number),
       firstName: expect.any(String),
       lastName: expect.any(String),
@@ -94,7 +146,9 @@ describe('Reservations HTTP contract', () => {
       .set('Authorization', 'Bearer contract-token')
       .expect(200);
 
-    expect(response.body).toEqual({
+    const body = response.body as ReservationAvailabilityBody;
+
+    expect(body).toEqual({
       pickupStationId: 1,
       pickupAt: expect.any(String),
       expectedReturnAt: expect.any(String),
@@ -102,7 +156,7 @@ describe('Reservations HTTP contract', () => {
       alternativeVehicles: expect.any(Array),
       suggestionMessage: null,
     });
-    expect(response.body.availableVehicles[0]).toMatchObject({
+    expect(body.availableVehicles[0]).toMatchObject({
       id: expect.any(Number),
       plateNumber: expect.any(String),
       stationId: 1,
@@ -125,7 +179,9 @@ describe('Reservations HTTP contract', () => {
       })
       .expect(201);
 
-    expect(response.body).toMatchObject({
+    const body = response.body as ReservationCreateBody;
+
+    expect(body).toMatchObject({
       id: expect.any(Number),
       reservationNumber: expect.stringMatching(/^RSV-/),
       customerId: 1,
@@ -165,7 +221,9 @@ describe('Reservations HTTP contract', () => {
       })
       .expect(400);
 
-    expect(response.body).toMatchObject({
+    const body = response.body as ReservationOverlapErrorBody;
+
+    expect(body).toMatchObject({
       message:
         'O veiculo selecionado ja nao esta disponivel no periodo indicado. Escolha outra viatura.',
       code: 'VEHICLE_UNAVAILABLE',

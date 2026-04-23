@@ -1,5 +1,5 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { InternalUserRole } from '@prisma/client';
+import { InternalUserRole } from './internal-user.enums';
 import { ItMasterGuard } from './it-master.guard';
 
 // Guard tests for the IT-only authorization rule after authentication.

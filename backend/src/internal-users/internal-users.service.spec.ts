@@ -6,7 +6,7 @@ import {
   InternalPermission,
   InternalUserRole,
   InternalUserStatus,
-} from '@prisma/client';
+} from './internal-user.enums';
 import { AuthenticatedUserDto } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { InternalUsersService } from './internal-users.service';

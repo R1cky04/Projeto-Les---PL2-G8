@@ -1,4 +1,7 @@
-import { InternalUserRole, InternalUserStatus } from '@prisma/client';
+import {
+  InternalUserRole,
+  InternalUserStatus,
+} from '../internal-users/internal-user.enums';
 import { PasswordHasherService } from '../internal-users/password-hasher.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthBootstrapService } from './auth-bootstrap.service';
