@@ -16,7 +16,7 @@ interface FeatureDefinition {
   description: string;
   isEntitled: (user: AuthenticatedUserDto) => boolean;
 }
-
+//teste2
 const FEATURE_DEFINITIONS: FeatureDefinition[] = [
   {
     key: 'INTERNAL_USERS',
