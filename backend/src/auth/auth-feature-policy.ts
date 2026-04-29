@@ -66,7 +66,7 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
       user.permissions.includes(InternalPermission.INCIDENT_WRITE),
   },
 ];
-
+//teste
 const LIMITED_ACCESS_REASON =
   'A conta foi autenticada, mas algumas capacidades ficam condicionadas ate validacao final.';
 const TEMPORARY_DISABLED_REASON =
