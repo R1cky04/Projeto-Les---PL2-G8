@@ -1,4 +1,8 @@
-import { InternalPermission, InternalUserRole, InternalUserStatus } from '../internal-users/internal-user.enums';
+import {
+  InternalPermission,
+  InternalUserRole,
+  InternalUserStatus,
+} from '../internal-users/internal-user.enums';
 import type { AuthenticatedUserDto } from '../auth/auth.types';
 import { StationService } from '../station/station.service';
 import { VehicleService } from '../vehicle/vehicle.service';
@@ -39,7 +43,9 @@ describe('ImproService', () => {
     expect(impro.status).toBe('IN_TRANSFER');
 
     const vehicles = await service.listVehicles();
-    expect(vehicles.find((vehicle) => vehicle.id === 1)?.status).toBe('IN_TRANSFER');
+    expect(vehicles.find((vehicle) => vehicle.id === 1)?.status).toBe(
+      'IN_TRANSFER',
+    );
   });
 
   it('schedules impro for a future date', async () => {
@@ -56,10 +62,14 @@ describe('ImproService', () => {
     );
 
     expect(impro.status).toBe('SCHEDULED');
-    expect(impro.warnings).toContain('Transferencia agendada para data futura.');
+    expect(impro.warnings).toContain(
+      'Transferencia agendada para data futura.',
+    );
 
     const vehicles = await service.listVehicles();
-    expect(vehicles.find((vehicle) => vehicle.id === 2)?.status).toBe('MAINTENANCE');
+    expect(vehicles.find((vehicle) => vehicle.id === 2)?.status).toBe(
+      'MAINTENANCE',
+    );
   });
 
   it('closes impro and returns vehicle to available status at destination', async () => {
@@ -107,7 +117,9 @@ describe('ImproService', () => {
     );
 
     const vehicles = await service.listVehicles();
-    expect(vehicles.find((vehicle) => vehicle.id === 1)?.status).toBe('MAINTENANCE');
+    expect(vehicles.find((vehicle) => vehicle.id === 1)?.status).toBe(
+      'MAINTENANCE',
+    );
   });
 
   it('filters history by vehicle plate', async () => {

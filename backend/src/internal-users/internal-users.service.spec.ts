@@ -1,7 +1,4 @@
-import {
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import {
   InternalPermission,
   InternalUserRole,
@@ -56,9 +53,9 @@ describe('InternalUsersService', () => {
 
   beforeEach(() => {
     prisma = {
-      $transaction: jest.fn().mockImplementation((operations) =>
-        Promise.all(operations),
-      ),
+      $transaction: jest
+        .fn()
+        .mockImplementation((operations) => Promise.all(operations)),
       user: {
         count: jest.fn(),
         findMany: jest.fn(),

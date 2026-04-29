@@ -62,7 +62,9 @@ export function filterPermissionsForRole(
   const allowedPermissions = new Set(getPermissionsForRole(role));
 
   return Array.from(
-    new Set(permissions.filter((permission) => allowedPermissions.has(permission))),
+    new Set(
+      permissions.filter((permission) => allowedPermissions.has(permission)),
+    ),
   );
 }
 

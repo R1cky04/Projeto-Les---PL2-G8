@@ -3,7 +3,9 @@ import { join } from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-const { PrismaClient } = require(join(process.cwd(), 'generated', 'prisma')) as {
+const { PrismaClient } = require(
+  join(process.cwd(), 'generated', 'prisma'),
+) as {
   PrismaClient: new (...args: any[]) => any;
 };
 

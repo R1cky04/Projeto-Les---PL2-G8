@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import {
+  createHash,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from 'node:crypto';
 
 interface IssuedSessionToken {
   rawToken: string;

@@ -101,7 +101,10 @@ export class ImproService {
     return this.stationService.findAll();
   }
 
-  async create(payload: CreateImproDto, actor: AuthenticatedUserDto): Promise<ImproRecord> {
+  async create(
+    payload: CreateImproDto,
+    actor: AuthenticatedUserDto,
+  ): Promise<ImproRecord> {
     this.ensureTransferPermissions(actor);
 
     if (payload.originStationId === payload.destinationStationId) {
@@ -133,7 +136,8 @@ export class ImproService {
 
     if (vehicle.currentStationId !== payload.originStationId) {
       throw new BadRequestException({
-        message: 'O veiculo nao pertence atualmente a estacao de origem selecionada.',
+        message:
+          'O veiculo nao pertence atualmente a estacao de origem selecionada.',
         code: 'INVALID_ORIGIN_STATION',
       });
     }
@@ -206,9 +210,17 @@ export class ImproService {
     this.nextImproId += 1;
 
     if (status === 'IN_TRANSFER') {
-      await this.vehicleService.update(vehicle.id, { status: 'RESERVED' }, this.resolveActorLabel(actor));
+      await this.vehicleService.update(
+        vehicle.id,
+        { status: 'RESERVED' },
+        this.resolveActorLabel(actor),
+      );
     } else if (vehicle.status !== 'MAINTENANCE') {
-      await this.vehicleService.update(vehicle.id, { status: 'AVAILABLE' }, this.resolveActorLabel(actor));
+      await this.vehicleService.update(
+        vehicle.id,
+        { status: 'AVAILABLE' },
+        this.resolveActorLabel(actor),
+      );
     }
 
     return impro;
@@ -217,14 +229,20 @@ export class ImproService {
   async findAll(filters: ImproFilters = {}): Promise<ImproListResponse> {
     const normalizedSearch = (filters.search || '').trim().toLowerCase();
     const normalizedPlate = (filters.vehiclePlate || '').trim().toLowerCase();
-    const normalizedStatus = (filters.status || '').trim().toUpperCase() as ImproStatus;
+    const normalizedStatus = (filters.status || '')
+      .trim()
+      .toUpperCase() as ImproStatus;
 
-    const fromDate = this.parseFilterDate(filters.fromDate, 'INVALID_FROM_DATE');
+    const fromDate = this.parseFilterDate(
+      filters.fromDate,
+      'INVALID_FROM_DATE',
+    );
     const toDate = this.parseFilterDate(filters.toDate, 'INVALID_TO_DATE');
 
     if (fromDate && toDate && fromDate.getTime() > toDate.getTime()) {
       throw new BadRequestException({
-        message: 'Intervalo de datas invalido. A data inicial deve ser inferior a final.',
+        message:
+          'Intervalo de datas invalido. A data inicial deve ser inferior a final.',
         code: 'INVALID_DATE_RANGE',
       });
     }
@@ -252,13 +270,18 @@ export class ImproService {
         }
       }
 
-      if (normalizedPlate && !impro.vehiclePlate.toLowerCase().includes(normalizedPlate)) {
+      if (
+        normalizedPlate &&
+        !impro.vehiclePlate.toLowerCase().includes(normalizedPlate)
+      ) {
         return false;
       }
 
-      if (filters.stationId &&
+      if (
+        filters.stationId &&
         impro.originStationId !== filters.stationId &&
-        impro.destinationStationId !== filters.stationId) {
+        impro.destinationStationId !== filters.stationId
+      ) {
         return false;
       }
 
@@ -290,12 +313,18 @@ export class ImproService {
     });
 
     return {
-      items: [...items].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
+      items: [...items].sort(
+        (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
+      ),
       totalItems: items.length,
     };
   }
 
-  async update(id: number, payload: UpdateImproDto, actor: AuthenticatedUserDto): Promise<ImproRecord> {
+  async update(
+    id: number,
+    payload: UpdateImproDto,
+    actor: AuthenticatedUserDto,
+  ): Promise<ImproRecord> {
     this.ensureTransferPermissions(actor);
 
     const impro = this.getImproOrFail(id);
@@ -336,13 +365,21 @@ export class ImproService {
       if (transferDate.getTime() > Date.now()) {
         impro.status = 'SCHEDULED';
         if (vehicle.status !== 'MAINTENANCE') {
-          await this.vehicleService.update(vehicle.id, { status: 'AVAILABLE' }, this.resolveActorLabel(actor));
+          await this.vehicleService.update(
+            vehicle.id,
+            { status: 'AVAILABLE' },
+            this.resolveActorLabel(actor),
+          );
         }
         warnings.push('Transferencia atualizada para data futura.');
       } else {
         impro.status = 'IN_TRANSFER';
         if (vehicle.status !== 'MAINTENANCE') {
-          await this.vehicleService.update(vehicle.id, { status: 'RESERVED' }, this.resolveActorLabel(actor));
+          await this.vehicleService.update(
+            vehicle.id,
+            { status: 'RESERVED' },
+            this.resolveActorLabel(actor),
+          );
         }
       }
     }
@@ -375,7 +412,11 @@ export class ImproService {
     return impro;
   }
 
-  async close(id: number, payload: CloseImproDto, actor: AuthenticatedUserDto): Promise<ImproRecord> {
+  async close(
+    id: number,
+    payload: CloseImproDto,
+    actor: AuthenticatedUserDto,
+  ): Promise<ImproRecord> {
     this.ensureTransferPermissions(actor);
 
     const impro = this.getImproOrFail(id);
@@ -408,17 +449,30 @@ export class ImproService {
     const closureWarnings: string[] = [];
     const arrivedLate =
       Boolean(impro.plannedArrivalDate) &&
-      actualArrivalDate.getTime() > new Date(impro.plannedArrivalDate as Date).getTime();
+      actualArrivalDate.getTime() >
+        new Date(impro.plannedArrivalDate as Date).getTime();
 
     if (arrivedLate) {
-      closureWarnings.push('Veiculo chegou com atraso face a chegada prevista.');
+      closureWarnings.push(
+        'Veiculo chegou com atraso face a chegada prevista.',
+      );
     }
 
     if (payload.vehicleDamaged) {
-      await this.vehicleService.update(vehicle.id, { status: 'MAINTENANCE' }, this.resolveActorLabel(actor));
-      closureWarnings.push('Veiculo com danos foi encaminhado para manutencao.');
+      await this.vehicleService.update(
+        vehicle.id,
+        { status: 'MAINTENANCE' },
+        this.resolveActorLabel(actor),
+      );
+      closureWarnings.push(
+        'Veiculo com danos foi encaminhado para manutencao.',
+      );
     } else {
-      await this.vehicleService.update(vehicle.id, { status: 'AVAILABLE' }, this.resolveActorLabel(actor));
+      await this.vehicleService.update(
+        vehicle.id,
+        { status: 'AVAILABLE' },
+        this.resolveActorLabel(actor),
+      );
     }
 
     impro.actualArrivalDate = actualArrivalDate;
@@ -500,7 +554,10 @@ export class ImproService {
     await this.stationService.findOne(id);
   }
 
-  private parseFilterDate(value: string | undefined, code: string): Date | null {
+  private parseFilterDate(
+    value: string | undefined,
+    code: string,
+  ): Date | null {
     if (!value) {
       return null;
     }

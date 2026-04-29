@@ -43,7 +43,8 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
   {
     key: 'RENTALS',
     label: 'Rentals',
-    description: 'Gestao de contratos de aluguer com cliente, viatura, datas e valor estimado.',
+    description:
+      'Gestao de contratos de aluguer com cliente, viatura, datas e valor estimado.',
     isEntitled: (user) =>
       user.permissions.includes(InternalPermission.RENTAL_READ),
   },

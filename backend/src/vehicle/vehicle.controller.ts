@@ -27,7 +27,8 @@ export class VehicleController {
     @Body() createVehicleDto: CreateVehicleDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<Vehicle> {
-    const createdBy = request.auth?.user.userId || request.auth?.user.id || 'IT-User';
+    const createdBy =
+      request.auth?.user.userId || request.auth?.user.id || 'IT-User';
     return this.vehicleService.create(createVehicleDto, createdBy);
   }
 
@@ -52,7 +53,8 @@ export class VehicleController {
     @Body() updateVehicleDto: UpdateVehicleDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<Vehicle> {
-    const updatedBy = request.auth?.user.userId || request.auth?.user.id || 'Internal-User';
+    const updatedBy =
+      request.auth?.user.userId || request.auth?.user.id || 'Internal-User';
     return this.vehicleService.update(id, updateVehicleDto, updatedBy);
   }
 
@@ -61,7 +63,8 @@ export class VehicleController {
     @Param('id', ParseIntPipe) id: number,
     @Req() request: AuthenticatedRequest,
   ): Promise<Vehicle> {
-    const deletedBy = request.auth?.user.userId || request.auth?.user.id || 'IT-User';
+    const deletedBy =
+      request.auth?.user.userId || request.auth?.user.id || 'IT-User';
     return this.vehicleService.delete(id, deletedBy);
   }
 }

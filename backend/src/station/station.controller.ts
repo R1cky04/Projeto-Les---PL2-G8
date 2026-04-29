@@ -28,7 +28,8 @@ export class StationController {
     @Body() createStationDto: CreateStationDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<Station> {
-    const createdBy = request.auth?.user.userId || request.auth?.user.id || 'IT-User';
+    const createdBy =
+      request.auth?.user.userId || request.auth?.user.id || 'IT-User';
     return this.stationService.create(createStationDto, createdBy);
   }
 
@@ -53,7 +54,8 @@ export class StationController {
     @Body() updateStationDto: UpdateStationDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<Station> {
-    const updatedBy = request.auth?.user.userId || request.auth?.user.id || 'IT-User';
+    const updatedBy =
+      request.auth?.user.userId || request.auth?.user.id || 'IT-User';
     return this.stationService.update(id, updateStationDto, updatedBy);
   }
 
@@ -62,7 +64,8 @@ export class StationController {
     @Param('id', ParseIntPipe) id: number,
     @Req() request: AuthenticatedRequest,
   ): Promise<Station> {
-    const deletedBy = request.auth?.user.userId || request.auth?.user.id || 'IT-User';
+    const deletedBy =
+      request.auth?.user.userId || request.auth?.user.id || 'IT-User';
     return this.stationService.delete(id, deletedBy);
   }
 }

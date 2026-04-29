@@ -76,7 +76,10 @@ export class ReservationController {
     @Body() createReservationDto: CreateReservationDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<ReservationRecord> {
-    return this.reservationService.create(createReservationDto, request.auth?.user);
+    return this.reservationService.create(
+      createReservationDto,
+      request.auth?.user,
+    );
   }
 
   @Patch(':id')
