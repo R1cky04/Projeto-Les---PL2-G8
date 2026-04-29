@@ -13,6 +13,22 @@
           <span>{{ tr('vehiclesCount', { count: vehicles.length }) }}</span>
           <span class="status-hint">{{ tr('shortcutHint') }}</span>
         </div>
+        <div class="report-actions-row">
+          <label class="report-status-filter">
+            Estado
+            <select v-model="statusFilter" @change="handleSearch">
+              <option value="">Todos os estados</option>
+              <option value="AVAILABLE">AVAILABLE</option>
+              <option value="RESERVED">RESERVED</option>
+              <option value="RENTED">RENTED</option>
+              <option value="MAINTENANCE">MAINTENANCE</option>
+              <option value="INACTIVE">INACTIVE</option>
+            </select>
+          </label>
+          <button type="button" class="btn btn-report" @click="exportVehicleReport">
+            Exportar relatório CSV
+          </button>
+        </div>
 
         <div class="filter-sticky">
           <div class="search-box">
@@ -38,7 +54,7 @@
 
         <div class="scroll-area">
           <div
-            v-for="vehicle in vehicles"
+            v-for="vehicle in visibleVehicles"
             :key="vehicle.id"
             :class="['station-card', { active: selectedVehicle?.id === vehicle.id }]"
             @click="selectVehicle(vehicle)"
@@ -307,6 +323,7 @@ export default {
       vehicles: [],
       selectedVehicle: null,
       searchTerm: '',
+      statusFilter: '',
       searchDebounceTimer: null,
       submitting: false,
       toast: { show: false, text: '', type: '' },
@@ -320,6 +337,23 @@ export default {
         odometerKm: 0,
       },
     }
+  },
+  computed: {
+    visibleVehicles() {
+      return this.vehicles.filter((vehicle) => {
+        if (!this.statusFilter) {
+          return true
+        }
+
+        return vehicle.status === this.statusFilter
+      })
+    },
+    statusCounts() {
+      return this.vehicles.reduce((counts, vehicle) => {
+        counts[vehicle.status] = (counts[vehicle.status] || 0) + 1
+        return counts
+      }, {})
+    },
   },
   methods: {
     tr(key, params = {}) {
@@ -398,7 +432,7 @@ export default {
     },
     async handleSearch() {
       const url = this.searchTerm
-        ? `${API_BASE_URL}/vehicles/search/${this.searchTerm}`
+        ? `${API_BASE_URL}/vehicles/search/${encodeURIComponent(this.searchTerm)}`
         : `${API_BASE_URL}/vehicles`
 
       try {
@@ -431,6 +465,53 @@ export default {
       event.preventDefault()
       this.$refs.searchInput?.focus()
     },
+    async exportVehicleReport() {
+      if (this.visibleVehicles.length === 0) {
+        this.showToast('Nao existem veiculos para exportar.', 'error')
+        return
+      }
+
+      const escapeCsv = (value) => {
+        const text = value === null || value === undefined ? '' : String(value)
+        return `"${text.replace(/"/g, '""')}"`
+      }
+
+      const header = [
+        'ID',
+        'Matricula',
+        'Marca',
+        'Modelo',
+        'Estado',
+        'Estacao ID',
+        'Odometro Km',
+        'Preco Diario',
+        'Criado Em',
+        'Atualizado Em',
+      ]
+
+      const rows = this.visibleVehicles.map((vehicle) => [
+        vehicle.id,
+        vehicle.plateNumber,
+        vehicle.brand,
+        vehicle.model,
+        vehicle.status,
+        vehicle.stationId,
+        vehicle.odometerKm,
+        vehicle.dailyRate.toFixed(2),
+        this.formatDate(vehicle.createdAt),
+        this.formatDate(vehicle.updatedAt),
+      ])
+
+      const csv = [header.join(','), ...rows.map((row) => row.map(escapeCsv).join(','))].join('\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `relatorio-veiculos-${Date.now()}.csv`
+      link.click()
+      URL.revokeObjectURL(link.href)
+      this.showToast('Relatorio de veiculos exportado com sucesso.', 'success')
+    },
+
     async updateVehicle() {
       if (!this.selectedVehicle?.id) {
         this.showToast(this.tr('selectVehicleToEdit'), 'error')

@@ -23,6 +23,14 @@ function buildRentalQuery(filters = {}) {
     searchParams.set('search', filters.search)
   }
 
+  if (filters.createdFrom) {
+    searchParams.set('createdFrom', filters.createdFrom)
+  }
+
+  if (filters.createdTo) {
+    searchParams.set('createdTo', filters.createdTo)
+  }
+
   const query = searchParams.toString()
   return query ? `?${query}` : ''
 }

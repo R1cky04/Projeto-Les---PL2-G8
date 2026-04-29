@@ -16,7 +16,11 @@ import { CloseRentalDto } from './dto/close-rental.dto';
 import { CreateRentalDto } from './dto/create-rental.dto';
 import { UpdateRentalDto } from './dto/update-rental.dto';
 import { RentalManagementGuard } from './rental-management.guard';
-import { RentalService, type RentalRecord, type RentalContextResponse } from './rental.service';
+import {
+  RentalService,
+  type RentalRecord,
+  type RentalContextResponse,
+} from './rental.service';
 
 @Controller('rentals')
 @UseGuards(AuthSessionGuard, RentalManagementGuard)
@@ -32,8 +36,15 @@ export class RentalController {
   async findAll(
     @Query('search') search?: string,
     @Query('status') status?: string,
+    @Query('createdFrom') createdFrom?: string,
+    @Query('createdTo') createdTo?: string,
   ): Promise<RentalRecord[]> {
-    return this.rentalService.findAll({ search, status });
+    return this.rentalService.findAll({
+      search,
+      status,
+      createdFrom,
+      createdTo,
+    });
   }
 
   @Get(':id')
