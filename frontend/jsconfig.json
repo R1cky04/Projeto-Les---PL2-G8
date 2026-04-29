@@ -1,14 +1,15 @@
 {
+  "$schema": "https://json.schemastore.org/jsconfig",
   "compilerOptions": {
-    "target": "es2020",
+    "target": "esnext",
     "module": "esnext",
-    "baseUrl": "./",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "allowJs": true,
     "checkJs": false,
+    "noEmit": true,
     "paths": {
       "@/*": [
-        "src/*"
+        "./src/*"
       ]
     },
     "lib": [
@@ -17,5 +18,15 @@
       "dom.iterable",
       "scripthost"
     ]
-  }
+  },
+  "include": [
+    "src/**/*.js",
+    "src/**/*.vue",
+    "*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "dist_electron"
+  ]
 }
