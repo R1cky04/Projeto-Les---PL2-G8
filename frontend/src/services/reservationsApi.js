@@ -90,8 +90,9 @@ export function updateReservation(reservationId, payload, sessionToken) {
   })
 }
 
-export function cancelReservation(reservationId, sessionToken) {
+export function cancelReservation(reservationId, sessionToken, options = {}) {
   return patchJson(`/reservations/${reservationId}/cancel`, {
+    ...(Object.keys(options).length > 0 ? { body: options } : {}),
     token: sessionToken,
     fallbackMessage: 'Nao foi possivel cancelar a reserva.',
   })

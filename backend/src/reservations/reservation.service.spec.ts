@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { AuthenticatedUserDto } from '../auth/auth.types';
 import {
   InternalPermission,
@@ -205,5 +209,175 @@ describe('ReservationService', () => {
     expect(results).toHaveLength(1);
     expect(results[0].stationId).toBe(1);
     expect(results[0].status).toBe('CONFIRMED');
+  });
+
+  it('cancels a confirmed reservation, audits the action and releases vehicle availability', async () => {
+    const auditSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const reservation = await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-11-10T09:00:00.000Z',
+        expectedReturnAt: '2026-11-12T09:00:00.000Z',
+      },
+      buildActor(),
+    );
+
+    const blockedAvailability = await service.getAvailability({
+      pickupStationId: '1',
+      pickupAt: '2026-11-10T09:00:00.000Z',
+      expectedReturnAt: '2026-11-12T09:00:00.000Z',
+    });
+
+    expect(
+      blockedAvailability.availableVehicles.some(
+        (vehicle) => vehicle.id === reservation.vehicleId,
+      ),
+    ).toBe(false);
+
+    const cancelled = await service.cancel(reservation.id, buildActor());
+    const releasedAvailability = await service.getAvailability({
+      pickupStationId: '1',
+      pickupAt: '2026-11-10T09:00:00.000Z',
+      expectedReturnAt: '2026-11-12T09:00:00.000Z',
+    });
+
+    expect(cancelled.status).toBe('CANCELLED');
+    expect(cancelled.cancelledBy).toBe('admin.member');
+    expect(cancelled.cancelledAt).toBeInstanceOf(Date);
+    expect(cancelled.cancellationWarnings).toEqual([]);
+    expect(
+      releasedAvailability.availableVehicles.some(
+        (vehicle) => vehicle.id === reservation.vehicleId,
+      ),
+    ).toBe(true);
+    expect(auditSpy).toHaveBeenCalledWith(expect.stringContaining('CANCEL'));
+    auditSpy.mockRestore();
+  });
+
+  it('adds operational warnings for late cancellation and paid reservations', async () => {
+    const pickupAt = new Date(Date.now() + 60 * 60 * 1000);
+    const expectedReturnAt = new Date(pickupAt.getTime() + 2 * 60 * 60 * 1000);
+    const reservation = await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: pickupAt.toISOString(),
+        expectedReturnAt: expectedReturnAt.toISOString(),
+      },
+      buildActor(),
+    );
+
+    (await service.findOne(reservation.id)).paymentStatus = 'PAID';
+
+    const cancelled = await service.cancel(reservation.id, buildActor());
+
+    expect(cancelled.financialReviewRequired).toBe(true);
+    expect(cancelled.cancellationWarnings).toEqual([
+      expect.stringContaining('proximo da data de inicio'),
+      expect.stringContaining('pagamento associado'),
+    ]);
+  });
+
+  it('requires admin validation for limited-permission cancellations', async () => {
+    const reservation = await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-11-20T09:00:00.000Z',
+        expectedReturnAt: '2026-11-21T09:00:00.000Z',
+      },
+      buildActor(),
+    );
+    const limitedActor: AuthenticatedUserDto = {
+      ...buildActor(),
+      id: 'fleet-limited-1',
+      userId: 'fleet.limited',
+      role: InternalUserRole.FLEET,
+      accessLevel: 'LIMITED',
+    };
+
+    await expect(service.cancel(reservation.id, limitedActor)).rejects.toThrow(
+      ForbiddenException,
+    );
+
+    const cancelled = await service.cancel(reservation.id, limitedActor, {
+      adminValidated: true,
+    });
+
+    expect(cancelled.status).toBe('CANCELLED');
+    expect(cancelled.adminValidationRequired).toBe(true);
+  });
+
+  it('allows IT master users to cancel without additional admin validation', async () => {
+    const reservation = await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-11-22T09:00:00.000Z',
+        expectedReturnAt: '2026-11-23T09:00:00.000Z',
+      },
+      buildActor(),
+    );
+    const itActor: AuthenticatedUserDto = {
+      ...buildActor(),
+      id: 'it-master-1',
+      userId: 'it.master',
+      role: InternalUserRole.IT,
+      accessLevel: 'FULL',
+    };
+
+    const cancelled = await service.cancel(reservation.id, itActor);
+
+    expect(cancelled.status).toBe('CANCELLED');
+    expect(cancelled.adminValidationRequired).toBe(false);
+    expect(cancelled.cancelledBy).toBe('it.master');
+  });
+
+  it('rejects cancellation for unknown, converted or already-started reservations', async () => {
+    await expect(service.cancel(999, buildActor())).rejects.toThrow(
+      NotFoundException,
+    );
+
+    const converted = await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-11-25T09:00:00.000Z',
+        expectedReturnAt: '2026-11-26T09:00:00.000Z',
+      },
+      buildActor(),
+    );
+    await service.markAsConvertedToContract(converted.id, buildActor());
+
+    await expect(service.cancel(converted.id, buildActor())).rejects.toThrow(
+      BadRequestException,
+    );
+
+    const started = await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 2,
+        pickupAt: '2026-05-01T09:00:00.000Z',
+        expectedReturnAt: '2026-05-02T09:00:00.000Z',
+      },
+      buildActor(),
+    );
+
+    await expect(service.cancel(started.id, buildActor())).rejects.toThrow(
+      BadRequestException,
+    );
   });
 });

@@ -135,6 +135,67 @@
   color: #bae6fd;
 }
 
+.rental-floating-alert {
+  position: fixed;
+  top: 22px;
+  right: 22px;
+  z-index: 9999;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  width: min(520px, calc(100vw - 32px));
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  box-shadow: 0 22px 60px -24px rgba(0, 0, 0, 0.86);
+  backdrop-filter: blur(16px);
+}
+
+.rental-floating-alert strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #fff;
+  font-size: 0.92rem;
+}
+
+.rental-floating-alert p {
+  margin: 0;
+  line-height: 1.45;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.rental-floating-alert button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.rental-floating-alert-success {
+  background: rgba(5, 46, 22, 0.92);
+  border-color: rgba(16, 185, 129, 0.36);
+  color: #bbf7d0;
+}
+
+.rental-floating-alert-error {
+  background: rgba(69, 10, 10, 0.94);
+  border-color: rgba(239, 68, 68, 0.42);
+  color: #fecaca;
+}
+
+.rental-floating-alert-info {
+  background: rgba(8, 47, 73, 0.94);
+  border-color: rgba(56, 189, 248, 0.36);
+  color: #bae6fd;
+}
+
 .rental-layout {
   display: grid;
   grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);

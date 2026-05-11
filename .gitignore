@@ -1,4 +1,8 @@
 /backend/dist/
+/backend/dev-server*.log
+/backend/runtime*.log
 /frontend/dist/
 /frontend/dist_electron/
+/frontend/dev-server*.log
+/frontend/runtime*.log
 /frontend/release/

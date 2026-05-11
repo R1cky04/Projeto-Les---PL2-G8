@@ -108,6 +108,20 @@ describe('reservationsApi', () => {
     })
   })
 
+  it('sends admin validation when cancellation requires it', () => {
+    cancelReservation(14, 'token-admin-validation', {
+      adminValidated: true,
+    })
+
+    expect(patchJson).toHaveBeenCalledWith('/reservations/14/cancel', {
+      body: {
+        adminValidated: true,
+      },
+      token: 'token-admin-validation',
+      fallbackMessage: 'Nao foi possivel cancelar a reserva.',
+    })
+  })
+
   it('builds reservation report queries with period and station filters', () => {
     fetchReservations('token-report', {
       startDate: '2026-11-01T00:00:00.000Z',
