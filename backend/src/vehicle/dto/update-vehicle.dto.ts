@@ -30,6 +30,10 @@ export class UpdateVehicleDto {
 
   @IsOptional()
   @IsString()
+  submodel?: string;
+
+  @IsOptional()
+  @IsString()
   category?: string;
 
   @IsOptional()

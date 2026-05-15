@@ -9,6 +9,7 @@ import { RentalModule } from './rentals/rental.module';
 import { ReservationModule } from './reservations/reservation.module';
 import { StationModule } from './station/station.module';
 import { VehicleModule } from './vehicle/vehicle.module';
+import { CatalogModule } from './catalog/catalog.module';
 
 // Root module wiring shared infrastructure and feature modules.
 @Module({
@@ -21,6 +22,7 @@ import { VehicleModule } from './vehicle/vehicle.module';
     ImproModule,
     RentalModule,
     ReservationModule,
+    CatalogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

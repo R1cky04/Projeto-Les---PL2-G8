@@ -35,6 +35,10 @@ export class CreateVehicleDto {
 
   @IsOptional()
   @IsString()
+  submodel?: string;
+
+  @IsOptional()
+  @IsString()
   category?: string;
 
   @IsOptional()
