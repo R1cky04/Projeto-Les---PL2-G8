@@ -1,25 +1,16 @@
-/**
- * DTO para atualização de estação
- * Define os campos opcionais que podem ser atualizados
- */
+import { ApiPropertyOptional } from '@nestjs/swagger';
+
+// Request contract for PUT /stations/:id.
 export class UpdateStationDto {
-  /**
-   * Nome da estação (opcional)
-   */
+  @ApiPropertyOptional({ example: 'Estacao Central Atualizada' })
   name?: string;
 
-  /**
-   * Localização/endereço da estação (opcional)
-   */
+  @ApiPropertyOptional({ example: 'Centro de Faro' })
   location?: string;
 
-  /**
-   * Capacidade máxima de veículos (opcional)
-   */
+  @ApiPropertyOptional({ example: 55, minimum: 1 })
   capacity?: number;
 
-  /**
-   * Veículos atualmente alocados (opcional)
-   */
+  @ApiPropertyOptional({ example: 25, minimum: 0 })
   allocatedVehicles?: number;
 }

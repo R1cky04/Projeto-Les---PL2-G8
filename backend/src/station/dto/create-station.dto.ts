@@ -1,24 +1,40 @@
-import { IsString, IsNotEmpty, IsInt, Min, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
-/**
- * DTO para criação de uma nova estação.
- * Inclui validações básicas para garantir dados consistentes.
- */
+// Request contract for POST /stations.
 export class CreateStationDto {
+  @ApiProperty({
+    example: 'Estacao Aeroporto',
+    description: 'Nome unico da estacao.',
+  })
   @IsString()
   @IsNotEmpty()
-  name: string; // Nome da estação (único)
+  name: string;
 
+  @ApiProperty({
+    example: 'Aeroporto de Faro',
+    description: 'Localizacao operacional da estacao.',
+  })
   @IsString()
   @IsNotEmpty()
-  location: string; // Endereço/localização
+  location: string;
 
+  @ApiProperty({
+    example: 40,
+    minimum: 1,
+    description: 'Capacidade maxima de veiculos.',
+  })
   @IsInt()
   @Min(1)
-  capacity: number; // Capacidade máxima de veículos (deve ser positiva)
+  capacity: number;
 
+  @ApiPropertyOptional({
+    example: 12,
+    minimum: 0,
+    description: 'Numero de veiculos atualmente alocados.',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
-  allocatedVehicles: number; // Veículos atualmente alocados (>=0 e <= capacity)
+  allocatedVehicles: number;
 }

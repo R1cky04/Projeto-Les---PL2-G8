@@ -57,6 +57,16 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## API documentation
+
+After starting the backend, the API is documented with Swagger/OpenAPI:
+
+- Swagger UI: http://localhost:3000/api/docs
+- OpenAPI JSON: http://localhost:3000/api/docs-json
+
+Use the bearer token returned by `POST /auth/login` in the Swagger
+authorization dialog to test protected endpoints.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
