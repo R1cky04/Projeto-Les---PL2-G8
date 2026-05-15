@@ -55,12 +55,15 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.x
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci
+
+      - name: Verify Electron install
+        run: node -e "require('electron')"
 
       - name: Static analysis
         run: npm run lint -- --no-fix
