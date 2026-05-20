@@ -62,7 +62,7 @@
 
     <section class="feature-grid">
       <article
-        v-for="feature in authState.features"
+        v-for="feature in visibleFeatures"
         :key="feature.key"
         class="auth-card feature-card"
         :class="`feature-card-${feature.status.toLowerCase()}`"
@@ -190,6 +190,8 @@
           {{ canManageReservations() ? 'Abrir modulo' : 'Nao autorizado' }}
         </button>
       </article>
+
+      
     </section>
   </section>
 </template>
@@ -232,6 +234,11 @@ export default {
     },
   },
   emits: ['logout', 'open-feature'],
+  computed: {
+    visibleFeatures() {
+      return (this.authState?.features || []).filter((f) => f.key !== 'CUSTOMERS')
+    },
+  },
   methods: {
     handleLocaleChange(event) {
       this.$setLocale(event.target.value)
@@ -290,6 +297,7 @@ export default {
     canManageReservations() {
       return ['IT', 'ADMIN', 'STAFF', 'FLEET'].includes(this.authState?.user?.role)
     },
+    
   },
 }
 </script>

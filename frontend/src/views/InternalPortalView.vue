@@ -443,30 +443,15 @@ export default {
         }
 
         this.currentFeature = normalizedFeatureKey
+        this.$nextTick(() => {
+          this.scrollToModuleTop()
+        })
         if (normalizedFeatureKey === 'STATION_MANAGEMENT') {
           this.stationModuleView = 'MANAGE'
-          this.$nextTick(() => {
-            this.scrollToModuleTop()
-          })
         }
 
         if (normalizedFeatureKey === 'VEHICLE_MANAGEMENT') {
           this.vehicleModuleView = 'MANAGE'
-          this.$nextTick(() => {
-            this.scrollToModuleTop()
-          })
-        }
-
-        if (normalizedFeatureKey === 'IMPRO_MANAGEMENT') {
-          this.$nextTick(() => {
-            this.scrollToModuleTop()
-          })
-        }
-
-        if (normalizedFeatureKey === 'RENTALS') {
-          this.$nextTick(() => {
-            this.scrollToModuleTop()
-          })
         }
 
         this.workspaceMessage = ''
@@ -480,15 +465,9 @@ export default {
     },
     setStationModuleView(view) {
       this.stationModuleView = view
-      this.$nextTick(() => {
-        this.scrollToModuleTop()
-      })
     },
     setVehicleModuleView(view) {
       this.vehicleModuleView = view
-      this.$nextTick(() => {
-        this.scrollToModuleTop()
-      })
     },
     scrollToModuleTop() {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' })

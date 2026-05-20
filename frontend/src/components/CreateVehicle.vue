@@ -106,6 +106,7 @@
           <input
             id="plateNumber"
             v-model.trim="form.plateNumber"
+            @input="formatPlateInput"
             type="text"
             maxlength="20"
             required
@@ -167,6 +168,7 @@ import {
   getCatalogModels,
   getCatalogSubmodels,
 } from '../constants/vehicleCatalog'
+import { formatPlateForDisplay, isValidPortuguesePlate } from '../utils/plateFormatting'
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:3000'
 
@@ -400,6 +402,12 @@ export default {
         return
       }
 
+      // Validate Portuguese plate format: XX-99-ZZ
+      if (!isValidPortuguesePlate(this.form.plateNumber)) {
+        this.showFeedback('Matricula inválida — use o formato XX-99-ZZ', 'error')
+        return
+      }
+
       this.loading = true
       try {
         await axios.post(
@@ -435,6 +443,9 @@ export default {
       } finally {
         this.loading = false
       }
+    },
+    formatPlateInput(event) {
+      this.form.plateNumber = formatPlateForDisplay(event.target.value)
     },
     showFeedback(text, type) {
       this.message = text

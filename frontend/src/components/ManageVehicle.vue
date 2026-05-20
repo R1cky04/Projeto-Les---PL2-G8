@@ -80,7 +80,7 @@
               <div class="input-row">
                 <div class="input-block flex-2">
                   <label>{{ tr('plate') }}</label>
-                  <input v-model="editForm.plateNumber" type="text" />
+                  <input v-model="editForm.plateNumber" @input="formatPlateEditInput" type="text" />
                 </div>
                 <div class="input-block flex-1">
                   <label>{{ tr('status') }}</label>
@@ -186,6 +186,7 @@ import {
   getCatalogSubmodels,
   getCatalogSummary,
 } from '../constants/vehicleCatalog'
+import { formatPlateForDisplay, isValidPortuguesePlate } from '../utils/plateFormatting'
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:3000'
 
@@ -434,7 +435,7 @@ export default {
     selectVehicle(vehicle) {
       this.selectedVehicle = vehicle
       this.editForm = {
-        plateNumber: vehicle.plateNumber,
+        plateNumber: formatPlateForDisplay(vehicle.plateNumber),
         brand: vehicle.brand,
         model: vehicle.model,
         submodel: vehicle.submodel || '',
@@ -500,6 +501,12 @@ export default {
         return
       }
 
+      // Validate plate format XX-99-ZZ
+      if (!isValidPortuguesePlate(this.editForm.plateNumber)) {
+        this.showToast('Matricula inválida — use o formato XX-99-ZZ', 'error')
+        return
+      }
+
       if (!this.editForm.dailyRate || this.editForm.dailyRate <= 0) {
         this.showToast(this.tr('invalidDailyRate'), 'error')
         return
@@ -537,6 +544,9 @@ export default {
       } finally {
         this.submitting = false
       }
+    },
+    formatPlateEditInput(event) {
+      this.editForm.plateNumber = formatPlateForDisplay(event.target.value)
     },
     async deleteVehicle() {
       if (!this.canDeleteVehicle()) {
