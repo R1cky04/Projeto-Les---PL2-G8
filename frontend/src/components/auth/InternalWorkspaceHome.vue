@@ -49,7 +49,7 @@
 
     <section class="feature-grid">
       <article
-        v-for="feature in authState.features"
+        v-for="feature in visibleFeatures"
         :key="feature.key"
         class="auth-card feature-card"
         :class="`feature-card-${feature.status.toLowerCase()}`"
@@ -160,7 +160,7 @@
             <p>Crie, atualize e cancele reservas com controlo operacional.</p>
           </div>
           <span class="feature-status">
-            {{ canManageReservations() ? 'Disponivel' : 'Sem perfil' }}
+            {{ canManageReservations() ? featureStatusLabel('AVAILABLE') : $t('workspace.noProfile') }}
           </span>
         </div>
 
@@ -174,7 +174,7 @@
           :disabled="!canManageReservations()"
           @click="$emit('open-feature', 'RESERVATIONS')"
         >
-          {{ canManageReservations() ? 'Abrir modulo' : 'Nao autorizado' }}
+          {{ canManageReservations() ? $t('workspace.openModule') : $t('workspace.notAuthorized') }}
         </button>
       </article>
     </section>
@@ -200,6 +200,14 @@ export default {
     },
   },
   emits: ['logout', 'open-feature'],
+  computed: {
+    // Hide modules that are not ready for the workspace panel.
+    visibleFeatures() {
+      return (this.authState?.features || []).filter(
+        (f) => f.key !== 'CUSTOMERS',
+      )
+    },
+  },
   methods: {
     handleLocaleChange(event) {
       this.$setLocale(event.target.value)

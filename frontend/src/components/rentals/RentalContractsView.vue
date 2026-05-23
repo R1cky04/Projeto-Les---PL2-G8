@@ -97,7 +97,7 @@
           </div>
 
           <p class="rental-note">
-            Se o email ou documento já existir, o sistema reutiliza automaticamente o cliente associado.
+            Se o email ou documento ja existir, o sistema reutiliza automaticamente o cliente associado.
           </p>
         </form>
       </aside>

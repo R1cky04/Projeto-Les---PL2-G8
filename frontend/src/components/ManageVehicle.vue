@@ -64,7 +64,7 @@
               <span class="capacity-tag">{{ formatStatusLabel(vehicle.status) }}</span>
             </div>
             <h3 class="station-name">{{ vehicle.plateNumber }}</h3>
-            <span class="station-loc">{{ vehicle.brand }} {{ vehicle.model }}</span>
+            <span class="station-loc">{{ formatVehicleSummary(vehicle) }}</span>
           </div>
         </div>
       </aside>
@@ -96,7 +96,7 @@
               <div class="input-row">
                 <div class="input-block flex-2">
                   <label>{{ tr('plate') }}</label>
-                  <input v-model="editForm.plateNumber" type="text" />
+                  <input v-model="editForm.plateNumber" @input="formatPlateEditInput" type="text" />
                 </div>
                 <div class="input-block flex-1">
                   <label>{{ tr('status') }}</label>
@@ -113,11 +113,33 @@
               <div class="input-row">
                 <div class="input-block flex-1">
                   <label>{{ tr('brand') }}</label>
-                  <input v-model="editForm.brand" type="text" />
+                  <select v-model="editForm.brand" @change="onEditBrandChange">
+                    <option value="">{{ tr('selectBrand') }}</option>
+                    <option v-for="brand in catalogBrands" :key="brand" :value="brand">
+                      {{ brand }}
+                    </option>
+                  </select>
                 </div>
                 <div class="input-block flex-1">
                   <label>{{ tr('model') }}</label>
-                  <input v-model="editForm.model" type="text" />
+                  <select v-model="editForm.model" :disabled="!editForm.brand" @change="onEditModelChange">
+                    <option value="">{{ tr('selectModel') }}</option>
+                    <option v-for="model in selectedBrandModels" :key="model" :value="model">
+                      {{ model }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="input-row">
+                <div class="input-block flex-1">
+                  <label>{{ tr('submodel') }}</label>
+                  <select v-model="editForm.submodel" :disabled="!editForm.model">
+                    <option value="">{{ tr('selectSubmodel') }}</option>
+                    <option v-for="submodel in selectedModelSubmodels" :key="submodel" :value="submodel">
+                      {{ submodel }}
+                    </option>
+                  </select>
                 </div>
               </div>
 
@@ -174,6 +196,13 @@
 <script>
 import axios from 'axios'
 import { getDateLocale, getLocaleState } from '../services/i18n'
+import {
+  getCatalogBrands,
+  getCatalogModels,
+  getCatalogSubmodels,
+  getCatalogSummary,
+} from '../constants/vehicleCatalog'
+import { formatPlateForDisplay, isValidPortuguesePlate } from '../utils/plateFormatting'
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:3000'
 
@@ -193,6 +222,10 @@ const TRANSLATIONS = {
     status: 'Estado',
     brand: 'Marca',
     model: 'Modelo',
+    submodel: 'Submodelo',
+    selectBrand: 'Selecionar marca',
+    selectModel: 'Selecionar modelo',
+    selectSubmodel: 'Selecionar submodelo',
     dailyRate: 'Preco Diario (EUR)',
     odometer: 'Quilometragem',
     processing: 'A processar...',
@@ -235,6 +268,10 @@ const TRANSLATIONS = {
     status: 'Status',
     brand: 'Brand',
     model: 'Model',
+    submodel: 'Submodel',
+    selectBrand: 'Select brand',
+    selectModel: 'Select model',
+    selectSubmodel: 'Select submodel',
     dailyRate: 'Daily Rate (EUR)',
     odometer: 'Mileage',
     processing: 'Processing...',
@@ -277,6 +314,10 @@ const TRANSLATIONS = {
     status: 'Estado',
     brand: 'Marca',
     model: 'Modelo',
+    submodel: 'Submodelo',
+    selectBrand: 'Seleccionar marca',
+    selectModel: 'Seleccionar modelo',
+    selectSubmodel: 'Seleccionar submodelo',
     dailyRate: 'Precio Diario (EUR)',
     odometer: 'Kilometraje',
     processing: 'Procesando...',
@@ -332,6 +373,7 @@ export default {
         plateNumber: '',
         brand: '',
         model: '',
+        submodel: '',
         dailyRate: 0,
         status: 'AVAILABLE',
         odometerKm: 0,
@@ -339,20 +381,14 @@ export default {
     }
   },
   computed: {
-    visibleVehicles() {
-      return this.vehicles.filter((vehicle) => {
-        if (!this.statusFilter) {
-          return true
-        }
-
-        return vehicle.status === this.statusFilter
-      })
+    catalogBrands() {
+      return getCatalogBrands()
     },
-    statusCounts() {
-      return this.vehicles.reduce((counts, vehicle) => {
-        counts[vehicle.status] = (counts[vehicle.status] || 0) + 1
-        return counts
-      }, {})
+    selectedBrandModels() {
+      return getCatalogModels(this.editForm.brand)
+    },
+    selectedModelSubmodels() {
+      return getCatalogSubmodels(this.editForm.brand, this.editForm.model)
     },
   },
   methods: {
@@ -368,6 +404,9 @@ export default {
     },
     formatStatusLabel(status) {
       return this.tr(`status${status}`)
+    },
+    formatVehicleSummary(vehicle) {
+      return getCatalogSummary(vehicle.brand, vehicle.model, vehicle.submodel)
     },
     buildAuthConfig() {
       if (!this.sessionToken) {
@@ -413,13 +452,21 @@ export default {
     selectVehicle(vehicle) {
       this.selectedVehicle = vehicle
       this.editForm = {
-        plateNumber: vehicle.plateNumber,
+        plateNumber: formatPlateForDisplay(vehicle.plateNumber),
         brand: vehicle.brand,
         model: vehicle.model,
+        submodel: vehicle.submodel || '',
         dailyRate: vehicle.dailyRate,
         status: vehicle.status,
         odometerKm: vehicle.odometerKm || 0,
       }
+    },
+    onEditBrandChange() {
+      this.editForm.model = ''
+      this.editForm.submodel = ''
+    },
+    onEditModelChange() {
+      this.editForm.submodel = ''
     },
     handleSearchInput() {
       if (this.searchDebounceTimer) {
@@ -518,6 +565,12 @@ export default {
         return
       }
 
+      // Validate plate format XX-99-ZZ
+      if (!isValidPortuguesePlate(this.editForm.plateNumber)) {
+        this.showToast('Matricula inválida — use o formato XX-99-ZZ', 'error')
+        return
+      }
+
       if (!this.editForm.dailyRate || this.editForm.dailyRate <= 0) {
         this.showToast(this.tr('invalidDailyRate'), 'error')
         return
@@ -555,6 +608,9 @@ export default {
       } finally {
         this.submitting = false
       }
+    },
+    formatPlateEditInput(event) {
+      this.editForm.plateNumber = formatPlateForDisplay(event.target.value)
     },
     async deleteVehicle() {
       if (!this.canDeleteVehicle()) {

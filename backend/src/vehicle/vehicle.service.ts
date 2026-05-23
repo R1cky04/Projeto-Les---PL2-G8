@@ -17,6 +17,7 @@ export interface Vehicle {
   plateNumber: string;
   brand: string;
   model: string;
+  submodel: string | null;
   stationId: number;
   category: string | null;
   year: number | null;
@@ -40,6 +41,7 @@ export class VehicleService {
       plateNumber: 'AA-11-BB',
       brand: 'Toyota',
       model: 'Corolla',
+      submodel: 'Hybrid',
       stationId: 1,
       category: 'Compacto',
       year: 2021,
@@ -58,6 +60,7 @@ export class VehicleService {
       plateNumber: '23-CD-45',
       brand: 'Renault',
       model: 'Clio',
+      submodel: 'Techno',
       stationId: 2,
       category: 'Economico',
       year: 2020,
@@ -71,9 +74,104 @@ export class VehicleService {
       updatedAt: new Date(),
       createdBy: 'Sistema',
     },
+    {
+      id: 3,
+      plateNumber: '11-XY-22',
+      brand: 'Volkswagen',
+      model: 'Golf',
+      submodel: 'Life',
+      stationId: 1,
+      category: 'Hatchback',
+      year: 2019,
+      seats: 5,
+      transmission: 'MANUAL',
+      fuelType: 'GASOLINE',
+      odometerKm: 78200,
+      dailyRate: 44.0,
+      status: 'AVAILABLE',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'Seed',
+    },
+    {
+      id: 4,
+      plateNumber: '98-ZZ-77',
+      brand: 'Peugeot',
+      model: '208',
+      submodel: 'Allure',
+      stationId: 2,
+      category: 'City',
+      year: 2022,
+      seats: 5,
+      transmission: 'AUTOMATIC',
+      fuelType: 'GASOLINE',
+      odometerKm: 15000,
+      dailyRate: 46.5,
+      status: 'AVAILABLE',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'Seed',
+    },
+    {
+      id: 5,
+      plateNumber: '45-RT-12',
+      brand: 'Ford',
+      model: 'Focus',
+      submodel: 'Titanium',
+      stationId: 3,
+      category: 'Compacto',
+      year: 2018,
+      seats: 5,
+      transmission: 'MANUAL',
+      fuelType: 'DIESEL',
+      odometerKm: 120400,
+      dailyRate: 37.0,
+      status: 'RENTED',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'Seed',
+    },
+    {
+      id: 6,
+      plateNumber: '66-AA-00',
+      brand: 'Tesla',
+      model: 'Model 3',
+      submodel: 'RWD',
+      stationId: 1,
+      category: 'Sedan',
+      year: 2023,
+      seats: 5,
+      transmission: 'AUTOMATIC',
+      fuelType: 'ELECTRIC',
+      odometerKm: 5200,
+      dailyRate: 89.99,
+      status: 'AVAILABLE',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'Seed',
+    },
+    {
+      id: 7,
+      plateNumber: '77-BB-11',
+      brand: 'BMW',
+      model: '3 Series',
+      submodel: '320i',
+      stationId: 2,
+      category: 'Executive',
+      year: 2020,
+      seats: 5,
+      transmission: 'AUTOMATIC',
+      fuelType: 'GASOLINE',
+      odometerKm: 32000,
+      dailyRate: 95.0,
+      status: 'MAINTENANCE',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'Seed',
+    },
   ];
 
-  private nextId = 3;
+  private nextId = 8;
 
   async create(
     createVehicleDto: CreateVehicleDto,
@@ -106,6 +204,7 @@ export class VehicleService {
       plateNumber: validUpdates.plateNumber!,
       brand: validUpdates.brand!,
       model: validUpdates.model!,
+      submodel: validUpdates.submodel ?? null,
       stationId: 1,
       category: validUpdates.category ?? null,
       year: validUpdates.year ?? null,
@@ -203,7 +302,8 @@ export class VehicleService {
       (vehicle) =>
         vehicle.plateNumber.toLowerCase().includes(term) ||
         vehicle.brand.toLowerCase().includes(term) ||
-        vehicle.model.toLowerCase().includes(term),
+        vehicle.model.toLowerCase().includes(term) ||
+        (vehicle.submodel || '').toLowerCase().includes(term),
     );
   }
 
@@ -252,10 +352,9 @@ export class VehicleService {
       ...currentVehicle,
       ...validUpdates,
       stationId: currentVehicle.stationId,
-      category:
-        validUpdates.category === undefined
-          ? currentVehicle.category
-          : validUpdates.category,
+      category: validUpdates.category === undefined ? currentVehicle.category : validUpdates.category,
+      submodel:
+        validUpdates.submodel === undefined ? currentVehicle.submodel : validUpdates.submodel,
       updatedAt: new Date(),
       partialWarnings: errors.length > 0 ? errors : undefined,
     };
@@ -294,6 +393,7 @@ export class VehicleService {
       plateNumber?: unknown;
       brand?: unknown;
       model?: unknown;
+      submodel?: unknown;
       category?: unknown;
       year?: unknown;
       seats?: unknown;
@@ -332,6 +432,16 @@ export class VehicleService {
         errors.push('Modelo invalido: deve ser texto nao vazio.');
       } else {
         validUpdates.model = payload.model.trim();
+      }
+    }
+
+    if (payload.submodel !== undefined) {
+      if (payload.submodel === null || payload.submodel === '') {
+        validUpdates.submodel = null;
+      } else if (typeof payload.submodel !== 'string' || !payload.submodel.trim()) {
+        errors.push('Submodelo invalido: deve ser texto nao vazio quando indicado.');
+      } else {
+        validUpdates.submodel = payload.submodel.trim();
       }
     }
 

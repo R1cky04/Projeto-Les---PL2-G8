@@ -3,9 +3,11 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { AuthenticatedUserDto } from '../auth/auth.types';
+import { ImproService } from '../impro/impro.service';
 import { InternalUserRole } from '../internal-users/internal-user.enums';
 import { RentalService, type RentalCustomer } from '../rentals/rental.service';
 import { StationService } from '../station/station.service';
@@ -120,6 +122,7 @@ export class ReservationService {
     private readonly stationService: StationService,
     private readonly vehicleService: VehicleService,
     private readonly rentalService: RentalService,
+    @Optional() private readonly improService?: ImproService,
   ) {}
 
   async getContext(): Promise<ReservationContextResponse> {
@@ -164,7 +167,16 @@ export class ReservationService {
     const vehicles = await this.vehicleService.findAll();
     const availableVehicles = vehicles
       .filter((vehicle) => vehicle.status === 'AVAILABLE')
-      .filter((vehicle) =>
+      .map((vehicle) => ({
+        vehicle,
+        reservationStationId: this.resolveVehicleReservationStationId(
+          vehicle,
+          pickupAt,
+          expectedReturnAt,
+        ),
+      }))
+      .filter(({ reservationStationId }) => reservationStationId !== null)
+      .filter(({ vehicle }) =>
         this.isVehicleAvailableForPeriod(
           vehicle.id,
           pickupAt,
@@ -172,10 +184,11 @@ export class ReservationService {
           excludeReservationId,
         ),
       )
-      .map((vehicle) => ({
+      .map(({ vehicle, reservationStationId }) => ({
         ...vehicle,
+        stationId: reservationStationId!,
         stationName:
-          stationMap.get(vehicle.stationId) || 'Estacao desconhecida',
+          stationMap.get(reservationStationId!) || 'Estacao desconhecida',
       }));
 
     const localVehicles = availableVehicles.filter(
@@ -282,10 +295,23 @@ export class ReservationService {
 
     this.ensureValidPeriod(pickupAt, expectedReturnAt);
 
-    if (vehicle.stationId !== pickupStation.id) {
+    const reservationStationId = this.resolveVehicleReservationStationId(
+      vehicle,
+      pickupAt,
+      expectedReturnAt,
+    );
+
+    if (reservationStationId !== pickupStation.id) {
       throw new BadRequestException({
-        message: 'O veiculo selecionado nao pertence a estacao indicada.',
-        code: 'VEHICLE_WRONG_STATION',
+        message:
+          reservationStationId === null
+            ? 'O veiculo selecionado esta em transferencia impro no periodo indicado. Escolha outra viatura.'
+            : 'O veiculo selecionado nao pertence a estacao indicada.',
+        code:
+          reservationStationId === null
+            ? 'VEHICLE_IN_IMPRO_TRANSFER'
+            : 'VEHICLE_WRONG_STATION',
+        alternatives: [],
       });
     }
 
@@ -294,6 +320,22 @@ export class ReservationService {
         message:
           'O veiculo selecionado ja nao esta disponivel no periodo indicado. Escolha outra viatura.',
         code: 'VEHICLE_UNAVAILABLE',
+        alternatives: [],
+      });
+    }
+
+    if (
+      this.isVehicleBlockedByImpro(
+        vehicle.id,
+        pickupStation.id,
+        pickupAt,
+        expectedReturnAt,
+      )
+    ) {
+      throw new BadRequestException({
+        message:
+          'O veiculo selecionado esta em transferencia impro no periodo indicado. Escolha outra viatura.',
+        code: 'VEHICLE_IN_IMPRO_TRANSFER',
         alternatives: [],
       });
     }
@@ -566,6 +608,39 @@ export class ReservationService {
         reservation.expectedReturnAt,
       );
     });
+  }
+
+  private isVehicleBlockedByImpro(
+    vehicleId: number,
+    pickupStationId: number,
+    pickupAt: Date,
+    expectedReturnAt: Date,
+  ): boolean {
+    return (
+      this.improService?.blocksVehicleReservation(
+        vehicleId,
+        pickupStationId,
+        pickupAt,
+        expectedReturnAt,
+      ) ?? false
+    );
+  }
+
+  private resolveVehicleReservationStationId(
+    vehicle: Vehicle,
+    pickupAt: Date,
+    expectedReturnAt: Date,
+  ): number | null {
+    if (!this.improService) {
+      return vehicle.stationId;
+    }
+
+    return this.improService.resolveReservationStationId(
+      vehicle.id,
+      vehicle.stationId,
+      pickupAt,
+      expectedReturnAt,
+    );
   }
 
   private periodsOverlap(

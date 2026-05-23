@@ -35,6 +35,10 @@ export class UpdateVehicleDto {
   @ApiPropertyOptional({ example: 'Economico' })
   @IsOptional()
   @IsString()
+  submodel?: string;
+
+  @IsOptional()
+  @IsString()
   category?: string;
 
   @ApiPropertyOptional({ example: 2020, minimum: 1980 })

@@ -393,16 +393,15 @@ export default {
     },
     openFeature(featureKey) {
       if (
-        featureKey === 'INTERNAL_USERS' ||
-        featureKey === 'CUSTOMERS' ||
-        featureKey === 'RESERVATIONS' ||
-        featureKey === 'STATION_MANAGEMENT' ||
-        featureKey === 'IMPRO_MANAGEMENT' ||
-        featureKey === 'RENTALS' ||
-        featureKey === 'FLEET_OPERATIONS' ||
-        featureKey === 'VEHICLE_MANAGEMENT' ||
-        featureKey === 'VEHICLES'
-      ) {
+          featureKey === 'INTERNAL_USERS' ||
+          featureKey === 'RESERVATIONS' ||
+          featureKey === 'STATION_MANAGEMENT' ||
+          featureKey === 'IMPRO_MANAGEMENT' ||
+          featureKey === 'RENTALS' ||
+          featureKey === 'FLEET_OPERATIONS' ||
+          featureKey === 'VEHICLE_MANAGEMENT' ||
+          featureKey === 'VEHICLES'
+        ) {
         const normalizedFeatureKey =
           featureKey === 'FLEET_OPERATIONS'
             ? 'IMPRO_MANAGEMENT'
@@ -443,31 +442,20 @@ export default {
         }
 
         this.currentFeature = normalizedFeatureKey
+
+        // Ensure module sub-views start on their default 'MANAGE' view when opening
         if (normalizedFeatureKey === 'STATION_MANAGEMENT') {
           this.stationModuleView = 'MANAGE'
-          this.$nextTick(() => {
-            this.scrollToModuleTop()
-          })
         }
 
         if (normalizedFeatureKey === 'VEHICLE_MANAGEMENT') {
           this.vehicleModuleView = 'MANAGE'
-          this.$nextTick(() => {
-            this.scrollToModuleTop()
-          })
         }
 
-        if (normalizedFeatureKey === 'IMPRO_MANAGEMENT') {
-          this.$nextTick(() => {
-            this.scrollToModuleTop()
-          })
-        }
-
-        if (normalizedFeatureKey === 'RENTALS') {
-          this.$nextTick(() => {
-            this.scrollToModuleTop()
-          })
-        }
+        // Always scroll the page to the top when opening any module from the workspace
+        this.$nextTick(() => {
+          this.scrollToModuleTop()
+        })
 
         this.workspaceMessage = ''
         return
@@ -480,15 +468,9 @@ export default {
     },
     setStationModuleView(view) {
       this.stationModuleView = view
-      this.$nextTick(() => {
-        this.scrollToModuleTop()
-      })
     },
     setVehicleModuleView(view) {
       this.vehicleModuleView = view
-      this.$nextTick(() => {
-        this.scrollToModuleTop()
-      })
     },
     scrollToModuleTop() {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' })

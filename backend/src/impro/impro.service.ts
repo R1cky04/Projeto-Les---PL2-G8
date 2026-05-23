@@ -101,6 +101,84 @@ export class ImproService {
     return this.stationService.findAll();
   }
 
+  blocksVehicleReservation(
+    vehicleId: number,
+    pickupStationId: number,
+    pickupAt: Date,
+    expectedReturnAt: Date,
+  ): boolean {
+    return this.impros.some((impro) => {
+      if (impro.vehicleId !== vehicleId || impro.status === 'CLOSED') {
+        return false;
+      }
+
+      if (impro.status === 'IN_TRANSFER') {
+        return true;
+      }
+
+      if (impro.status !== 'SCHEDULED') {
+        return false;
+      }
+
+      const transferStartsAt = impro.transferDate.getTime();
+
+      if (expectedReturnAt.getTime() <= transferStartsAt) {
+        return false;
+      }
+
+      if (pickupStationId === impro.originStationId) {
+        return true;
+      }
+
+      if (pickupStationId === impro.destinationStationId) {
+        const availableAtDestination = (
+          impro.plannedArrivalDate || impro.transferDate
+        ).getTime();
+        return pickupAt.getTime() < availableAtDestination;
+      }
+
+      return true;
+    });
+  }
+
+  resolveReservationStationId(
+    vehicleId: number,
+    currentStationId: number,
+    pickupAt: Date,
+    expectedReturnAt: Date,
+  ): number | null {
+    const activeImpro = this.impros
+      .filter((impro) => impro.vehicleId === vehicleId && impro.status !== 'CLOSED')
+      .sort((left, right) => left.transferDate.getTime() - right.transferDate.getTime())[0];
+
+    if (!activeImpro) {
+      return currentStationId;
+    }
+
+    if (activeImpro.status === 'IN_TRANSFER') {
+      return null;
+    }
+
+    if (activeImpro.status !== 'SCHEDULED') {
+      return currentStationId;
+    }
+
+    const transferStartsAt = activeImpro.transferDate.getTime();
+    const availableAtDestination = (
+      activeImpro.plannedArrivalDate || activeImpro.transferDate
+    ).getTime();
+
+    if (expectedReturnAt.getTime() <= transferStartsAt) {
+      return activeImpro.originStationId;
+    }
+
+    if (pickupAt.getTime() >= availableAtDestination) {
+      return activeImpro.destinationStationId;
+    }
+
+    return null;
+  }
+
   async create(
     payload: CreateImproDto,
     actor: AuthenticatedUserDto,

@@ -1,12 +1,20 @@
 {
-  "$schema": "https://json.schemastore.org/jsconfig",
+  "include": [
+    "src/**/*",
+    "src/**/*.vue"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
   "compilerOptions": {
-    "target": "esnext",
-    "module": "esnext",
-    "moduleResolution": "bundler",
     "allowJs": true,
     "checkJs": false,
-    "noEmit": true,
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "target": "es2020",
     "paths": {
       "@/*": [
         "./src/*"

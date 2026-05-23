@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { AuthenticatedUserDto } from '../auth/auth.types';
+import { ImproService } from '../impro/impro.service';
 import {
   InternalPermission,
   InternalUserRole,
@@ -30,16 +31,19 @@ function buildActor(): AuthenticatedUserDto {
 describe('ReservationService', () => {
   let service: ReservationService;
   let vehicleService: VehicleService;
+  let improService: ImproService;
 
   beforeEach(() => {
     const stationService = new StationService();
     vehicleService = new VehicleService();
     const rentalService = new RentalService(stationService, vehicleService);
+    improService = new ImproService(stationService, vehicleService);
 
     service = new ReservationService(
       stationService,
       vehicleService,
       rentalService,
+      improService,
     );
   });
 
@@ -92,7 +96,7 @@ describe('ReservationService', () => {
     ).toBe(true);
   });
 
-  it('suggests alternative vehicles when the selected station has no availability', async () => {
+  it('suggests vehicles from other stations as alternatives', async () => {
     const createdVehicle = await vehicleService.create(
       {
         plateNumber: '44-EF-66',
@@ -122,10 +126,17 @@ describe('ReservationService', () => {
       expectedReturnAt: '2026-05-12T09:00:00.000Z',
     });
 
-    expect(availability.availableVehicles).toHaveLength(0);
-    expect(availability.alternativeVehicles).toHaveLength(1);
-    expect(availability.alternativeVehicles[0].stationId).toBe(2);
-    expect(availability.suggestionMessage).toContain('alternativas');
+    expect(
+      availability.availableVehicles.some(
+        (vehicle) => vehicle.id === createdVehicle.id,
+      ),
+    ).toBe(false);
+    expect(
+      availability.alternativeVehicles.some(
+        (vehicle) =>
+          vehicle.id === createdVehicle.id && vehicle.stationId === 2,
+      ),
+    ).toBe(true);
   });
 
   it('rejects a reservation when the selected vehicle becomes unavailable before confirmation', async () => {
@@ -154,6 +165,69 @@ describe('ReservationService', () => {
         buildActor(),
       ),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('moves scheduled impro vehicles from origin to destination availability after arrival', async () => {
+    await improService.create(
+      {
+        vehicleId: 1,
+        originStationId: 1,
+        destinationStationId: 2,
+        transferDate: '2026-09-10T09:00:00.000Z',
+        plannedArrivalDate: '2026-09-10T12:00:00.000Z',
+      },
+      {
+        ...buildActor(),
+        role: InternalUserRole.FLEET,
+        permissions: [InternalPermission.TRANSFER_WRITE],
+      },
+    );
+
+    const beforeTransfer = await service.getAvailability({
+      pickupStationId: '1',
+      pickupAt: '2026-09-08T09:00:00.000Z',
+      expectedReturnAt: '2026-09-09T09:00:00.000Z',
+    });
+    const duringTransfer = await service.getAvailability({
+      pickupStationId: '1',
+      pickupAt: '2026-09-10T10:00:00.000Z',
+      expectedReturnAt: '2026-09-10T11:00:00.000Z',
+    });
+    const afterArrivalAtOrigin = await service.getAvailability({
+      pickupStationId: '1',
+      pickupAt: '2026-09-11T09:00:00.000Z',
+      expectedReturnAt: '2026-09-12T09:00:00.000Z',
+    });
+    const afterArrivalAtDestination = await service.getAvailability({
+      pickupStationId: '2',
+      pickupAt: '2026-09-11T09:00:00.000Z',
+      expectedReturnAt: '2026-09-12T09:00:00.000Z',
+    });
+
+    expect(beforeTransfer.availableVehicles.some((vehicle) => vehicle.id === 1)).toBe(true);
+    expect(duringTransfer.availableVehicles.some((vehicle) => vehicle.id === 1)).toBe(false);
+    expect(duringTransfer.alternativeVehicles.some((vehicle) => vehicle.id === 1)).toBe(false);
+    expect(afterArrivalAtOrigin.availableVehicles.some((vehicle) => vehicle.id === 1)).toBe(false);
+    expect(afterArrivalAtOrigin.alternativeVehicles.some((vehicle) => vehicle.id === 1)).toBe(true);
+    expect(afterArrivalAtDestination.availableVehicles.some((vehicle) => vehicle.id === 1)).toBe(true);
+
+    await expect(
+      service.create(
+        {
+          pickupStationId: 1,
+          returnStationId: 1,
+          vehicleId: 1,
+          customerId: 1,
+          pickupAt: '2026-09-10T10:00:00.000Z',
+          expectedReturnAt: '2026-09-10T11:00:00.000Z',
+        },
+        buildActor(),
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'VEHICLE_IN_IMPRO_TRANSFER',
+      }),
+    });
   });
 
   it('rejects reservations for unknown customers', async () => {

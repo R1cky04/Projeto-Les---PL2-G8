@@ -10,5 +10,6 @@ import { ImproService } from './impro.service';
   imports: [AuthModule, StationModule, VehicleModule],
   controllers: [ImproController],
   providers: [ImproService, ImproGuard],
+  exports: [ImproService],
 })
 export class ImproModule {}
