@@ -10,6 +10,18 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthSessionGuard } from '../auth/auth-session.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
@@ -22,12 +34,18 @@ import { InternalUsersService } from './internal-users.service';
 import { ItMasterGuard } from './it-master.guard';
 
 // Thin transport layer for IT-only internal user management.
+@ApiTags('Internal users')
+@ApiBearerAuth()
 @Controller('internal-users')
 @UseGuards(AuthSessionGuard, ItMasterGuard)
 export class InternalUsersController {
   constructor(private readonly internalUsersService: InternalUsersService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Cria um utilizador interno.' })
+  @ApiBody({ type: CreateInternalUserDto })
+  @ApiCreatedResponse({ description: 'Utilizador criado com sucesso.' })
+  @ApiForbiddenResponse({ description: 'Apenas IT pode gerir utilizadores.' })
   create(
     @Body() payload: CreateInternalUserDto,
   ): Promise<CreateInternalUserResponseDto> {
@@ -35,6 +53,12 @@ export class InternalUsersController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Lista utilizadores internos com paginacao.' })
+  @ApiQuery({ name: 'page', required: false, example: '1' })
+  @ApiQuery({ name: 'pageSize', required: false, example: '10' })
+  @ApiQuery({ name: 'search', required: false, example: 'staff' })
+  @ApiOkResponse({ description: 'Lista paginada de utilizadores internos.' })
+  @ApiForbiddenResponse({ description: 'Apenas IT pode gerir utilizadores.' })
   findAll(
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
@@ -44,6 +68,12 @@ export class InternalUsersController {
   }
 
   @Put(':id')
+  @ApiOperation({ summary: 'Atualiza uma conta interna existente.' })
+  @ApiParam({ name: 'id', example: 'user-id' })
+  @ApiBody({ type: UpdateInternalUserDto })
+  @ApiOkResponse({ description: 'Resultado da atualizacao da conta.' })
+  @ApiForbiddenResponse({ description: 'Apenas IT pode gerir utilizadores.' })
+  @ApiNotFoundResponse({ description: 'Utilizador interno nao encontrado.' })
   update(
     @Param('id') id: string,
     @Body() payload: UpdateInternalUserDto,
@@ -53,6 +83,11 @@ export class InternalUsersController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Remove ou desativa um utilizador interno.' })
+  @ApiParam({ name: 'id', example: 'user-id' })
+  @ApiOkResponse({ description: 'Conta removida ou desativada.' })
+  @ApiForbiddenResponse({ description: 'Apenas IT pode gerir utilizadores.' })
+  @ApiNotFoundResponse({ description: 'Utilizador interno nao encontrado.' })
   remove(
     @Param('id') id: string,
     @Req() request: AuthenticatedRequest,

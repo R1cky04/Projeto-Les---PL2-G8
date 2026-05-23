@@ -23,9 +23,9 @@ export class AuthBootstrapService implements OnApplicationBootstrap {
       return;
     }
 
-    const userId = (
-      process.env.MASTER_IT_USER_ID ?? DEFAULT_MASTER_IT_USER_ID
-    ).trim().toLowerCase();
+    const userId = (process.env.MASTER_IT_USER_ID ?? DEFAULT_MASTER_IT_USER_ID)
+      .trim()
+      .toLowerCase();
     const password =
       process.env.MASTER_IT_PASSWORD ?? DEFAULT_MASTER_IT_PASSWORD;
 

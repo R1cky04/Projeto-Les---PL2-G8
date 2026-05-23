@@ -31,6 +31,8 @@ Endpoints:
 
 - Frontend (Vue web): http://localhost:8080
 - Backend (Nest): http://localhost:3000
+- Swagger / OpenAPI: http://localhost:3000/api/docs
+- OpenAPI JSON: http://localhost:3000/api/docs-json
 - Postgres: localhost:5432 (`postgres/postgres`, db `pl2g8`)
 
 Observação: o Electron em modo desktop (`electron:serve`/`electron:build`) deve ser executado localmente no host, não dentro do container.
@@ -79,6 +81,11 @@ Build:
 ```bash
 npm run build
 ```
+
+Documentacao da API:
+
+- UI interativa Swagger: http://localhost:3000/api/docs
+- Especificacao OpenAPI JSON: http://localhost:3000/api/docs-json
 
 ## Frontend (Vue + Electron)
 

@@ -22,7 +22,8 @@ export class RentalManagementGuard implements CanActivate {
 
     if (!actorRole || !MANAGE_ROLES.has(actorRole)) {
       throw new ForbiddenException({
-        message: 'Apenas perfis IT, ADMIN, STAFF e FLEET podem gerir contratos.',
+        message:
+          'Apenas perfis IT, ADMIN, STAFF e FLEET podem gerir contratos.',
         code: 'RENTAL_MANAGEMENT_ROLE_REQUIRED',
       });
     }

@@ -17,7 +17,7 @@
     "target": "es2020",
     "paths": {
       "@/*": [
-        "src/*"
+        "./src/*"
       ]
     },
     "lib": [
@@ -26,5 +26,15 @@
       "dom.iterable",
       "scripthost"
     ]
-  }
+  },
+  "include": [
+    "src/**/*.js",
+    "src/**/*.vue",
+    "*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "dist_electron"
+  ]
 }

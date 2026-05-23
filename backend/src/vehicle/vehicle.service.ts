@@ -173,8 +173,14 @@ export class VehicleService {
 
   private nextId = 8;
 
-  async create(createVehicleDto: CreateVehicleDto, createdBy?: string): Promise<Vehicle> {
-    const { validUpdates, errors } = this.validateVehiclePayload(createVehicleDto, null);
+  async create(
+    createVehicleDto: CreateVehicleDto,
+    createdBy?: string,
+  ): Promise<Vehicle> {
+    const { validUpdates, errors } = this.validateVehiclePayload(
+      createVehicleDto,
+      null,
+    );
 
     if (errors.length > 0) {
       throw new BadRequestException({
@@ -185,7 +191,8 @@ export class VehicleService {
 
     const normalizedPlate = validUpdates.plateNumber!;
     const existingPlate = this.vehicles.find(
-      (vehicle) => vehicle.plateNumber.toLowerCase() === normalizedPlate.toLowerCase(),
+      (vehicle) =>
+        vehicle.plateNumber.toLowerCase() === normalizedPlate.toLowerCase(),
     );
 
     if (existingPlate) {
@@ -213,7 +220,12 @@ export class VehicleService {
     };
 
     this.vehicles.push(vehicle);
-    this.logAudit('CREATE', vehicle.id, createdBy || 'desconhecido', `Veiculo criado: ${vehicle.plateNumber}`);
+    this.logAudit(
+      'CREATE',
+      vehicle.id,
+      createdBy || 'desconhecido',
+      `Veiculo criado: ${vehicle.plateNumber}`,
+    );
 
     return vehicle;
   }
@@ -234,13 +246,19 @@ export class VehicleService {
     const vehicle = await this.findOne(id);
 
     if (vehicle.status !== 'AVAILABLE') {
-      throw new BadRequestException('O veiculo selecionado nao esta disponivel para aluguer.');
+      throw new BadRequestException(
+        'O veiculo selecionado nao esta disponivel para aluguer.',
+      );
     }
 
     return this.update(id, { status: 'RENTED' }, updatedBy);
   }
 
-  async transferToStation(id: number, stationId: number, updatedBy?: string): Promise<Vehicle> {
+  async transferToStation(
+    id: number,
+    stationId: number,
+    updatedBy?: string,
+  ): Promise<Vehicle> {
     const vehicleIndex = this.vehicles.findIndex((item) => item.id === id);
 
     if (vehicleIndex === -1) {
@@ -305,11 +323,15 @@ export class VehicleService {
       currentVehicle,
     );
 
-    if (validUpdates.plateNumber && validUpdates.plateNumber !== currentVehicle.plateNumber) {
+    if (
+      validUpdates.plateNumber &&
+      validUpdates.plateNumber !== currentVehicle.plateNumber
+    ) {
       const plateExists = this.vehicles.find(
         (item) =>
           item.id !== id &&
-          item.plateNumber.toLowerCase() === validUpdates.plateNumber!.toLowerCase(),
+          item.plateNumber.toLowerCase() ===
+            validUpdates.plateNumber!.toLowerCase(),
       );
 
       if (plateExists) {
@@ -356,7 +378,12 @@ export class VehicleService {
 
     const vehicle = this.vehicles[vehicleIndex];
     this.vehicles.splice(vehicleIndex, 1);
-    this.logAudit('DELETE', id, deletedBy || 'desconhecido', `Veiculo removido: ${vehicle.plateNumber}`);
+    this.logAudit(
+      'DELETE',
+      id,
+      deletedBy || 'desconhecido',
+      `Veiculo removido: ${vehicle.plateNumber}`,
+    );
 
     return vehicle;
   }
@@ -382,7 +409,10 @@ export class VehicleService {
     const errors: string[] = [];
 
     if (payload.plateNumber !== undefined) {
-      if (typeof payload.plateNumber !== 'string' || !payload.plateNumber.trim()) {
+      if (
+        typeof payload.plateNumber !== 'string' ||
+        !payload.plateNumber.trim()
+      ) {
         errors.push('Matricula invalida: deve ser texto nao vazio.');
       } else {
         validUpdates.plateNumber = payload.plateNumber.trim().toUpperCase();
@@ -442,7 +472,10 @@ export class VehicleService {
     }
 
     if (payload.odometerKm !== undefined) {
-      if (!Number.isInteger(payload.odometerKm) || Number(payload.odometerKm) < 0) {
+      if (
+        !Number.isInteger(payload.odometerKm) ||
+        Number(payload.odometerKm) < 0
+      ) {
         errors.push('Quilometragem invalida: indique um inteiro >= 0.');
       } else {
         validUpdates.odometerKm = Number(payload.odometerKm);
@@ -461,8 +494,13 @@ export class VehicleService {
     if (payload.transmission !== undefined) {
       if (payload.transmission === null || payload.transmission === '') {
         validUpdates.transmission = null;
-      } else if (payload.transmission !== 'MANUAL' && payload.transmission !== 'AUTOMATIC') {
-        errors.push('Transmissao invalida. Valores permitidos: MANUAL, AUTOMATIC.');
+      } else if (
+        payload.transmission !== 'MANUAL' &&
+        payload.transmission !== 'AUTOMATIC'
+      ) {
+        errors.push(
+          'Transmissao invalida. Valores permitidos: MANUAL, AUTOMATIC.',
+        );
       } else {
         validUpdates.transmission = payload.transmission;
       }
@@ -519,7 +557,12 @@ export class VehicleService {
     return { validUpdates, errors };
   }
 
-  private logAudit(operation: string, vehicleId: number, userId: string, details: string): void {
+  private logAudit(
+    operation: string,
+    vehicleId: number,
+    userId: string,
+    details: string,
+  ): void {
     const timestamp = new Date().toISOString();
     console.log(
       `[AUDITORIA] ${timestamp} - ${operation} - Veiculo ID: ${vehicleId} - Usuario: ${userId} - ${details}`,

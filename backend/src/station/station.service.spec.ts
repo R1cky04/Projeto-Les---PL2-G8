@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { StationService } from './station.service';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 
 describe('StationService', () => {
   let service: StationService;
@@ -19,7 +23,11 @@ describe('StationService', () => {
 
   describe('create', () => {
     it('should create a station with valid data', async () => {
-      const dto = { name: 'Estação Teste', location: 'Rua Teste', capacity: 10 };
+      const dto = {
+        name: 'Estação Teste',
+        location: 'Rua Teste',
+        capacity: 10,
+      };
       const result = await service.create(dto, 'test-user');
 
       expect(result).toMatchObject({
@@ -41,7 +49,10 @@ describe('StationService', () => {
     it('should throw ConflictException for duplicate name', async () => {
       // "Estação Central" já existe no array inicial do teu service
       await expect(
-        service.create({ name: 'Estação Central', location: 'Rua A', capacity: 10 }, 'test-user'),
+        service.create(
+          { name: 'Estação Central', location: 'Rua A', capacity: 10 },
+          'test-user',
+        ),
       ).rejects.toThrow(ConflictException);
     });
   });

@@ -27,23 +27,48 @@
       </div>
     </header>
 
-    <p
+    <div
       v-if="banner.message"
-      :class="['rental-banner', `rental-banner-${banner.type}`]"
+      :class="[
+        'rental-floating-alert',
+        `rental-floating-alert-${banner.type}`,
+      ]"
+      role="alert"
     >
-      {{ banner.message }}
-    </p>
+      <div>
+        <strong>{{ bannerTitle }}</strong>
+        <p>{{ banner.message }}</p>
+      </div>
+
+      <button type="button" aria-label="Fechar aviso" @click="clearBanner">
+        x
+      </button>
+    </div>
 
     <div class="rental-layout">
       <aside class="rental-sidebar rental-card">
         <div class="rental-card-head">
           <div>
             <span class="rental-card-eyebrow">Clientes</span>
-            <h3>{{ customerMode === 'existing' ? 'Selecionar cliente' : 'Novo cliente' }}</h3>
+            <h3>
+              {{
+                customerMode === "existing"
+                  ? "Selecionar cliente"
+                  : "Novo cliente"
+              }}
+            </h3>
           </div>
 
-          <button class="rental-ghost-button" type="button" @click="toggleCustomerMode">
-            {{ customerMode === 'existing' ? 'Criar cliente' : 'Selecionar existente' }}
+          <button
+            class="rental-ghost-button"
+            type="button"
+            @click="toggleCustomerMode"
+          >
+            {{
+              customerMode === "existing"
+                ? "Criar cliente"
+                : "Selecionar existente"
+            }}
           </button>
         </div>
 
@@ -67,8 +92,8 @@
               @click="selectCustomer(customer.id)"
             >
               <strong>{{ customer.firstName }} {{ customer.lastName }}</strong>
-              <span>{{ customer.email || 'Sem email' }}</span>
-              <small>{{ customer.documentNumber || 'Sem documento' }}</small>
+              <span>{{ customer.email || "Sem email" }}</span>
+              <small>{{ customer.documentNumber || "Sem documento" }}</small>
             </button>
 
             <div v-if="filteredCustomers.length === 0" class="rental-empty">
@@ -230,13 +255,25 @@
             </label>
 
             <div class="rental-actions">
-              <button type="button" class="rental-ghost-button" @click="fillDateRange(1)">
+              <button
+                type="button"
+                class="rental-ghost-button"
+                @click="fillDateRange(1)"
+              >
                 1 dia
               </button>
-              <button type="button" class="rental-ghost-button" @click="fillDateRange(2)">
+              <button
+                type="button"
+                class="rental-ghost-button"
+                @click="fillDateRange(2)"
+              >
                 2 dias
               </button>
-              <button type="button" class="rental-ghost-button" @click="fillDateRange(7)">
+              <button
+                type="button"
+                class="rental-ghost-button"
+                @click="fillDateRange(7)"
+              >
                 7 dias
               </button>
 
@@ -245,7 +282,7 @@
                 type="submit"
                 :disabled="isCreating"
               >
-                {{ isCreating ? 'A criar reserva...' : 'Confirmar reserva' }}
+                {{ isCreating ? "A criar reserva..." : "Confirmar reserva" }}
               </button>
             </div>
 
@@ -293,21 +330,22 @@
             </button>
           </div>
 
-          <p
-            v-if="availability.suggestionMessage"
-            class="rental-note"
-          >
+          <p v-if="availability.suggestionMessage" class="rental-note">
             {{ availability.suggestionMessage }}
           </p>
 
-          <div v-if="filteredAvailableVehicles.length === 0" class="rental-empty">
-            Nao existem viaturas disponiveis na estacao selecionada para este periodo.
+          <div
+            v-if="filteredAvailableVehicles.length === 0"
+            class="rental-empty"
+          >
+            Nao existem viaturas disponiveis na estacao selecionada para este
+            periodo.
           </div>
 
           <div
             v-if="filteredAlternativeVehicles.length > 0"
             class="rental-card-head"
-            style="margin-top: 1.5rem;"
+            style="margin-top: 1.5rem"
           >
             <div>
               <span class="rental-card-eyebrow">Alternativas</span>
@@ -328,7 +366,9 @@
                 <span>{{ vehicle.stationName }}</span>
               </div>
               <p>{{ vehicle.brand }} {{ vehicle.model }}</p>
-              <small>Clique para trocar o levantamento para esta estacao.</small>
+              <small
+                >Clique para trocar o levantamento para esta estacao.</small
+              >
             </button>
           </div>
         </article>
@@ -353,9 +393,12 @@
             <strong>{{ reservation.reservationNumber }}</strong>
             <span>{{ reservation.status }}</span>
           </div>
-          <p>{{ reservation.customerFullName }} · {{ reservation.vehiclePlate }}</p>
+          <p>
+            {{ reservation.customerFullName }} · {{ reservation.vehiclePlate }}
+          </p>
           <small>
-            {{ reservation.stationName }} · {{ formatDate(reservation.pickupAt) }}
+            {{ reservation.stationName }} ·
+            {{ formatDate(reservation.pickupAt) }}
           </small>
         </article>
 
@@ -365,18 +408,201 @@
       </div>
     </section>
 
+    <section class="rental-card rental-management-panel">
+      <div class="rental-card-head">
+        <div class="rental-management-copy">
+          <span class="rental-card-eyebrow">Gerir Reserva</span>
+          <h3>Cancelar reserva existente</h3>
+          <p class="rental-note">
+            Pesquise, selecione a reserva e confirme o cancelamento. Reservas ja
+            convertidas em contrato ficam bloqueadas para cancelamento.
+          </p>
+        </div>
+
+        <div class="rental-role-pill">
+          {{ cancellableReservations.length }} cancelaveis
+        </div>
+      </div>
+
+      <div class="rental-management-layout">
+        <aside class="rental-management-sidebar">
+          <div class="rental-field-grid rental-field-grid-2">
+            <label class="rental-field">
+              <span>Pesquisar reserva</span>
+              <input
+                v-model.trim="manageFilters.search"
+                type="search"
+                placeholder="Numero, cliente ou matricula"
+              />
+            </label>
+
+            <label class="rental-field">
+              <span>Estado</span>
+              <select v-model="manageFilters.status">
+                <option value="CONFIRMED">Ativas</option>
+                <option value="CANCELLED">Canceladas</option>
+                <option value="COMPLETED">Convertidas</option>
+                <option value="">Todas</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="rental-list rental-management-list">
+            <button
+              v-for="reservation in reservationManagementList"
+              :key="`manage-${reservation.id}`"
+              type="button"
+              class="rental-list-card rental-contract-list-card"
+              :class="{
+                'is-selected': selectedManageReservationId === reservation.id,
+              }"
+              @click="selectManageReservation(reservation)"
+            >
+              <div class="recent-card-head">
+                <strong>{{ reservation.reservationNumber }}</strong>
+                <span>{{ formatReservationStatus(reservation.status) }}</span>
+              </div>
+
+              <p>
+                {{ reservation.customerFullName }} ·
+                {{ reservation.vehiclePlate }}
+              </p>
+              <small>
+                {{ reservation.stationName }} ·
+                {{ formatDate(reservation.pickupAt) }}
+              </small>
+            </button>
+
+            <div
+              v-if="reservationManagementList.length === 0"
+              class="rental-empty"
+            >
+              Nenhuma reserva corresponde aos filtros de gestao.
+            </div>
+          </div>
+        </aside>
+
+        <main class="rental-management-main">
+          <article
+            v-if="selectedManageReservation"
+            class="rental-management-details"
+          >
+            <div class="rental-summary-strip rental-summary-strip-wide">
+              <article>
+                <span>Reserva</span>
+                <strong>{{
+                  selectedManageReservation.reservationNumber
+                }}</strong>
+              </article>
+              <article>
+                <span>Cliente</span>
+                <strong>{{
+                  selectedManageReservation.customerFullName
+                }}</strong>
+              </article>
+              <article>
+                <span>Viatura</span>
+                <strong>{{ selectedManageReservation.vehiclePlate }}</strong>
+              </article>
+              <article>
+                <span>Estado</span>
+                <strong>{{
+                  formatReservationStatus(selectedManageReservation.status)
+                }}</strong>
+              </article>
+              <article>
+                <span>Levantamento</span>
+                <strong>{{
+                  formatDate(selectedManageReservation.pickupAt)
+                }}</strong>
+              </article>
+              <article>
+                <span>Devolucao</span>
+                <strong>{{
+                  selectedManageReservation.returnStationName
+                }}</strong>
+              </article>
+              <article>
+                <span>Avisos</span>
+                <strong>{{
+                  selectedManageReservation.cancellationWarnings?.length || 0
+                }}</strong>
+              </article>
+              <article>
+                <span>Financeiro</span>
+                <strong>{{
+                  selectedManageReservation.financialReviewRequired
+                    ? "Rever"
+                    : "Sem alerta"
+                }}</strong>
+              </article>
+            </div>
+
+            <p
+              v-if="selectedManageReservation.cancellationWarnings?.length"
+              class="rental-banner rental-banner-info"
+            >
+              {{ selectedManageReservation.cancellationWarnings.join(" ") }}
+            </p>
+
+            <div class="rental-actions rental-form-actions">
+              <button
+                type="button"
+                class="rental-ghost-button"
+                @click="loadReservations"
+              >
+                Atualizar lista
+              </button>
+
+              <button
+                type="button"
+                class="rental-submit-button"
+                :disabled="
+                  isCancellingReservation ||
+                  !canCancelReservation(selectedManageReservation)
+                "
+                @click="submitCancelReservation"
+              >
+                {{
+                  isCancellingReservation
+                    ? "A cancelar reserva..."
+                    : "Cancelar Reserva"
+                }}
+              </button>
+            </div>
+
+            <p
+              v-if="!canCancelReservation(selectedManageReservation)"
+              class="rental-note"
+            >
+              Esta reserva nao pode ser cancelada porque ja nao esta ativa.
+            </p>
+          </article>
+
+          <div v-else class="rental-empty rental-management-empty">
+            Selecione uma reserva para consultar os detalhes e executar o
+            cancelamento.
+          </div>
+        </main>
+      </div>
+    </section>
+
     <section class="rental-card rental-recent-panel">
       <div class="rental-card-head">
         <div>
           <span class="rental-card-eyebrow">Relatorios</span>
           <h3>Relatorio de Reservas</h3>
           <p class="rental-note">
-            Filtre por periodo, estacao e estado para gerar uma visao operacional.
+            Filtre por periodo, estacao e estado para gerar uma visao
+            operacional.
           </p>
         </div>
       </div>
 
-      <form class="rental-form report-filters" @submit.prevent="generateReservationsReport">
+      <form
+        class="rental-form report-filters"
+        @submit.prevent="generateReservationsReport"
+      >
         <div class="rental-field-grid rental-field-grid-3">
           <label class="rental-field">
             <span>Data inicial</span>
@@ -403,7 +629,8 @@
               </option>
             </select>
             <small v-if="reportStationOptions.length === 0" class="report-hint">
-              Nenhuma estacao carregada no contexto. O filtro permanece em "Todas as estacoes".
+              Nenhuma estacao carregada no contexto. O filtro permanece em
+              "Todas as estacoes".
             </small>
           </label>
 
@@ -424,7 +651,9 @@
             type="submit"
             :disabled="isGeneratingReport"
           >
-            {{ isGeneratingReport ? 'A gerar relatorio...' : 'Gerar relatorio' }}
+            {{
+              isGeneratingReport ? "A gerar relatorio..." : "Gerar relatorio"
+            }}
           </button>
 
           <button
@@ -475,7 +704,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="reservation in reportReservations" :key="`report-row-${reservation.id}`">
+            <tr
+              v-for="reservation in reportReservations"
+              :key="`report-row-${reservation.id}`"
+            >
               <td>{{ reservation.reservationNumber }}</td>
               <td>{{ reservation.customerFullName }}</td>
               <td>{{ reservation.stationName }}</td>
@@ -483,7 +715,10 @@
               <td>{{ formatDate(reservation.pickupAt) }}</td>
               <td>{{ formatDate(reservation.expectedReturnAt) }}</td>
               <td>
-                <span class="report-status-badge" :class="`is-${reservation.status.toLowerCase()}`">
+                <span
+                  class="report-status-badge"
+                  :class="`is-${reservation.status.toLowerCase()}`"
+                >
                   {{ formatReservationStatus(reservation.status) }}
                 </span>
               </td>
@@ -501,26 +736,27 @@
 
 <script>
 import {
+  cancelReservation,
   createReservation,
   fetchReservationAvailability,
   fetchReservationContext,
   fetchReservations,
-} from '../../services/reservationsApi'
+} from "../../services/reservationsApi";
 import {
   buildCreateReservationPayload,
   createReservationCustomerForm,
   createReservationForm,
   isReservationAvailabilityReady,
   validateReservationCreateForm,
-} from '../../utils/reservationCreation'
+} from "../../utils/reservationCreation";
 import {
   formatRentalCurrency,
   formatRentalDateTimeLocal,
   formatRentalDisplayDate,
-} from '../../utils/rentalFormatting'
+} from "../../utils/rentalFormatting";
 
 export default {
-  name: 'ManageReservations',
+  name: "ManageReservations",
   props: {
     sessionToken: {
       type: String,
@@ -540,9 +776,9 @@ export default {
         alternativeVehicles: [],
         suggestionMessage: null,
       },
-      customerMode: 'existing',
-      customerSearch: '',
-      vehicleSearch: '',
+      customerMode: "existing",
+      customerSearch: "",
+      vehicleSearch: "",
       selectedCustomerId: 0,
       form: createReservationForm(),
       newCustomer: createReservationCustomerForm(),
@@ -551,26 +787,32 @@ export default {
       isLoadingAvailability: false,
       isCreating: false,
       banner: {
-        message: '',
-        type: 'info',
+        message: "",
+        type: "info",
       },
       reportFilters: {
-        startDate: '',
-        endDate: '',
+        startDate: "",
+        endDate: "",
         pickupStationId: 0,
-        status: '',
+        status: "",
       },
       reportReservations: [],
       isGeneratingReport: false,
       reportGeneratedAt: null,
-    }
+      manageFilters: {
+        search: "",
+        status: "CONFIRMED",
+      },
+      selectedManageReservationId: 0,
+      isCancellingReservation: false,
+    };
   },
   computed: {
     filteredCustomers() {
-      const term = this.customerSearch.trim().toLowerCase()
+      const term = this.customerSearch.trim().toLowerCase();
 
       if (!term) {
-        return this.context.customers
+        return this.context.customers;
       }
 
       return this.context.customers.filter((customer) => {
@@ -581,25 +823,29 @@ export default {
           customer.documentNumber,
         ]
           .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
+          .join(" ")
+          .toLowerCase();
 
-        return searchableText.includes(term)
-      })
+        return searchableText.includes(term);
+      });
     },
     filteredAvailableVehicles() {
-      const term = this.vehicleSearch.trim().toLowerCase()
+      const term = this.vehicleSearch.trim().toLowerCase();
 
       return this.availability.availableVehicles.filter((vehicle) => {
-        const searchableText = [vehicle.plateNumber, vehicle.brand, vehicle.model]
-          .join(' ')
-          .toLowerCase()
+        const searchableText = [
+          vehicle.plateNumber,
+          vehicle.brand,
+          vehicle.model,
+        ]
+          .join(" ")
+          .toLowerCase();
 
-        return !term || searchableText.includes(term)
-      })
+        return !term || searchableText.includes(term);
+      });
     },
     filteredAlternativeVehicles() {
-      const term = this.vehicleSearch.trim().toLowerCase()
+      const term = this.vehicleSearch.trim().toLowerCase();
 
       return this.availability.alternativeVehicles.filter((vehicle) => {
         const searchableText = [
@@ -608,68 +854,116 @@ export default {
           vehicle.model,
           vehicle.stationName,
         ]
-          .join(' ')
-          .toLowerCase()
+          .join(" ")
+          .toLowerCase();
 
-        return !term || searchableText.includes(term)
-      })
+        return !term || searchableText.includes(term);
+      });
     },
     selectedCustomer() {
       return (
         this.context.customers.find(
           (customer) => customer.id === this.selectedCustomerId,
         ) || null
-      )
+      );
     },
     selectedCustomerLabel() {
-      if (this.customerMode === 'new') {
-        const firstName = this.newCustomer.firstName.trim()
-        const lastName = this.newCustomer.lastName.trim()
+      if (this.customerMode === "new") {
+        const firstName = this.newCustomer.firstName.trim();
+        const lastName = this.newCustomer.lastName.trim();
         return firstName || lastName
           ? `${firstName} ${lastName}`.trim()
-          : 'Novo cliente'
+          : "Novo cliente";
       }
 
       return this.selectedCustomer
         ? `${this.selectedCustomer.firstName} ${this.selectedCustomer.lastName}`
-        : 'Cliente por selecionar'
+        : "Cliente por selecionar";
     },
     selectedVehicle() {
       return (
-        [...this.availability.availableVehicles, ...this.availability.alternativeVehicles]
-          .find((vehicle) => vehicle.id === this.form.vehicleId) || null
-      )
+        [
+          ...this.availability.availableVehicles,
+          ...this.availability.alternativeVehicles,
+        ].find((vehicle) => vehicle.id === this.form.vehicleId) || null
+      );
     },
     selectedVehicleLabel() {
       if (!this.selectedVehicle) {
-        return 'Viatura por selecionar'
+        return "Viatura por selecionar";
       }
 
-      return `${this.selectedVehicle.plateNumber} · ${this.selectedVehicle.brand} ${this.selectedVehicle.model}`
+      return `${this.selectedVehicle.plateNumber} · ${this.selectedVehicle.brand} ${this.selectedVehicle.model}`;
     },
     selectedPickupStationLabel() {
       const station = this.context.stations.find(
         (item) => item.id === this.form.pickupStationId,
-      )
+      );
 
-      return station ? station.name : 'Levantamento por selecionar'
+      return station ? station.name : "Levantamento por selecionar";
     },
     selectedReturnStationLabel() {
       const station = this.context.stations.find(
         (item) => item.id === this.form.returnStationId,
-      )
+      );
 
-      return station ? station.name : 'Devolucao por selecionar'
+      return station ? station.name : "Devolucao por selecionar";
     },
     recentReservations() {
-      return this.reservations.slice(0, 6)
+      return this.reservations.slice(0, 6);
+    },
+    cancellableReservations() {
+      return this.reservations.filter((reservation) =>
+        this.canCancelReservation(reservation),
+      );
+    },
+    reservationManagementList() {
+      const normalizedSearch = this.manageFilters.search.trim().toLowerCase();
+      const status = this.manageFilters.status;
+
+      return this.reservations.filter((reservation) => {
+        const matchesStatus = !status || reservation.status === status;
+        const searchableText = [
+          reservation.reservationNumber,
+          reservation.customerFullName,
+          reservation.customerEmail,
+          reservation.vehiclePlate,
+          reservation.stationName,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return (
+          matchesStatus &&
+          (!normalizedSearch || searchableText.includes(normalizedSearch))
+        );
+      });
+    },
+    selectedManageReservation() {
+      return (
+        this.reservations.find(
+          (reservation) => reservation.id === this.selectedManageReservationId,
+        ) || null
+      );
+    },
+    bannerTitle() {
+      if (this.banner.type === "success") {
+        return "Operacao concluida";
+      }
+
+      if (this.banner.type === "error") {
+        return "Atencao";
+      }
+
+      return "Aviso";
     },
     reportStationOptions() {
       if (this.context.stations.length > 0) {
-        return this.context.stations
+        return this.context.stations;
       }
 
-      const stationsById = new Map()
+      const stationsById = new Map();
       this.reservations.forEach((reservation) => {
         if (
           Number.isInteger(reservation.stationId) &&
@@ -679,139 +973,237 @@ export default {
           stationsById.set(reservation.stationId, {
             id: reservation.stationId,
             name: reservation.stationName,
-          })
+          });
         }
-      })
+      });
 
       return Array.from(stationsById.values()).sort((left, right) =>
         left.name.localeCompare(right.name),
-      )
+      );
     },
     reportStatusCounters() {
       return this.reportReservations.reduce(
         (counters, reservation) => {
-          if (reservation.status === 'CONFIRMED') {
-            counters.CONFIRMED += 1
+          if (reservation.status === "CONFIRMED") {
+            counters.CONFIRMED += 1;
           }
-          if (reservation.status === 'CANCELLED') {
-            counters.CANCELLED += 1
+          if (reservation.status === "CANCELLED") {
+            counters.CANCELLED += 1;
           }
-          if (reservation.status === 'COMPLETED') {
-            counters.COMPLETED += 1
+          if (reservation.status === "COMPLETED") {
+            counters.COMPLETED += 1;
           }
-          return counters
+          return counters;
         },
         {
           CONFIRMED: 0,
           CANCELLED: 0,
           COMPLETED: 0,
         },
-      )
+      );
     },
   },
   async mounted() {
-    await this.loadContext()
-    await this.loadReservations()
-    await this.loadAvailability()
+    await this.loadContext();
+    await this.loadReservations();
+    await this.loadAvailability();
   },
   methods: {
     formatDate(value) {
-      return formatRentalDisplayDate(value)
+      return formatRentalDisplayDate(value);
     },
     formatMoney(value) {
-      return formatRentalCurrency(value)
+      return formatRentalCurrency(value);
     },
     formatReservationStatus(status) {
       const labels = {
-        CONFIRMED: 'Ativa',
-        CANCELLED: 'Cancelada',
-        COMPLETED: 'Concluida',
-        DRAFT: 'Rascunho',
-        NO_SHOW: 'No-show',
-      }
+        CONFIRMED: "Ativa",
+        CANCELLED: "Cancelada",
+        COMPLETED: "Concluida",
+        DRAFT: "Rascunho",
+        NO_SHOW: "No-show",
+      };
 
-      return labels[status] || status
+      return labels[status] || status;
     },
     showBanner(message, type) {
-      this.banner = { message, type }
+      this.banner = { message, type };
+    },
+    clearBanner() {
+      this.banner = {
+        message: "",
+        type: "info",
+      };
     },
     extractApiError(error, fallbackMessage) {
-      const details = error?.errors
+      const details = error?.errors;
 
       if (Array.isArray(details) && details.length > 0) {
-        return details.join(' | ')
+        return details.join(" | ");
       }
 
-      return error?.message || fallbackMessage
+      return error?.message || fallbackMessage;
     },
     async loadContext() {
-      this.isLoadingContext = true
+      this.isLoadingContext = true;
 
       try {
-        this.context = await fetchReservationContext(this.sessionToken)
-        this.initializeDefaults()
+        this.context = await fetchReservationContext(this.sessionToken);
+        this.initializeDefaults();
       } catch (error) {
         this.showBanner(
           this.extractApiError(
             error,
-            'Nao foi possivel carregar o contexto de reservas.',
+            "Nao foi possivel carregar o contexto de reservas.",
           ),
-          'error',
-        )
+          "error",
+        );
       } finally {
-        this.isLoadingContext = false
+        this.isLoadingContext = false;
       }
     },
     async loadReservations() {
       try {
-        this.reservations = await fetchReservations(this.sessionToken)
+        this.reservations = await fetchReservations(this.sessionToken);
+        this.reconcileManagedReservation();
       } catch (error) {
         this.showBanner(
-          this.extractApiError(error, 'Nao foi possivel carregar as reservas.'),
-          'error',
+          this.extractApiError(error, "Nao foi possivel carregar as reservas."),
+          "error",
+        );
+      }
+    },
+    reconcileManagedReservation() {
+      if (
+        this.selectedManageReservationId &&
+        this.reservations.some(
+          (reservation) => reservation.id === this.selectedManageReservationId,
         )
+      ) {
+        return;
+      }
+
+      this.selectedManageReservationId =
+        this.reservationManagementList[0]?.id || this.reservations[0]?.id || 0;
+    },
+    selectManageReservation(reservation) {
+      this.selectedManageReservationId = reservation.id;
+    },
+    canCancelReservation(reservation) {
+      return reservation?.status === "CONFIRMED";
+    },
+    async submitCancelReservation() {
+      if (!this.selectedManageReservation) {
+        this.showBanner("Selecione uma reserva para cancelar.", "error");
+        return;
+      }
+
+      if (!this.canCancelReservation(this.selectedManageReservation)) {
+        this.showBanner(
+          "A reserva selecionada ja nao pode ser cancelada.",
+          "error",
+        );
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `Confirmar cancelamento da reserva ${this.selectedManageReservation.reservationNumber}?`,
+      );
+
+      if (!confirmed) {
+        this.showBanner(
+          "Cancelamento interrompido antes da confirmacao.",
+          "info",
+        );
+        return;
+      }
+
+      this.isCancellingReservation = true;
+
+      try {
+        const cancelled = await cancelReservation(
+          this.selectedManageReservation.id,
+          this.sessionToken,
+        );
+        this.reservations = this.reservations.map((reservation) =>
+          reservation.id === cancelled.id ? cancelled : reservation,
+        );
+        this.selectedManageReservationId =
+          this.manageFilters.status &&
+          cancelled.status !== this.manageFilters.status
+            ? this.reservationManagementList[0]?.id || 0
+            : cancelled.id;
+        await this.loadAvailability();
+
+        const warningText =
+          Array.isArray(cancelled.cancellationWarnings) &&
+          cancelled.cancellationWarnings.length > 0
+            ? ` ${cancelled.cancellationWarnings.join(" ")}`
+            : "";
+
+        this.showBanner(
+          `Reserva ${cancelled.reservationNumber} cancelada com sucesso.${warningText}`,
+          "success",
+        );
+      } catch (error) {
+        this.showBanner(
+          this.extractApiError(error, "Nao foi possivel cancelar a reserva."),
+          "error",
+        );
+      } finally {
+        this.isCancellingReservation = false;
       }
     },
     async generateReservationsReport() {
-      this.isGeneratingReport = true
+      this.isGeneratingReport = true;
 
       try {
         const filters = {
           status: this.reportFilters.status || undefined,
           pickupStationId: this.reportFilters.pickupStationId || undefined,
           startDate: this.reportFilters.startDate
-            ? new Date(`${this.reportFilters.startDate}T00:00:00.000Z`).toISOString()
+            ? new Date(
+                `${this.reportFilters.startDate}T00:00:00.000Z`,
+              ).toISOString()
             : undefined,
           endDate: this.reportFilters.endDate
-            ? new Date(`${this.reportFilters.endDate}T23:59:59.999Z`).toISOString()
+            ? new Date(
+                `${this.reportFilters.endDate}T23:59:59.999Z`,
+              ).toISOString()
             : undefined,
-        }
+        };
 
-        this.reportReservations = await fetchReservations(this.sessionToken, filters)
-        this.reportGeneratedAt = new Date()
+        this.reportReservations = await fetchReservations(
+          this.sessionToken,
+          filters,
+        );
+        this.reportGeneratedAt = new Date();
       } catch (error) {
         this.showBanner(
-          this.extractApiError(error, 'Relatorio nao gerado devido a erro do sistema.'),
-          'error',
-        )
+          this.extractApiError(
+            error,
+            "Relatorio nao gerado devido a erro do sistema.",
+          ),
+          "error",
+        );
       } finally {
-        this.isGeneratingReport = false
+        this.isGeneratingReport = false;
       }
     },
     exportReservationsReport() {
       if (this.reportReservations.length === 0) {
-        return
+        return;
       }
 
       const headers = [
-        'Numero',
-        'Cliente',
-        'Estado',
-        'Estacao',
-        'Viatura',
-        'Levantamento',
-        'Devolucao prevista',
-      ]
+        "Numero",
+        "Cliente",
+        "Estado",
+        "Estacao",
+        "Viatura",
+        "Levantamento",
+        "Devolucao prevista",
+      ];
       const rows = this.reportReservations.map((reservation) => [
         reservation.reservationNumber,
         reservation.customerFullName,
@@ -820,85 +1212,85 @@ export default {
         reservation.vehiclePlate,
         new Date(reservation.pickupAt).toISOString(),
         new Date(reservation.expectedReturnAt).toISOString(),
-      ])
+      ]);
       const csvContent = [headers, ...rows]
         .map((row) =>
           row
-            .map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`)
-            .join(','),
+            .map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`)
+            .join(","),
         )
-        .join('\n')
+        .join("\n");
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 
-      link.href = url
-      link.download = `relatorio-reservas-${stamp}.csv`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
+      link.href = url;
+      link.download = `relatorio-reservas-${stamp}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     },
     initializeDefaults() {
       if (!this.form.pickupStationId && this.context.stations.length > 0) {
-        this.form.pickupStationId = this.context.stations[0].id
+        this.form.pickupStationId = this.context.stations[0].id;
       }
 
       if (!this.form.returnStationId && this.context.stations.length > 0) {
-        this.form.returnStationId = this.context.stations[0].id
+        this.form.returnStationId = this.context.stations[0].id;
       }
 
       if (!this.form.pickupAt) {
-        this.form.pickupAt = formatRentalDateTimeLocal(new Date())
+        this.form.pickupAt = formatRentalDateTimeLocal(new Date());
       }
 
       if (!this.form.expectedReturnAt) {
         this.form.expectedReturnAt = formatRentalDateTimeLocal(
           new Date(Date.now() + 1000 * 60 * 60 * 24),
-        )
+        );
       }
     },
     toggleCustomerMode() {
-      this.customerMode = this.customerMode === 'existing' ? 'new' : 'existing'
+      this.customerMode = this.customerMode === "existing" ? "new" : "existing";
 
-      if (this.customerMode === 'existing') {
-        this.clearNewCustomerForm()
+      if (this.customerMode === "existing") {
+        this.clearNewCustomerForm();
       } else {
-        this.selectedCustomerId = 0
+        this.selectedCustomerId = 0;
       }
     },
     selectCustomer(customerId) {
-      this.customerMode = 'existing'
-      this.selectedCustomerId = customerId
-      this.clearNewCustomerForm()
+      this.customerMode = "existing";
+      this.selectedCustomerId = customerId;
+      this.clearNewCustomerForm();
     },
     clearNewCustomerForm() {
-      this.newCustomer = createReservationCustomerForm()
+      this.newCustomer = createReservationCustomerForm();
     },
     fillDateRange(days) {
-      const start = new Date()
-      const end = new Date(start.getTime() + days * 1000 * 60 * 60 * 24)
+      const start = new Date();
+      const end = new Date(start.getTime() + days * 1000 * 60 * 60 * 24);
 
-      this.form.pickupAt = formatRentalDateTimeLocal(start)
-      this.form.expectedReturnAt = formatRentalDateTimeLocal(end)
-      this.loadAvailability()
+      this.form.pickupAt = formatRentalDateTimeLocal(start);
+      this.form.expectedReturnAt = formatRentalDateTimeLocal(end);
+      this.loadAvailability();
     },
     async handleAvailabilityInputsChanged() {
       if (!this.form.returnStationId) {
-        this.form.returnStationId = this.form.pickupStationId
+        this.form.returnStationId = this.form.pickupStationId;
       }
 
-      await this.loadAvailability()
+      await this.loadAvailability();
     },
     async selectVehicle(vehicle) {
       if (this.form.pickupStationId !== vehicle.stationId) {
-        this.form.pickupStationId = vehicle.stationId
-        await this.loadAvailability()
+        this.form.pickupStationId = vehicle.stationId;
+        await this.loadAvailability();
       }
 
-      this.form.vehicleId = vehicle.id
+      this.form.vehicleId = vehicle.id;
     },
     async loadAvailability() {
       if (!isReservationAvailabilityReady(this.form)) {
@@ -906,52 +1298,57 @@ export default {
           availableVehicles: [],
           alternativeVehicles: [],
           suggestionMessage: null,
-        }
-        this.form.vehicleId = 0
-        return
+        };
+        this.form.vehicleId = 0;
+        return;
       }
 
-      this.isLoadingAvailability = true
+      this.isLoadingAvailability = true;
 
       try {
-        this.availability = await fetchReservationAvailability(this.sessionToken, {
-          pickupStationId: this.form.pickupStationId,
-          pickupAt: new Date(this.form.pickupAt).toISOString(),
-          expectedReturnAt: new Date(this.form.expectedReturnAt).toISOString(),
-        })
+        this.availability = await fetchReservationAvailability(
+          this.sessionToken,
+          {
+            pickupStationId: this.form.pickupStationId,
+            pickupAt: new Date(this.form.pickupAt).toISOString(),
+            expectedReturnAt: new Date(
+              this.form.expectedReturnAt,
+            ).toISOString(),
+          },
+        );
 
         const stillAvailable = this.availability.availableVehicles.find(
           (vehicle) => vehicle.id === this.form.vehicleId,
-        )
+        );
 
         if (!stillAvailable) {
-          this.form.vehicleId = this.availability.availableVehicles[0]?.id || 0
+          this.form.vehicleId = this.availability.availableVehicles[0]?.id || 0;
         }
       } catch (error) {
         this.availability = {
           availableVehicles: [],
           alternativeVehicles: [],
           suggestionMessage: null,
-        }
-        this.form.vehicleId = 0
+        };
+        this.form.vehicleId = 0;
         this.showBanner(
           this.extractApiError(
             error,
-            'Nao foi possivel validar a disponibilidade das viaturas.',
+            "Nao foi possivel validar a disponibilidade das viaturas.",
           ),
-          'error',
-        )
+          "error",
+        );
       } finally {
-        this.isLoadingAvailability = false
+        this.isLoadingAvailability = false;
       }
     },
     resetFormAfterSuccess() {
-      const pickupStationId = this.context.stations[0]?.id || 0
+      const pickupStationId = this.context.stations[0]?.id || 0;
 
-      this.customerMode = 'existing'
-      this.selectedCustomerId = 0
-      this.customerSearch = ''
-      this.vehicleSearch = ''
+      this.customerMode = "existing";
+      this.selectedCustomerId = 0;
+      this.customerSearch = "";
+      this.vehicleSearch = "";
       this.form = {
         ...createReservationForm(),
         pickupStationId,
@@ -960,8 +1357,8 @@ export default {
         expectedReturnAt: formatRentalDateTimeLocal(
           new Date(Date.now() + 1000 * 60 * 60 * 24),
         ),
-      }
-      this.clearNewCustomerForm()
+      };
+      this.clearNewCustomerForm();
     },
     async submitCreate() {
       const validationErrors = validateReservationCreateForm({
@@ -969,14 +1366,14 @@ export default {
         selectedCustomerId: this.selectedCustomerId,
         newCustomer: this.newCustomer,
         form: this.form,
-      })
+      });
 
       if (Object.keys(validationErrors).length > 0) {
-        this.showBanner(Object.values(validationErrors)[0], 'error')
-        return
+        this.showBanner(Object.values(validationErrors)[0], "error");
+        return;
       }
 
-      this.isCreating = true
+      this.isCreating = true;
 
       try {
         const reservation = await createReservation(
@@ -987,33 +1384,33 @@ export default {
             form: this.form,
           }),
           this.sessionToken,
-        )
+        );
 
-        this.createdReservation = reservation
+        this.createdReservation = reservation;
         this.showBanner(
           `Reserva ${reservation.reservationNumber} criada com sucesso.`,
-          'success',
-        )
-        this.resetFormAfterSuccess()
-        await this.loadContext()
-        await this.loadReservations()
-        await this.loadAvailability()
+          "success",
+        );
+        this.resetFormAfterSuccess();
+        await this.loadContext();
+        await this.loadReservations();
+        await this.loadAvailability();
       } catch (error) {
-        if (error?.code === 'VEHICLE_UNAVAILABLE') {
-          this.form.vehicleId = 0
-          await this.loadAvailability()
+        if (error?.code === "VEHICLE_UNAVAILABLE") {
+          this.form.vehicleId = 0;
+          await this.loadAvailability();
         }
 
         this.showBanner(
-          this.extractApiError(error, 'Nao foi possivel criar a reserva.'),
-          'error',
-        )
+          this.extractApiError(error, "Nao foi possivel criar a reserva."),
+          "error",
+        );
       } finally {
-        this.isCreating = false
+        this.isCreating = false;
       }
     },
   },
-}
+};
 </script>
 
 <style scoped src="../../styles/components/rental-contracts.css"></style>

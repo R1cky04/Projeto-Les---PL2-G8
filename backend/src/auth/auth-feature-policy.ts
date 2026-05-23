@@ -16,7 +16,7 @@ interface FeatureDefinition {
   description: string;
   isEntitled: (user: AuthenticatedUserDto) => boolean;
 }
-
+//teste2
 const FEATURE_DEFINITIONS: FeatureDefinition[] = [
   {
     key: 'INTERNAL_USERS',
@@ -43,7 +43,8 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
   {
     key: 'RENTALS',
     label: 'Rentals',
-    description: 'Gestao de contratos de aluguer com cliente, viatura, datas e valor estimado.',
+    description:
+      'Gestao de contratos de aluguer com cliente, viatura, datas e valor estimado.',
     isEntitled: (user) =>
       user.permissions.includes(InternalPermission.RENTAL_READ),
   },
@@ -66,7 +67,7 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
       user.permissions.includes(InternalPermission.INCIDENT_WRITE),
   },
 ];
-
+//teste
 const LIMITED_ACCESS_REASON =
   'A conta foi autenticada, mas algumas capacidades ficam condicionadas ate validacao final.';
 const TEMPORARY_DISABLED_REASON =

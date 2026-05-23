@@ -20,7 +20,10 @@ import {
   AuthSessionResponseDto,
   SessionAccessLevel,
 } from './auth.types';
-import { buildFeatureCatalog, parseDisabledFeaturesFromEnvironment } from './auth-feature-policy';
+import {
+  buildFeatureCatalog,
+  parseDisabledFeaturesFromEnvironment,
+} from './auth-feature-policy';
 import { AuthTokenService } from './auth-token.service';
 import { normalizeLoginInput } from './auth-validation';
 import { LoginDto } from './dto/login.dto';
@@ -204,7 +207,10 @@ export class AuthService {
       !session ||
       session.revokedAt ||
       session.expiresAt <= new Date() ||
-      !this.authTokenService.verifySecret(parsedToken.secret, session.tokenHash) ||
+      !this.authTokenService.verifySecret(
+        parsedToken.secret,
+        session.tokenHash,
+      ) ||
       !session.isInternal ||
       !session.userId ||
       !session.internalRole
@@ -226,7 +232,9 @@ export class AuthService {
       session.userPkId,
       session.tokenId,
     );
-    const normalizedPermissions = this.normalizePermissions(session.permissions);
+    const normalizedPermissions = this.normalizePermissions(
+      session.permissions,
+    );
     const effectivePermissions =
       normalizedPermissions.length > 0
         ? filterPermissionsForRole(session.internalRole, normalizedPermissions)
@@ -435,10 +443,13 @@ export class AuthService {
   }
 
   private createSessionExpiry(): Date {
-    const configuredHours = Number(process.env.INTERNAL_SESSION_TTL_HOURS ?? 12);
-    const ttlHours = Number.isFinite(configuredHours) && configuredHours > 0
-      ? configuredHours
-      : 12;
+    const configuredHours = Number(
+      process.env.INTERNAL_SESSION_TTL_HOURS ?? 12,
+    );
+    const ttlHours =
+      Number.isFinite(configuredHours) && configuredHours > 0
+        ? configuredHours
+        : 12;
 
     return new Date(Date.now() + ttlHours * 60 * 60 * 1000);
   }

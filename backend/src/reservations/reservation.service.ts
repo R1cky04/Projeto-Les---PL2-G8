@@ -1,26 +1,30 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { AuthenticatedUserDto } from '../auth/auth.types';
-import {
-  RentalService,
-  type RentalCustomer,
-  type RentalRecord,
-} from '../rentals/rental.service';
+import { InternalUserRole } from '../internal-users/internal-user.enums';
+import { RentalService, type RentalCustomer } from '../rentals/rental.service';
 import { StationService } from '../station/station.service';
 import { VehicleService, type Vehicle } from '../vehicle/vehicle.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
 
-type ReservationStatus =
+export type ReservationStatus =
   | 'DRAFT'
   | 'CONFIRMED'
   | 'CANCELLED'
   | 'COMPLETED'
   | 'NO_SHOW';
+
+export type ReservationPaymentStatus =
+  | 'NONE'
+  | 'PENDING'
+  | 'PAID'
+  | 'REFUND_REQUIRED';
 
 export interface ReservationRecord {
   id: number;
@@ -41,16 +45,17 @@ export interface ReservationRecord {
   pickupAt: Date;
   expectedReturnAt: Date;
   status: ReservationStatus;
+  paymentStatus: ReservationPaymentStatus;
+  financialReviewRequired: boolean;
+  adminValidationRequired: boolean;
+  cancellationWarnings: string[];
+  cancelledAt: Date | null;
+  cancelledBy: string | null;
+  convertedToRentalAt: Date | null;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
-}
-
-export interface ReservationContextResponse {
-  customers: RentalCustomer[];
-  stations: Awaited<ReturnType<StationService['findAll']>>;
-  recentReservations: ReservationRecord[];
 }
 
 export interface ReservationAvailabilityVehicle extends Vehicle {
@@ -59,11 +64,17 @@ export interface ReservationAvailabilityVehicle extends Vehicle {
 
 export interface ReservationAvailabilityResponse {
   pickupStationId: number;
-  pickupAt: Date;
-  expectedReturnAt: Date;
+  pickupAt: string;
+  expectedReturnAt: string;
   availableVehicles: ReservationAvailabilityVehicle[];
   alternativeVehicles: ReservationAvailabilityVehicle[];
   suggestionMessage: string | null;
+}
+
+export interface ReservationContextResponse {
+  customers: RentalCustomer[];
+  stations: Awaited<ReturnType<StationService['findAll']>>;
+  recentReservations: ReservationRecord[];
 }
 
 interface ReservationListOptions {
@@ -74,12 +85,31 @@ interface ReservationListOptions {
   pickupStationId?: string;
 }
 
-interface ReservationAvailabilityInput {
+interface ReservationAvailabilityOptions {
   pickupStationId?: string;
   pickupAt?: string;
   expectedReturnAt?: string;
   excludeReservationId?: string;
 }
+
+interface ReservationCancelOptions {
+  adminValidated?: boolean;
+}
+
+type StationRecord = Awaited<ReturnType<StationService['findOne']>>;
+
+const ACTIVE_RESERVATION_STATUSES = new Set<ReservationStatus>([
+  'DRAFT',
+  'CONFIRMED',
+]);
+
+const CANCELLATION_ADMIN_ROLES = new Set<InternalUserRole>([
+  InternalUserRole.IT,
+  InternalUserRole.ADMIN,
+  InternalUserRole.STAFF,
+]);
+
+const LATE_CANCELLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class ReservationService {
@@ -107,125 +137,90 @@ export class ReservationService {
   }
 
   async getAvailability(
-    input: ReservationAvailabilityInput,
+    options: ReservationAvailabilityOptions,
   ): Promise<ReservationAvailabilityResponse> {
     const pickupStationId = this.parsePositiveInteger(
-      input.pickupStationId,
-      'A estacao de levantamento e obrigatoria.',
+      options.pickupStationId,
+      'A estacao de levantamento e invalida.',
       'INVALID_PICKUP_STATION',
     );
-    const pickupAt = this.parseRequiredDate(
-      input.pickupAt,
+    const pickupAt = this.parseDate(
+      options.pickupAt,
       'A data de levantamento e invalida.',
     );
-    const expectedReturnAt = this.parseRequiredDate(
-      input.expectedReturnAt,
+    const expectedReturnAt = this.parseDate(
+      options.expectedReturnAt,
       'A data de devolucao e invalida.',
     );
-    const excludeReservationId = input.excludeReservationId
-      ? this.parsePositiveInteger(
-          input.excludeReservationId,
-          'A reserva a excluir e invalida.',
-          'INVALID_RESERVATION_ID',
-        )
-      : null;
-
-    this.ensureReservationPeriod(pickupAt, expectedReturnAt);
-
-    const [stations, vehicles, openRentals] = await Promise.all([
-      this.stationService.findAll(),
-      this.vehicleService.findAll(),
-      this.rentalService.findAll({ status: 'OPEN' }),
-    ]);
-    const stationNameById = new Map(
-      stations.map((station) => [station.id, station.name]),
+    const excludeReservationId = this.parseOptionalPositiveInteger(
+      options.excludeReservationId,
+      'A reserva excluida e invalida.',
+      'INVALID_EXCLUDED_RESERVATION',
     );
-    const activeReservations = this.reservations.filter(
-      (reservation) =>
-        reservation.status === 'CONFIRMED' &&
-        reservation.id !== excludeReservationId,
-    );
-    const availableVehicles: ReservationAvailabilityVehicle[] = [];
-    const alternativeVehicles: ReservationAvailabilityVehicle[] = [];
 
-    for (const vehicle of vehicles) {
-      if (!this.canReserveVehicle(vehicle)) {
-        continue;
-      }
+    this.ensureValidPeriod(pickupAt, expectedReturnAt);
 
-      if (
-        !this.isVehicleFreeForPeriod(
+    const stationMap = await this.buildStationNameMap();
+    const vehicles = await this.vehicleService.findAll();
+    const availableVehicles = vehicles
+      .filter((vehicle) => vehicle.status === 'AVAILABLE')
+      .filter((vehicle) =>
+        this.isVehicleAvailableForPeriod(
           vehicle.id,
           pickupAt,
           expectedReturnAt,
-          activeReservations,
-          openRentals,
-        )
-      ) {
-        continue;
-      }
-
-      const availabilityVehicle: ReservationAvailabilityVehicle = {
+          excludeReservationId,
+        ),
+      )
+      .map((vehicle) => ({
         ...vehicle,
-        stationName: stationNameById.get(vehicle.stationId) || 'Estacao desconhecida',
-      };
+        stationName:
+          stationMap.get(vehicle.stationId) || 'Estacao desconhecida',
+      }));
 
-      if (vehicle.stationId === pickupStationId) {
-        availableVehicles.push(availabilityVehicle);
-      } else {
-        alternativeVehicles.push(availabilityVehicle);
-      }
-    }
-
-    availableVehicles.sort((left, right) =>
-      left.plateNumber.localeCompare(right.plateNumber),
+    const localVehicles = availableVehicles.filter(
+      (vehicle) => vehicle.stationId === pickupStationId,
     );
-    alternativeVehicles.sort((left, right) => {
-      const stationComparison = left.stationName.localeCompare(right.stationName);
-      return stationComparison !== 0
-        ? stationComparison
-        : left.plateNumber.localeCompare(right.plateNumber);
-    });
+    const alternativeVehicles = availableVehicles.filter(
+      (vehicle) => vehicle.stationId !== pickupStationId,
+    );
 
     return {
       pickupStationId,
-      pickupAt,
-      expectedReturnAt,
-      availableVehicles,
+      pickupAt: pickupAt.toISOString(),
+      expectedReturnAt: expectedReturnAt.toISOString(),
+      availableVehicles: localVehicles,
       alternativeVehicles,
-      suggestionMessage: this.buildSuggestionMessage(
-        availableVehicles.length,
-        alternativeVehicles.length,
-      ),
+      suggestionMessage:
+        localVehicles.length === 0 && alternativeVehicles.length > 0
+          ? 'Nao existem viaturas na estacao selecionada. Foram encontradas alternativas noutras estacoes.'
+          : null,
     };
   }
 
-  async findAll(options: ReservationListOptions = {}): Promise<ReservationRecord[]> {
+  async findAll(
+    options: ReservationListOptions = {},
+  ): Promise<ReservationRecord[]> {
     const normalizedStatus = this.normalizeStatusFilter(options.status);
     const normalizedSearch = options.search?.trim().toLowerCase() || '';
+    const pickupStationId = this.parseOptionalPositiveInteger(
+      options.pickupStationId,
+      'A estacao do filtro e invalida.',
+      'INVALID_RESERVATION_STATION_FILTER',
+    );
     const startDate = this.parseOptionalDate(
       options.startDate,
-      'A data inicial do relatorio e invalida.',
-      'INVALID_REPORT_START_DATE',
+      'A data inicial do filtro e invalida.',
     );
     const endDate = this.parseOptionalDate(
       options.endDate,
-      'A data final do relatorio e invalida.',
-      'INVALID_REPORT_END_DATE',
+      'A data final do filtro e invalida.',
     );
-    const pickupStationId = options.pickupStationId
-      ? this.parsePositiveInteger(
-          options.pickupStationId,
-          'A estacao do relatorio e invalida.',
-          'INVALID_REPORT_STATION',
-        )
-      : null;
 
-    if (startDate && endDate && endDate.getTime() < startDate.getTime()) {
+    if (startDate && endDate && startDate.getTime() > endDate.getTime()) {
       throw new BadRequestException({
-        message:
-          'A data final do relatorio deve ser igual ou posterior a data inicial.',
-        code: 'INVALID_REPORT_PERIOD',
+        message: 'O intervalo de datas para consulta de reservas e invalido.',
+        code: 'INVALID_RESERVATION_DATE_RANGE',
       });
     }
 
@@ -236,10 +231,10 @@ export class ReservationService {
       )
       .filter(
         (reservation) =>
-          !pickupStationId || reservation.stationId === pickupStationId,
+          pickupStationId === null || reservation.stationId === pickupStationId,
       )
       .filter((reservation) =>
-        this.matchesReportPeriod(reservation, startDate, endDate),
+        this.matchesPickupDateRange(reservation, startDate, endDate),
       )
       .filter((reservation) => {
         if (!normalizedSearch) {
@@ -250,7 +245,9 @@ export class ReservationService {
           normalizedSearch,
         );
       })
-      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+      .sort(
+        (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+      );
   }
 
   async findOne(id: number): Promise<ReservationRecord> {
@@ -267,52 +264,67 @@ export class ReservationService {
     payload: CreateReservationDto,
     actor?: AuthenticatedUserDto,
   ): Promise<ReservationRecord> {
-    const pickupAt = this.parseRequiredDate(
+    const pickupStation = await this.stationService.findOne(
+      payload.pickupStationId,
+    );
+    const returnStation = await this.stationService.findOne(
+      payload.returnStationId,
+    );
+    const vehicle = await this.vehicleService.findOne(payload.vehicleId);
+    const pickupAt = this.parseDate(
       payload.pickupAt,
       'A data de levantamento e invalida.',
     );
-    const expectedReturnAt = this.parseRequiredDate(
+    const expectedReturnAt = this.parseDate(
       payload.expectedReturnAt,
       'A data de devolucao e invalida.',
     );
 
-    this.ensureReservationPeriod(pickupAt, expectedReturnAt);
-
-    const [pickupStation, returnStation, vehicle] = await Promise.all([
-      this.stationService.findOne(payload.pickupStationId),
-      this.stationService.findOne(payload.returnStationId),
-      this.vehicleService.findOne(payload.vehicleId),
-    ]);
-    const customerSelection = this.rentalService.resolveCustomerSelection(
-      payload,
-      actor,
-    );
+    this.ensureValidPeriod(pickupAt, expectedReturnAt);
 
     if (vehicle.stationId !== pickupStation.id) {
       throw new BadRequestException({
-        message:
-          'O veiculo selecionado nao pertence a estacao de levantamento indicada.',
+        message: 'O veiculo selecionado nao pertence a estacao indicada.',
         code: 'VEHICLE_WRONG_STATION',
       });
     }
 
+    if (vehicle.status !== 'AVAILABLE') {
+      throw new BadRequestException({
+        message:
+          'O veiculo selecionado ja nao esta disponivel no periodo indicado. Escolha outra viatura.',
+        code: 'VEHICLE_UNAVAILABLE',
+        alternatives: [],
+      });
+    }
+
     if (
-      !this.canReserveVehicle(vehicle) ||
-      !(await this.isVehicleAvailableForPeriod(
+      !this.isVehicleAvailableForPeriod(
         vehicle.id,
         pickupAt,
         expectedReturnAt,
-      ))
+        null,
+      )
     ) {
-      throw await this.buildVehicleUnavailableException(
-        pickupStation.id,
-        pickupAt,
-        expectedReturnAt,
-      );
+      const availability = await this.getAvailability({
+        pickupStationId: String(payload.pickupStationId),
+        pickupAt: pickupAt.toISOString(),
+        expectedReturnAt: expectedReturnAt.toISOString(),
+      });
+
+      throw new BadRequestException({
+        message:
+          'O veiculo selecionado ja nao esta disponivel no periodo indicado. Escolha outra viatura.',
+        code: 'VEHICLE_UNAVAILABLE',
+        alternatives: availability.alternativeVehicles,
+      });
     }
 
+    const customerSelection = this.rentalService.resolveCustomerSelection(
+      payload,
+      actor,
+    );
     const now = new Date();
-    const createdBy = this.resolveActorLabel(actor);
     const reservation: ReservationRecord = {
       id: this.nextReservationId++,
       reservationNumber: this.buildReservationNumber(),
@@ -332,18 +344,25 @@ export class ReservationService {
       pickupAt,
       expectedReturnAt,
       status: 'CONFIRMED',
+      paymentStatus: 'NONE',
+      financialReviewRequired: false,
+      adminValidationRequired: false,
+      cancellationWarnings: [],
+      cancelledAt: null,
+      cancelledBy: null,
+      convertedToRentalAt: null,
       notes: this.normalizeNullableText(payload.notes),
       createdAt: now,
       updatedAt: now,
-      createdBy,
+      createdBy: this.resolveActorLabel(actor),
     };
 
     this.reservations.unshift(reservation);
     this.logAudit(
       'CREATE',
       reservation.id,
-      createdBy,
-      `Reserva ${reservation.reservationNumber} criada para ${reservation.customerFullName} com levantamento em ${reservation.stationName}.`,
+      this.resolveActorLabel(actor),
+      `Reserva ${reservation.reservationNumber} criada para ${reservation.customerFullName}.`,
     );
 
     return reservation;
@@ -354,272 +373,199 @@ export class ReservationService {
     payload: UpdateReservationDto,
     actor?: AuthenticatedUserDto,
   ): Promise<ReservationRecord> {
-    const reservationIndex = this.reservations.findIndex((item) => item.id === id);
+    const index = this.reservations.findIndex((item) => item.id === id);
 
-    if (reservationIndex === -1) {
+    if (index === -1) {
       throw new NotFoundException('Reserva nao encontrada.');
     }
 
-    const currentReservation = this.reservations[reservationIndex];
+    const current = this.reservations[index];
 
-    if (
-      currentReservation.status === 'CANCELLED' ||
-      currentReservation.status === 'COMPLETED'
-    ) {
+    if (!ACTIVE_RESERVATION_STATUSES.has(current.status)) {
       throw new BadRequestException({
         message: 'A reserva selecionada ja nao pode ser alterada.',
         code: 'RESERVATION_NOT_EDITABLE',
       });
     }
 
-    const changedFields: string[] = [];
-    const updatedAt = new Date();
-    const reservationChanges: Partial<ReservationRecord> = {};
+    const returnStation = payload.returnStationId
+      ? await this.stationService.findOne(payload.returnStationId)
+      : null;
+    const nextExpectedReturnAt = payload.expectedReturnAt
+      ? this.parseDate(
+          payload.expectedReturnAt,
+          'A data de devolucao e invalida.',
+        )
+      : current.expectedReturnAt;
 
-    const nextExpectedReturnAt =
-      payload.expectedReturnAt !== undefined
-        ? this.parseRequiredDate(
-            payload.expectedReturnAt,
-            'A data de devolucao e invalida.',
-          )
-        : currentReservation.expectedReturnAt;
-
-    this.ensureReservationPeriod(currentReservation.pickupAt, nextExpectedReturnAt);
+    this.ensureValidPeriod(current.pickupAt, nextExpectedReturnAt);
 
     if (
-      payload.expectedReturnAt !== undefined &&
-      nextExpectedReturnAt.getTime() !==
-        currentReservation.expectedReturnAt.getTime()
-    ) {
-      const vehicleAvailable = await this.isVehicleAvailableForPeriod(
-        currentReservation.vehicleId,
-        currentReservation.pickupAt,
+      !this.isVehicleAvailableForPeriod(
+        current.vehicleId,
+        current.pickupAt,
         nextExpectedReturnAt,
-        currentReservation.id,
-      );
-
-      if (!vehicleAvailable) {
-        throw await this.buildVehicleUnavailableException(
-          currentReservation.stationId,
-          currentReservation.pickupAt,
-          nextExpectedReturnAt,
-          currentReservation.id,
-        );
-      }
-
-      reservationChanges.expectedReturnAt = nextExpectedReturnAt;
-      changedFields.push(
-        `periodo ${currentReservation.expectedReturnAt.toISOString()} -> ${nextExpectedReturnAt.toISOString()}`,
-      );
-    }
-
-    if (payload.returnStationId !== undefined) {
-      const returnStation = await this.stationService.findOne(payload.returnStationId);
-
-      if (returnStation.id !== currentReservation.returnStationId) {
-        reservationChanges.returnStationId = returnStation.id;
-        reservationChanges.returnStationName = returnStation.name;
-        changedFields.push(
-          `estacao de devolucao ${currentReservation.returnStationName} -> ${returnStation.name}`,
-        );
-      }
-    }
-
-    if (payload.notes !== undefined) {
-      const normalizedNotes = this.normalizeNullableText(payload.notes);
-
-      if (normalizedNotes !== currentReservation.notes) {
-        reservationChanges.notes = normalizedNotes;
-        changedFields.push(
-          `notas ${this.describeNullableValue(currentReservation.notes)} -> ${this.describeNullableValue(normalizedNotes)}`,
-        );
-      }
-    }
-
-    const currentCustomer = this.splitCustomerName(currentReservation.customerFullName);
-    const nextCustomerFirstName =
-      payload.customerFirstName !== undefined
-        ? this.normalizeRequiredText(
-            payload.customerFirstName,
-            'O nome do cliente e invalido.',
-          )
-        : currentCustomer.firstName;
-    const nextCustomerLastName =
-      payload.customerLastName !== undefined
-        ? this.normalizeRequiredText(
-            payload.customerLastName,
-            'O apelido do cliente e invalido.',
-          )
-        : currentCustomer.lastName;
-    const nextCustomerEmail =
-      payload.customerEmail !== undefined
-        ? this.normalizeNullableText(payload.customerEmail)?.toLowerCase() || null
-        : currentReservation.customerEmail;
-    const nextCustomerPhone =
-      payload.customerPhone !== undefined
-        ? this.normalizeNullableText(payload.customerPhone)
-        : currentReservation.customerPhone;
-    const nextCustomerDocumentNumber =
-      payload.customerDocumentNumber !== undefined
-        ? this.normalizeNullableText(payload.customerDocumentNumber)
-        : currentReservation.customerDocumentNumber;
-    const nextCustomerFullName = `${nextCustomerFirstName} ${nextCustomerLastName}`.trim();
-
-    if (nextCustomerFullName !== currentReservation.customerFullName) {
-      reservationChanges.customerFullName = nextCustomerFullName;
-      changedFields.push(
-        `cliente ${currentReservation.customerFullName} -> ${nextCustomerFullName}`,
-      );
-    }
-
-    if (nextCustomerEmail !== currentReservation.customerEmail) {
-      reservationChanges.customerEmail = nextCustomerEmail;
-      changedFields.push(
-        `email ${this.describeNullableValue(currentReservation.customerEmail)} -> ${this.describeNullableValue(nextCustomerEmail)}`,
-      );
-    }
-
-    if (nextCustomerPhone !== currentReservation.customerPhone) {
-      reservationChanges.customerPhone = nextCustomerPhone;
-      changedFields.push(
-        `telefone ${this.describeNullableValue(currentReservation.customerPhone)} -> ${this.describeNullableValue(nextCustomerPhone)}`,
-      );
-    }
-
-    if (
-      nextCustomerDocumentNumber !== currentReservation.customerDocumentNumber
+        current.id,
+      )
     ) {
-      reservationChanges.customerDocumentNumber = nextCustomerDocumentNumber;
-      changedFields.push(
-        `documento ${this.describeNullableValue(currentReservation.customerDocumentNumber)} -> ${this.describeNullableValue(nextCustomerDocumentNumber)}`,
-      );
-    }
-
-    if (changedFields.length === 0) {
       throw new BadRequestException({
-        message: 'Sem alteracoes validas para atualizar a reserva.',
-        code: 'NO_RESERVATION_CHANGES',
+        message:
+          'A reserva ja nao pode usar a viatura selecionada no periodo indicado.',
+        code: 'VEHICLE_UNAVAILABLE',
       });
     }
 
-    const updatedReservation: ReservationRecord = {
-      ...currentReservation,
-      ...reservationChanges,
-      updatedAt,
+    const updated: ReservationRecord = {
+      ...current,
+      expectedReturnAt: nextExpectedReturnAt,
+      returnStationId: returnStation?.id || current.returnStationId,
+      returnStationName: returnStation?.name || current.returnStationName,
+      notes:
+        payload.notes !== undefined
+          ? this.normalizeNullableText(payload.notes)
+          : current.notes,
+      ...this.buildCustomerSnapshotUpdate(current, payload),
+      updatedAt: new Date(),
     };
 
-    this.reservations[reservationIndex] = updatedReservation;
+    this.reservations[index] = updated;
     this.logAudit(
       'UPDATE',
-      updatedReservation.id,
+      updated.id,
       this.resolveActorLabel(actor),
-      `Reserva ${updatedReservation.reservationNumber} atualizada: ${changedFields.join('; ')}.`,
+      `Reserva ${updated.reservationNumber} atualizada.`,
     );
-
-    return updatedReservation;
+    return updated;
   }
 
   async cancel(
     id: number,
     actor?: AuthenticatedUserDto,
+    options: ReservationCancelOptions = {},
   ): Promise<ReservationRecord> {
-    const reservationIndex = this.reservations.findIndex((item) => item.id === id);
+    const index = this.reservations.findIndex((item) => item.id === id);
 
-    if (reservationIndex === -1) {
+    if (index === -1) {
       throw new NotFoundException('Reserva nao encontrada.');
     }
 
-    const currentReservation = this.reservations[reservationIndex];
+    const current = this.reservations[index];
 
-    if (currentReservation.status === 'CANCELLED') {
+    if (current.status === 'CANCELLED') {
       throw new BadRequestException({
         message: 'A reserva ja foi cancelada.',
         code: 'RESERVATION_ALREADY_CANCELLED',
       });
     }
 
-    if (currentReservation.status === 'COMPLETED') {
+    if (current.status === 'COMPLETED' || current.convertedToRentalAt) {
       throw new BadRequestException({
-        message: 'A reserva ja foi concluida e nao pode ser cancelada.',
-        code: 'RESERVATION_COMPLETED',
+        message:
+          'A reserva ja foi convertida em contrato e nao pode ser cancelada.',
+        code: 'RESERVATION_ALREADY_CONVERTED',
       });
     }
 
-    const cancelledReservation: ReservationRecord = {
-      ...currentReservation,
-      status: 'CANCELLED',
-      updatedAt: new Date(),
-    };
+    const now = new Date();
 
-    this.reservations[reservationIndex] = cancelledReservation;
-    this.logAudit(
-      'CANCEL',
-      cancelledReservation.id,
-      this.resolveActorLabel(actor),
-      `Reserva ${cancelledReservation.reservationNumber} cancelada.`,
-    );
-
-    return cancelledReservation;
-  }
-
-  private async isVehicleAvailableForPeriod(
-    vehicleId: number,
-    pickupAt: Date,
-    expectedReturnAt: Date,
-    excludeReservationId?: number,
-  ): Promise<boolean> {
-    const openRentals = await this.rentalService.findAll({ status: 'OPEN' });
-    const activeReservations = this.reservations.filter(
-      (reservation) =>
-        reservation.status === 'CONFIRMED' &&
-        reservation.id !== excludeReservationId,
-    );
-
-    return this.isVehicleFreeForPeriod(
-      vehicleId,
-      pickupAt,
-      expectedReturnAt,
-      activeReservations,
-      openRentals,
-    );
-  }
-
-  private isVehicleFreeForPeriod(
-    vehicleId: number,
-    pickupAt: Date,
-    expectedReturnAt: Date,
-    activeReservations: ReservationRecord[],
-    openRentals: RentalRecord[],
-  ): boolean {
-    const hasReservationConflict = activeReservations.some(
-      (reservation) =>
-        reservation.vehicleId === vehicleId &&
-        this.periodsOverlap(
-          pickupAt,
-          expectedReturnAt,
-          reservation.pickupAt,
-          reservation.expectedReturnAt,
-        ),
-    );
-
-    if (hasReservationConflict) {
-      return false;
+    if (current.pickupAt.getTime() <= now.getTime()) {
+      throw new BadRequestException({
+        message:
+          'A reserva ja atingiu o inicio do contrato e nao pode ser cancelada.',
+        code: 'RESERVATION_ALREADY_STARTED',
+      });
     }
 
-    return !openRentals.some(
-      (rental) =>
-        rental.vehicleId === vehicleId &&
-        this.periodsOverlap(
-          pickupAt,
-          expectedReturnAt,
-          rental.pickupAt,
-          rental.expectedReturnAt,
-        ),
+    const requiresAdminValidation = this.requiresAdminValidation(actor);
+
+    if (requiresAdminValidation && !options.adminValidated) {
+      throw new ForbiddenException({
+        message:
+          'O cancelamento desta reserva exige validacao adicional de Admin.',
+        code: 'ADMIN_VALIDATION_REQUIRED',
+      });
+    }
+
+    const cancellationWarnings = this.buildCancellationWarnings(current, now);
+    const cancelled: ReservationRecord = {
+      ...current,
+      status: 'CANCELLED',
+      financialReviewRequired: this.requiresFinancialReview(current),
+      adminValidationRequired: requiresAdminValidation,
+      cancellationWarnings,
+      cancelledAt: now,
+      cancelledBy: this.resolveActorLabel(actor),
+      updatedAt: now,
+    };
+
+    this.reservations[index] = cancelled;
+    this.logAudit(
+      'CANCEL',
+      cancelled.id,
+      this.resolveActorLabel(actor),
+      `Reserva ${cancelled.reservationNumber} cancelada. Avisos: ${cancellationWarnings.join(' | ') || 'sem avisos'}.`,
     );
+
+    return cancelled;
   }
 
-  private canReserveVehicle(vehicle: Vehicle): boolean {
-    return vehicle.status === 'AVAILABLE';
+  async markAsConvertedToContract(
+    id: number,
+    actor?: AuthenticatedUserDto,
+  ): Promise<ReservationRecord> {
+    const index = this.reservations.findIndex((item) => item.id === id);
+
+    if (index === -1) {
+      throw new NotFoundException('Reserva nao encontrada.');
+    }
+
+    const now = new Date();
+    const converted: ReservationRecord = {
+      ...this.reservations[index],
+      status: 'COMPLETED',
+      convertedToRentalAt: now,
+      updatedAt: now,
+    };
+
+    this.reservations[index] = converted;
+    this.logAudit(
+      'CONVERT',
+      converted.id,
+      this.resolveActorLabel(actor),
+      `Reserva ${converted.reservationNumber} convertida em contrato.`,
+    );
+
+    return converted;
+  }
+
+  private async buildStationNameMap(): Promise<Map<number, string>> {
+    const stations = await this.stationService.findAll();
+    return new Map(stations.map((station) => [station.id, station.name]));
+  }
+
+  private isVehicleAvailableForPeriod(
+    vehicleId: number,
+    pickupAt: Date,
+    expectedReturnAt: Date,
+    excludeReservationId: number | null,
+  ): boolean {
+    // Cancelled and completed reservations no longer hold a vehicle slot.
+    return !this.reservations.some((reservation) => {
+      if (
+        reservation.id === excludeReservationId ||
+        reservation.vehicleId !== vehicleId ||
+        !ACTIVE_RESERVATION_STATUSES.has(reservation.status)
+      ) {
+        return false;
+      }
+
+      return this.periodsOverlap(
+        pickupAt,
+        expectedReturnAt,
+        reservation.pickupAt,
+        reservation.expectedReturnAt,
+      );
+    });
   }
 
   private periodsOverlap(
@@ -628,11 +574,237 @@ export class ReservationService {
     rightStart: Date,
     rightEnd: Date,
   ): boolean {
-    return leftStart.getTime() < rightEnd.getTime() &&
-      rightStart.getTime() < leftEnd.getTime();
+    return (
+      leftStart.getTime() < rightEnd.getTime() &&
+      rightStart.getTime() < leftEnd.getTime()
+    );
   }
 
-  private ensureReservationPeriod(pickupAt: Date, expectedReturnAt: Date): void {
+  private matchesPickupDateRange(
+    reservation: ReservationRecord,
+    startDate: Date | null,
+    endDate: Date | null,
+  ): boolean {
+    const pickupTime = reservation.pickupAt.getTime();
+
+    if (startDate && pickupTime < startDate.getTime()) {
+      return false;
+    }
+
+    if (endDate && pickupTime > endDate.getTime()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private buildSearchableReservationText(
+    reservation: ReservationRecord,
+  ): string {
+    return [
+      reservation.reservationNumber,
+      reservation.customerFullName,
+      reservation.customerEmail,
+      reservation.customerPhone,
+      reservation.customerDocumentNumber,
+      reservation.vehiclePlate,
+      reservation.vehicleBrand,
+      reservation.vehicleModel,
+      reservation.stationName,
+      reservation.returnStationName,
+      reservation.status,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+  }
+
+  private buildCustomerSnapshotUpdate(
+    current: ReservationRecord,
+    payload: UpdateReservationDto,
+  ): Partial<ReservationRecord> {
+    const firstName = payload.customerFirstName?.trim();
+    const lastName = payload.customerLastName?.trim();
+    const hasNameUpdate =
+      payload.customerFirstName !== undefined ||
+      payload.customerLastName !== undefined;
+
+    if (!hasNameUpdate) {
+      return {
+        customerEmail:
+          payload.customerEmail !== undefined
+            ? this.normalizeNullableText(payload.customerEmail)
+            : current.customerEmail,
+        customerPhone:
+          payload.customerPhone !== undefined
+            ? this.normalizeNullableText(payload.customerPhone)
+            : current.customerPhone,
+        customerDocumentNumber:
+          payload.customerDocumentNumber !== undefined
+            ? this.normalizeNullableText(payload.customerDocumentNumber)
+            : current.customerDocumentNumber,
+      };
+    }
+
+    const currentNameParts = current.customerFullName.split(/\s+/);
+    const nextFirstName = firstName || currentNameParts[0] || '';
+    const nextLastName = lastName || currentNameParts.slice(1).join(' ');
+    const nextFullName = `${nextFirstName} ${nextLastName}`.trim();
+
+    return {
+      customerFullName: nextFullName || current.customerFullName,
+      customerEmail:
+        payload.customerEmail !== undefined
+          ? this.normalizeNullableText(payload.customerEmail)
+          : current.customerEmail,
+      customerPhone:
+        payload.customerPhone !== undefined
+          ? this.normalizeNullableText(payload.customerPhone)
+          : current.customerPhone,
+      customerDocumentNumber:
+        payload.customerDocumentNumber !== undefined
+          ? this.normalizeNullableText(payload.customerDocumentNumber)
+          : current.customerDocumentNumber,
+    };
+  }
+
+  private buildCancellationWarnings(
+    reservation: ReservationRecord,
+    cancelledAt: Date,
+  ): string[] {
+    const warnings: string[] = [];
+    const millisecondsUntilPickup =
+      reservation.pickupAt.getTime() - cancelledAt.getTime();
+
+    if (
+      millisecondsUntilPickup > 0 &&
+      millisecondsUntilPickup <= LATE_CANCELLATION_WINDOW_MS
+    ) {
+      warnings.push(
+        'Cancelamento proximo da data de inicio. Rever possivel penalizacao interna.',
+      );
+    }
+
+    if (this.requiresFinancialReview(reservation)) {
+      warnings.push(
+        'Reserva com pagamento associado. Necessario tratamento financeiro.',
+      );
+    }
+
+    return warnings;
+  }
+
+  private requiresFinancialReview(reservation: ReservationRecord): boolean {
+    return (
+      reservation.paymentStatus === 'PAID' ||
+      reservation.paymentStatus === 'REFUND_REQUIRED'
+    );
+  }
+
+  private requiresAdminValidation(actor?: AuthenticatedUserDto): boolean {
+    if (!actor) {
+      return false;
+    }
+
+    return (
+      actor.accessLevel === 'LIMITED' ||
+      !CANCELLATION_ADMIN_ROLES.has(actor.role)
+    );
+  }
+
+  private normalizeStatusFilter(status?: string): ReservationStatus | null {
+    if (!status || !status.trim()) {
+      return null;
+    }
+
+    const normalized = status.trim().toUpperCase();
+
+    if (
+      normalized === 'DRAFT' ||
+      normalized === 'CONFIRMED' ||
+      normalized === 'CANCELLED' ||
+      normalized === 'COMPLETED' ||
+      normalized === 'NO_SHOW'
+    ) {
+      return normalized;
+    }
+
+    throw new BadRequestException({
+      message: 'O estado da reserva e invalido.',
+      code: 'INVALID_RESERVATION_STATUS',
+    });
+  }
+
+  private parseDate(value: string | undefined, fallbackMessage: string): Date {
+    if (!value || !value.trim()) {
+      throw new BadRequestException({
+        message: fallbackMessage,
+        code: 'INVALID_RESERVATION_DATE',
+      });
+    }
+
+    const parsed = new Date(value);
+
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException({
+        message: fallbackMessage,
+        code: 'INVALID_RESERVATION_DATE',
+      });
+    }
+
+    return parsed;
+  }
+
+  private parseOptionalDate(
+    value: string | undefined,
+    fallbackMessage: string,
+  ): Date | null {
+    if (!value || !value.trim()) {
+      return null;
+    }
+
+    return this.parseDate(value, fallbackMessage);
+  }
+
+  private parsePositiveInteger(
+    value: string | undefined,
+    message: string,
+    code: string,
+  ): number {
+    const parsed = this.parseOptionalPositiveInteger(value, message, code);
+
+    if (parsed === null) {
+      throw new BadRequestException({
+        message,
+        code,
+      });
+    }
+
+    return parsed;
+  }
+
+  private parseOptionalPositiveInteger(
+    value: string | undefined,
+    message: string,
+    code: string,
+  ): number | null {
+    if (!value || !value.trim()) {
+      return null;
+    }
+
+    const parsed = Number(value);
+
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      throw new BadRequestException({
+        message,
+        code,
+      });
+    }
+
+    return parsed;
+  }
+
+  private ensureValidPeriod(pickupAt: Date, expectedReturnAt: Date): void {
     if (expectedReturnAt.getTime() <= pickupAt.getTime()) {
       throw new BadRequestException({
         message:
@@ -657,205 +829,13 @@ export class ReservationService {
     return `${customer.firstName} ${customer.lastName}`.trim();
   }
 
-  private buildSearchableReservationText(reservation: ReservationRecord): string {
-    return [
-      reservation.reservationNumber,
-      reservation.customerFullName,
-      reservation.customerEmail,
-      reservation.customerPhone,
-      reservation.customerDocumentNumber,
-      reservation.vehiclePlate,
-      reservation.stationName,
-      reservation.returnStationName,
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
-  }
-
-  private normalizeStatusFilter(status?: string): ReservationStatus | undefined {
-    if (!status) {
-      return undefined;
-    }
-
-    const normalizedStatus = status.trim().toUpperCase();
-    const allowedStatuses = new Set<ReservationStatus>([
-      'DRAFT',
-      'CONFIRMED',
-      'CANCELLED',
-      'COMPLETED',
-      'NO_SHOW',
-    ]);
-
-    if (!allowedStatuses.has(normalizedStatus as ReservationStatus)) {
-      throw new BadRequestException({
-        message: 'O estado da reserva e invalido.',
-        code: 'INVALID_RESERVATION_STATUS',
-      });
-    }
-
-    return normalizedStatus as ReservationStatus;
-  }
-
-  private parseRequiredDate(value: string | undefined, message: string): Date {
-    if (!value) {
-      throw new BadRequestException({
-        message,
-        code: 'INVALID_DATE',
-      });
-    }
-
-    const parsed = new Date(value);
-
-    if (Number.isNaN(parsed.getTime())) {
-      throw new BadRequestException({
-        message,
-        code: 'INVALID_DATE',
-      });
-    }
-
-    return parsed;
-  }
-
-  private parseOptionalDate(
-    value: string | undefined,
-    message: string,
-    code: string,
-  ): Date | null {
-    if (!value) {
-      return null;
-    }
-
-    const parsed = new Date(value);
-
-    if (Number.isNaN(parsed.getTime())) {
-      throw new BadRequestException({
-        message,
-        code,
-      });
-    }
-
-    return parsed;
-  }
-
-  private parsePositiveInteger(
-    value: string | undefined,
-    message: string,
-    code: string,
-  ): number {
-    const parsed = Number(value);
-
-    if (!Number.isInteger(parsed) || parsed < 1) {
-      throw new BadRequestException({
-        message,
-        code,
-      });
-    }
-
-    return parsed;
-  }
-
   private normalizeNullableText(value?: string | null): string | null {
     const normalized = value?.trim();
     return normalized ? normalized : null;
   }
 
-  private normalizeRequiredText(value: string, message: string): string {
-    const normalized = value.trim();
-
-    if (!normalized) {
-      throw new BadRequestException({
-        message,
-        code: 'INVALID_CUSTOMER_FIELD',
-      });
-    }
-
-    return normalized;
-  }
-
-  private splitCustomerName(fullName: string): {
-    firstName: string;
-    lastName: string;
-  } {
-    const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
-
-    return {
-      firstName: nameParts[0] || '',
-      lastName: nameParts.slice(1).join(' ') || '',
-    };
-  }
-
-  private describeNullableValue(value: string | null): string {
-    return value === null ? 'vazio' : value;
-  }
-
-  private matchesReportPeriod(
-    reservation: ReservationRecord,
-    startDate: Date | null,
-    endDate: Date | null,
-  ): boolean {
-    if (!startDate && !endDate) {
-      return true;
-    }
-
-    if (startDate && endDate) {
-      return this.periodsOverlap(
-        reservation.pickupAt,
-        reservation.expectedReturnAt,
-        startDate,
-        endDate,
-      );
-    }
-
-    if (startDate) {
-      return reservation.pickupAt.getTime() >= startDate.getTime();
-    }
-
-    return reservation.pickupAt.getTime() <= (endDate as Date).getTime();
-  }
-
-  private buildSuggestionMessage(
-    availableVehiclesCount: number,
-    alternativeVehiclesCount: number,
-  ): string | null {
-    if (availableVehiclesCount > 0) {
-      return null;
-    }
-
-    if (alternativeVehiclesCount > 0) {
-      return 'Nao existem viaturas disponiveis na estacao selecionada para o periodo indicado. O sistema encontrou alternativas noutras estacoes.';
-    }
-
-    return 'Nao existem viaturas disponiveis para o periodo selecionado.';
-  }
-
-  private async buildVehicleUnavailableException(
-    pickupStationId: number,
-    pickupAt: Date,
-    expectedReturnAt: Date,
-    excludeReservationId?: number,
-  ): Promise<BadRequestException> {
-    const availability = await this.getAvailability({
-      pickupStationId: String(pickupStationId),
-      pickupAt: pickupAt.toISOString(),
-      expectedReturnAt: expectedReturnAt.toISOString(),
-      excludeReservationId:
-        excludeReservationId === undefined ? undefined : String(excludeReservationId),
-    });
-
-    return new BadRequestException({
-      message:
-        'O veiculo selecionado ja nao esta disponivel no periodo indicado. Escolha outra viatura.',
-      code: 'VEHICLE_UNAVAILABLE',
-      alternatives: [
-        ...availability.availableVehicles,
-        ...availability.alternativeVehicles,
-      ].slice(0, 6),
-    });
-  }
-
   private resolveActorLabel(actor?: AuthenticatedUserDto): string {
-    return actor?.userId || actor?.fullName || actor?.id || 'desconhecido';
+    return actor?.userId || actor?.fullName || actor?.id || 'Sistema';
   }
 
   private logAudit(

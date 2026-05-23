@@ -82,6 +82,8 @@ export interface CustomerSelectionResult {
 interface RentalListOptions {
   search?: string;
   status?: string;
+  createdFrom?: string;
+  createdTo?: string;
 }
 
 interface CustomerUpdateResult {
@@ -132,14 +134,17 @@ export class RentalService {
       this.findAll(),
     ]);
 
-    const stationMap = new Map(stations.map((station) => [station.id, station.name]));
+    const stationMap = new Map(
+      stations.map((station) => [station.id, station.name]),
+    );
 
     return {
       customers: [...this.customers],
       stations,
       availableVehicles: availableVehicles.map((vehicle) => ({
         ...vehicle,
-        stationName: stationMap.get(vehicle.stationId) || 'Estacao desconhecida',
+        stationName:
+          stationMap.get(vehicle.stationId) || 'Estacao desconhecida',
       })),
       recentRentals: recentRentals.slice(0, 6),
     };
@@ -164,19 +169,64 @@ export class RentalService {
   }
 
   async findAll(options: RentalListOptions = {}): Promise<RentalRecord[]> {
-    const normalizedStatus = this.normalizeStatusFilter(options.status);
+    const normalizedStatusSet = this.normalizeStatusFilter(options.status);
     const normalizedSearch = options.search?.trim().toLowerCase() || '';
+    const createdFromDate = this.parseListFilterDate(
+      options.createdFrom,
+      'A data inicial do filtro e invalida.',
+      false,
+    );
+    const createdToDate = this.parseListFilterDate(
+      options.createdTo,
+      'A data final do filtro e invalida.',
+      true,
+    );
+
+    if (
+      createdFromDate &&
+      createdToDate &&
+      createdFromDate.getTime() > createdToDate.getTime()
+    ) {
+      throw new BadRequestException({
+        message: 'O intervalo de datas para consulta de contratos e invalido.',
+        code: 'INVALID_RENTAL_DATE_RANGE',
+      });
+    }
 
     return [...this.rentals]
-      .filter((rental) => !normalizedStatus || rental.status === normalizedStatus)
+      .filter(
+        (rental) =>
+          !normalizedStatusSet || normalizedStatusSet.has(rental.status),
+      )
+      .filter((rental) => {
+        if (
+          createdFromDate &&
+          rental.createdAt.getTime() < createdFromDate.getTime()
+        ) {
+          return false;
+        }
+
+        if (
+          createdToDate &&
+          rental.createdAt.getTime() > createdToDate.getTime()
+        ) {
+          return false;
+        }
+
+        return true;
+      })
       .filter((rental) => {
         if (!normalizedSearch) {
           return true;
         }
 
-        return this.buildSearchableRentalText(rental).includes(normalizedSearch);
+        return this.buildSearchableRentalText(rental).includes(
+          normalizedSearch,
+        );
       })
-      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+      .sort(
+        (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+      );
   }
 
   async findOne(id: number): Promise<RentalRecord> {
@@ -207,21 +257,33 @@ export class RentalService {
       errors.push('O veiculo selecionado e invalido.');
     }
 
-    if (!Number.isInteger(payload.pickupOdometerKm) || payload.pickupOdometerKm < 0) {
-      errors.push('A quilometragem inicial tem de ser um inteiro maior ou igual a zero.');
+    if (
+      !Number.isInteger(payload.pickupOdometerKm) ||
+      payload.pickupOdometerKm < 0
+    ) {
+      errors.push(
+        'A quilometragem inicial tem de ser um inteiro maior ou igual a zero.',
+      );
     }
 
     if (!payload.vehicleCondition || !payload.vehicleCondition.trim()) {
       errors.push('O estado inicial do veiculo e obrigatorio.');
     }
 
-    const pickupAt = this.parseDate(payload.pickupAt, 'A data de inicio e invalida.');
+    const pickupAt = this.parseDate(
+      payload.pickupAt,
+      'A data de inicio e invalida.',
+    );
     const expectedReturnAt = this.parseDate(
       payload.expectedReturnAt,
       'A data de fim e invalida.',
     );
 
-    if (pickupAt && expectedReturnAt && expectedReturnAt.getTime() <= pickupAt.getTime()) {
+    if (
+      pickupAt &&
+      expectedReturnAt &&
+      expectedReturnAt.getTime() <= pickupAt.getTime()
+    ) {
       errors.push('A data de fim tem de ser posterior a data de inicio.');
     }
 
@@ -245,23 +307,34 @@ export class RentalService {
 
     if (vehicle.status !== 'AVAILABLE') {
       throw new BadRequestException({
-        message: 'O veiculo selecionado ja nao esta disponivel. Escolha outra viatura.',
+        message:
+          'O veiculo selecionado ja nao esta disponivel. Escolha outra viatura.',
         code: 'VEHICLE_UNAVAILABLE',
       });
     }
 
     const createdBy = this.resolveActorLabel(actor);
     const estimatedDays = this.calculateRentalDays(pickupAt, expectedReturnAt);
-    const estimatedAmount = Number((estimatedDays * vehicle.dailyRate).toFixed(2));
+    const estimatedAmount = Number(
+      (estimatedDays * vehicle.dailyRate).toFixed(2),
+    );
     const contractNumber = this.buildContractNumber();
     const now = new Date();
 
     await this.vehicleService.markAsRented(vehicle.id, createdBy);
 
     try {
-      await this.stationService.adjustAllocatedVehicles(station.id, -1, createdBy);
+      await this.stationService.adjustAllocatedVehicles(
+        station.id,
+        -1,
+        createdBy,
+      );
     } catch (error) {
-      await this.vehicleService.update(vehicle.id, { status: 'AVAILABLE' }, createdBy);
+      await this.vehicleService.update(
+        vehicle.id,
+        { status: 'AVAILABLE' },
+        createdBy,
+      );
       throw error;
     }
 
@@ -355,7 +428,10 @@ export class RentalService {
         });
       }
 
-      if (nextExpectedReturnAt.getTime() !== currentRental.expectedReturnAt.getTime()) {
+      if (
+        nextExpectedReturnAt.getTime() !==
+        currentRental.expectedReturnAt.getTime()
+      ) {
         const estimatedDays = this.calculateRentalDays(
           currentRental.pickupAt,
           nextExpectedReturnAt,
@@ -373,7 +449,9 @@ export class RentalService {
     }
 
     if (payload.returnStationId !== undefined) {
-      const returnStation = await this.stationService.findOne(payload.returnStationId);
+      const returnStation = await this.stationService.findOne(
+        payload.returnStationId,
+      );
 
       if (returnStation.id !== currentRental.returnStationId) {
         rentalChanges.returnStationId = returnStation.id;
@@ -413,15 +491,21 @@ export class RentalService {
     const updatedRental: RentalRecord = {
       ...currentRental,
       ...rentalChanges,
-      customerFullName: this.buildCustomerName(customerUpdateResult.changedCustomer),
+      customerFullName: this.buildCustomerName(
+        customerUpdateResult.changedCustomer,
+      ),
       customerEmail: customerUpdateResult.changedCustomer.email,
       customerPhone: customerUpdateResult.changedCustomer.phone,
-      customerDocumentNumber: customerUpdateResult.changedCustomer.documentNumber,
+      customerDocumentNumber:
+        customerUpdateResult.changedCustomer.documentNumber,
       updatedAt: now,
     };
 
     this.rentals[rentalIndex] = updatedRental;
-    this.syncCustomerSnapshots(customerUpdateResult.changedCustomer, updatedRental.id);
+    this.syncCustomerSnapshots(
+      customerUpdateResult.changedCustomer,
+      updatedRental.id,
+    );
     this.logAudit(
       'UPDATE',
       updatedRental.id,
@@ -459,7 +543,9 @@ export class RentalService {
       : null;
 
     const actualDays = this.calculateRentalDays(currentRental.pickupAt, now);
-    const finalAmount = Number((actualDays * currentRental.dailyRate).toFixed(2));
+    const finalAmount = Number(
+      (actualDays * currentRental.dailyRate).toFixed(2),
+    );
 
     const closedRental: RentalRecord = {
       ...currentRental,
@@ -469,14 +555,21 @@ export class RentalService {
       finalAmount,
       finalNotes: this.normalizeNullableText(payload.finalNotes),
       ...(returnStation
-        ? { returnStationId: returnStation.id, returnStationName: returnStation.name }
+        ? {
+            returnStationId: returnStation.id,
+            returnStationName: returnStation.name,
+          }
         : {}),
       updatedAt: now,
     };
 
     this.rentals[rentalIndex] = closedRental;
 
-    await this.vehicleService.update(currentRental.vehicleId, { status: 'AVAILABLE' }, actorLabel);
+    await this.vehicleService.update(
+      currentRental.vehicleId,
+      { status: 'AVAILABLE' },
+      actorLabel,
+    );
 
     try {
       await this.stationService.adjustAllocatedVehicles(
@@ -503,7 +596,9 @@ export class RentalService {
     actor?: AuthenticatedUserDto,
   ): CustomerSelectionResult {
     if (payload.customerId !== undefined) {
-      const existingCustomer = this.customers.find((customer) => customer.id === payload.customerId);
+      const existingCustomer = this.customers.find(
+        (customer) => customer.id === payload.customerId,
+      );
 
       if (!existingCustomer) {
         throw new NotFoundException('O cliente selecionado nao existe.');
@@ -517,13 +612,16 @@ export class RentalService {
 
     if (!firstName || !lastName) {
       throw new BadRequestException({
-        message: 'E necessario selecionar um cliente existente ou preencher o novo cliente.',
+        message:
+          'E necessario selecionar um cliente existente ou preencher o novo cliente.',
         code: 'CUSTOMER_REQUIRED',
       });
     }
 
     const normalizedEmail = this.normalizeEmail(payload.customerEmail);
-    const normalizedDocument = this.normalizeNullableText(payload.customerDocumentNumber);
+    const normalizedDocument = this.normalizeNullableText(
+      payload.customerDocumentNumber,
+    );
 
     const existingCustomer = this.customers.find((customer) => {
       const matchesEmail =
@@ -614,8 +712,14 @@ export class RentalService {
     }
 
     if (payload.customerDocumentNumber !== undefined) {
-      const nextDocumentNumber = this.normalizeNullableText(payload.customerDocumentNumber);
-      this.ensureUniqueCustomerField(customer.id, 'document', nextDocumentNumber);
+      const nextDocumentNumber = this.normalizeNullableText(
+        payload.customerDocumentNumber,
+      );
+      this.ensureUniqueCustomerField(
+        customer.id,
+        'document',
+        nextDocumentNumber,
+      );
 
       if (nextDocumentNumber !== customer.documentNumber) {
         customerChanges.documentNumber = nextDocumentNumber;
@@ -653,7 +757,10 @@ export class RentalService {
     return Math.max(1, Math.ceil(differenceMs / (1000 * 60 * 60 * 24)));
   }
 
-  private parseDate(value: string | undefined, fallbackMessage: string): Date | null {
+  private parseDate(
+    value: string | undefined,
+    fallbackMessage: string,
+  ): Date | null {
     if (!value) {
       return null;
     }
@@ -704,6 +811,12 @@ export class RentalService {
       rental.customerEmail,
       rental.customerPhone,
       rental.customerDocumentNumber,
+      rental.vehiclePlate,
+      rental.vehicleBrand,
+      rental.vehicleModel,
+      rental.stationName,
+      rental.returnStationName,
+      rental.status,
     ]
       .filter(Boolean)
       .join(' ')
@@ -712,13 +825,17 @@ export class RentalService {
 
   private normalizeStatusFilter(
     status?: string,
-  ): RentalRecord['status'] | undefined {
+  ): Set<RentalRecord['status']> | undefined {
     if (!status) {
       return undefined;
     }
 
+    if (status === 'HISTORY') {
+      return new Set<RentalRecord['status']>(['CLOSED', 'CANCELLED']);
+    }
+
     if (status === 'OPEN' || status === 'CLOSED' || status === 'CANCELLED') {
-      return status;
+      return new Set<RentalRecord['status']>([status]);
     }
 
     throw new BadRequestException({
@@ -727,7 +844,43 @@ export class RentalService {
     });
   }
 
-  private normalizeRequiredCustomerField(value: string, message: string): string {
+  private parseListFilterDate(
+    value: string | undefined,
+    fallbackMessage: string,
+    endOfDay: boolean,
+  ): Date | null {
+    if (!value || !value.trim()) {
+      return null;
+    }
+
+    const raw = value.trim();
+    const parsed = new Date(raw);
+
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException({
+        message: fallbackMessage,
+        code: 'INVALID_RENTAL_FILTER_DATE',
+      });
+    }
+
+    const normalized = new Date(parsed);
+
+    // Date-only filters should include the entire local day.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      if (endOfDay) {
+        normalized.setHours(23, 59, 59, 999);
+      } else {
+        normalized.setHours(0, 0, 0, 0);
+      }
+    }
+
+    return normalized;
+  }
+
+  private normalizeRequiredCustomerField(
+    value: string,
+    message: string,
+  ): string {
     const normalized = value.trim();
 
     if (!normalized) {
@@ -780,11 +933,17 @@ export class RentalService {
         field === 'email'
           ? 'Ja existe outro cliente com o email indicado.'
           : 'Ja existe outro cliente com o documento indicado.',
-      code: field === 'email' ? 'CUSTOMER_EMAIL_CONFLICT' : 'CUSTOMER_DOCUMENT_CONFLICT',
+      code:
+        field === 'email'
+          ? 'CUSTOMER_EMAIL_CONFLICT'
+          : 'CUSTOMER_DOCUMENT_CONFLICT',
     });
   }
 
-  private syncCustomerSnapshots(customer: RentalCustomer, skipRentalId?: number): void {
+  private syncCustomerSnapshots(
+    customer: RentalCustomer,
+    skipRentalId?: number,
+  ): void {
     // Rentals keep a customer snapshot for list/search views, so customer edits
     // need to refresh the cached fields without rewriting unrelated timestamps.
     for (let index = 0; index < this.rentals.length; index += 1) {
@@ -808,7 +967,9 @@ export class RentalService {
     const customer = this.customers.find((item) => item.id === customerId);
 
     if (!customer) {
-      throw new NotFoundException('O cliente associado ao contrato nao existe.');
+      throw new NotFoundException(
+        'O cliente associado ao contrato nao existe.',
+      );
     }
 
     return customer;
@@ -826,7 +987,12 @@ export class RentalService {
     return value === null ? 'vazio' : value;
   }
 
-  private logAudit(operation: string, rentalId: number, userId: string, details: string): void {
+  private logAudit(
+    operation: string,
+    rentalId: number,
+    userId: string,
+    details: string,
+  ): void {
     const timestamp = new Date().toISOString();
     console.log(
       `[AUDITORIA] ${timestamp} - ${operation} - Contrato ID: ${rentalId} - Usuario: ${userId} - ${details}`,

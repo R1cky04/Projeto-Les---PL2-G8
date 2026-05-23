@@ -72,7 +72,10 @@ export class StationService {
     }
 
     if (payload.location !== undefined) {
-      if (typeof payload.location !== 'string' || payload.location.trim().length < 3) {
+      if (
+        typeof payload.location !== 'string' ||
+        payload.location.trim().length < 3
+      ) {
         errors.push('Localizacao invalida: indique pelo menos 3 caracteres.');
       } else {
         validUpdates.location = payload.location.trim();
@@ -80,15 +83,23 @@ export class StationService {
     }
 
     if (payload.capacity !== undefined) {
-      if (!Number.isInteger(payload.capacity) || Number(payload.capacity) <= 0) {
-        errors.push('Capacidade invalida: deve ser um numero inteiro positivo.');
+      if (
+        !Number.isInteger(payload.capacity) ||
+        Number(payload.capacity) <= 0
+      ) {
+        errors.push(
+          'Capacidade invalida: deve ser um numero inteiro positivo.',
+        );
       } else {
         validUpdates.capacity = Number(payload.capacity);
       }
     }
 
     if (payload.allocatedVehicles !== undefined) {
-      if (!Number.isInteger(payload.allocatedVehicles) || Number(payload.allocatedVehicles) < 0) {
+      if (
+        !Number.isInteger(payload.allocatedVehicles) ||
+        Number(payload.allocatedVehicles) < 0
+      ) {
         errors.push('Veiculos alocados invalidos: deve ser um inteiro >= 0.');
       } else {
         validUpdates.allocatedVehicles = Number(payload.allocatedVehicles);
@@ -98,7 +109,9 @@ export class StationService {
     const effectiveCapacity =
       validUpdates.capacity ?? current?.capacity ?? Number(payload.capacity);
     const effectiveAllocatedVehicles =
-      validUpdates.allocatedVehicles ?? current?.allocatedVehicles ?? Number(payload.allocatedVehicles);
+      validUpdates.allocatedVehicles ??
+      current?.allocatedVehicles ??
+      Number(payload.allocatedVehicles);
 
     if (
       Number.isFinite(effectiveCapacity) &&
@@ -108,13 +121,18 @@ export class StationService {
       if (validUpdates.allocatedVehicles !== undefined) {
         delete validUpdates.allocatedVehicles;
       }
-      errors.push('Veiculos alocados nao podem exceder a capacidade da estacao.');
+      errors.push(
+        'Veiculos alocados nao podem exceder a capacidade da estacao.',
+      );
     }
 
     return { validUpdates, errors };
   }
 
-  async create(createStationDto: CreateStationDto, createdBy?: string): Promise<Station> {
+  async create(
+    createStationDto: CreateStationDto,
+    createdBy?: string,
+  ): Promise<Station> {
     const { validUpdates, errors } = this.validateStationPayload(
       {
         name: createStationDto.name,
@@ -153,7 +171,12 @@ export class StationService {
     };
 
     this.stations.push(station);
-    this.logAudit('CREATE', station.id, createdBy || 'desconhecido', `Estação criada: ${station.name}`);
+    this.logAudit(
+      'CREATE',
+      station.id,
+      createdBy || 'desconhecido',
+      `Estação criada: ${station.name}`,
+    );
 
     return station;
   }
@@ -185,7 +208,9 @@ export class StationService {
     updateStationDto: UpdateStationDto,
     updatedBy?: string,
   ): Promise<Station> {
-    const stationIndex = this.stations.findIndex((station) => station.id === id);
+    const stationIndex = this.stations.findIndex(
+      (station) => station.id === id,
+    );
     if (stationIndex === -1) {
       throw new NotFoundException('Estação não encontrada');
     }
@@ -245,7 +270,9 @@ export class StationService {
     delta: number,
     actorLabel?: string,
   ): Promise<Station> {
-    const stationIndex = this.stations.findIndex((station) => station.id === id);
+    const stationIndex = this.stations.findIndex(
+      (station) => station.id === id,
+    );
 
     if (stationIndex === -1) {
       throw new NotFoundException('Estação não encontrada');
@@ -255,7 +282,9 @@ export class StationService {
     const nextAllocatedVehicles = station.allocatedVehicles + delta;
 
     if (nextAllocatedVehicles < 0) {
-      throw new BadRequestException('Os veículos alocados não podem ser negativos.');
+      throw new BadRequestException(
+        'Os veículos alocados não podem ser negativos.',
+      );
     }
 
     if (nextAllocatedVehicles > station.capacity) {
@@ -282,20 +311,34 @@ export class StationService {
   }
 
   async delete(id: number, deletedBy?: string): Promise<Station> {
-    const stationIndex = this.stations.findIndex((station) => station.id === id);
+    const stationIndex = this.stations.findIndex(
+      (station) => station.id === id,
+    );
     if (stationIndex === -1) {
       throw new NotFoundException('Estação não encontrada');
     }
 
     const station = this.stations[stationIndex];
     this.stations.splice(stationIndex, 1);
-    this.logAudit('DELETE', id, deletedBy || 'desconhecido', `Estação eliminada: ${station.name}`);
+    this.logAudit(
+      'DELETE',
+      id,
+      deletedBy || 'desconhecido',
+      `Estação eliminada: ${station.name}`,
+    );
 
     return station;
   }
 
-  private logAudit(operation: string, stationId: number, userId: string, details: string): void {
+  private logAudit(
+    operation: string,
+    stationId: number,
+    userId: string,
+    details: string,
+  ): void {
     const timestamp = new Date().toISOString();
-    console.log(`[AUDITORIA] ${timestamp} - ${operation} - Estação ID: ${stationId} - Usuário: ${userId} - ${details}`);
+    console.log(
+      `[AUDITORIA] ${timestamp} - ${operation} - Estação ID: ${stationId} - Usuário: ${userId} - ${details}`,
+    );
   }
 }

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   ExecutionContext,
@@ -17,9 +16,11 @@ import {
 } from '../src/internal-users/internal-user.enums';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { ReservationManagementGuard } from '../src/reservations/reservation-management.guard';
+import { ReservationService } from '../src/reservations/reservation.service';
 
 describe('Reservations HTTP contract', () => {
   let app: INestApplication<App>;
+  let reservationService: ReservationService;
 
   interface ReservationContextBody {
     customers: Array<{
@@ -55,6 +56,15 @@ describe('Reservations HTTP contract', () => {
     vehicleId: number;
     status: string;
     createdBy: string;
+  }
+
+  interface ReservationCancelBody extends ReservationCreateBody {
+    status: 'CANCELLED';
+    cancelledAt: string;
+    cancelledBy: string;
+    financialReviewRequired: boolean;
+    adminValidationRequired: boolean;
+    cancellationWarnings: string[];
   }
 
   interface ReservationOverlapErrorBody {
@@ -109,6 +119,7 @@ describe('Reservations HTTP contract', () => {
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+    reservationService = app.get(ReservationService);
   });
 
   afterEach(async () => {
@@ -228,6 +239,69 @@ describe('Reservations HTTP contract', () => {
         'O veiculo selecionado ja nao esta disponivel no periodo indicado. Escolha outra viatura.',
       code: 'VEHICLE_UNAVAILABLE',
       alternatives: expect.any(Array),
+    });
+  });
+
+  it('cancels a reservation with the expected response contract', async () => {
+    const createResponse = await request(app.getHttpServer())
+      .post('/reservations')
+      .set('Authorization', 'Bearer contract-token')
+      .send({
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-10-01T09:00:00.000Z',
+        expectedReturnAt: '2026-10-03T09:00:00.000Z',
+      })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .patch(`/reservations/${createResponse.body.id}/cancel`)
+      .set('Authorization', 'Bearer contract-token')
+      .expect(200);
+
+    const body = response.body as ReservationCancelBody;
+
+    expect(body).toMatchObject({
+      id: createResponse.body.id,
+      reservationNumber: expect.stringMatching(/^RSV-/),
+      customerFullName: 'Ines Almeida',
+      vehicleId: 1,
+      status: 'CANCELLED',
+      cancelledAt: expect.any(String),
+      cancelledBy: 'staff.contract',
+      financialReviewRequired: false,
+      adminValidationRequired: false,
+      cancellationWarnings: expect.any(Array),
+    });
+  });
+
+  it('rejects cancellation after conversion to contract with a stable error contract', async () => {
+    const createResponse = await request(app.getHttpServer())
+      .post('/reservations')
+      .set('Authorization', 'Bearer contract-token')
+      .send({
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-10-10T09:00:00.000Z',
+        expectedReturnAt: '2026-10-12T09:00:00.000Z',
+      })
+      .expect(201);
+
+    await reservationService.markAsConvertedToContract(createResponse.body.id);
+
+    const response = await request(app.getHttpServer())
+      .patch(`/reservations/${createResponse.body.id}/cancel`)
+      .set('Authorization', 'Bearer contract-token')
+      .expect(400);
+
+    expect(response.body).toMatchObject({
+      message:
+        'A reserva ja foi convertida em contrato e nao pode ser cancelada.',
+      code: 'RESERVATION_ALREADY_CONVERTED',
     });
   });
 });

@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { AuthenticatedUserDto } from '../auth/auth.types';
 import {
   InternalPermission,
@@ -59,7 +63,9 @@ describe('RentalService', () => {
         stationId: 1,
         vehicleId: 1,
         pickupAt: new Date().toISOString(),
-        expectedReturnAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+        expectedReturnAt: new Date(
+          Date.now() + 1000 * 60 * 60 * 24,
+        ).toISOString(),
         pickupOdometerKm: 46300,
         vehicleCondition: 'Pronto a sair',
         customerFirstName: 'Maria',
@@ -79,7 +85,9 @@ describe('RentalService', () => {
         vehicleId: 1,
         customerId: 1,
         pickupAt: new Date().toISOString(),
-        expectedReturnAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+        expectedReturnAt: new Date(
+          Date.now() + 1000 * 60 * 60 * 24,
+        ).toISOString(),
         pickupOdometerKm: 46300,
         vehicleCondition: 'OK',
       },
@@ -93,7 +101,9 @@ describe('RentalService', () => {
           vehicleId: 1,
           customerId: 1,
           pickupAt: new Date().toISOString(),
-          expectedReturnAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+          expectedReturnAt: new Date(
+            Date.now() + 1000 * 60 * 60 * 24,
+          ).toISOString(),
           pickupOdometerKm: 46300,
           vehicleCondition: 'OK',
         },
@@ -110,7 +120,9 @@ describe('RentalService', () => {
           vehicleId: 1,
           customerId: 999,
           pickupAt: new Date().toISOString(),
-          expectedReturnAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+          expectedReturnAt: new Date(
+            Date.now() + 1000 * 60 * 60 * 24,
+          ).toISOString(),
           pickupOdometerKm: 46300,
           vehicleCondition: 'OK',
         },
@@ -126,7 +138,9 @@ describe('RentalService', () => {
         vehicleId: 1,
         customerId: 1,
         pickupAt: new Date().toISOString(),
-        expectedReturnAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2).toISOString(),
+        expectedReturnAt: new Date(
+          Date.now() + 1000 * 60 * 60 * 24 * 2,
+        ).toISOString(),
         pickupOdometerKm: 46300,
         vehicleCondition: 'OK',
       },
@@ -185,7 +199,9 @@ describe('RentalService', () => {
         vehicleId: 1,
         customerId: 1,
         pickupAt: new Date().toISOString(),
-        expectedReturnAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+        expectedReturnAt: new Date(
+          Date.now() + 1000 * 60 * 60 * 24,
+        ).toISOString(),
         pickupOdometerKm: 46300,
         vehicleCondition: 'OK',
       },
@@ -214,7 +230,9 @@ describe('RentalService', () => {
         vehicleId: 1,
         customerId: 1,
         pickupAt: new Date().toISOString(),
-        expectedReturnAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+        expectedReturnAt: new Date(
+          Date.now() + 1000 * 60 * 60 * 24,
+        ).toISOString(),
         pickupOdometerKm: 46300,
         vehicleCondition: 'OK',
       },
@@ -241,7 +259,9 @@ describe('RentalService', () => {
         vehicleId: 1,
         customerId: 1,
         pickupAt: new Date().toISOString(),
-        expectedReturnAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+        expectedReturnAt: new Date(
+          Date.now() + 1000 * 60 * 60 * 24,
+        ).toISOString(),
         pickupOdometerKm: 46300,
         vehicleCondition: 'OK',
       },

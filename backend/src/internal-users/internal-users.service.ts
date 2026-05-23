@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   InternalPermission,
   InternalUserRole,
@@ -111,7 +116,9 @@ export class InternalUsersService {
     const passwordHash = this.passwordHasher.hash(input.password);
 
     if (!(this.prisma as any).user) {
-      const createdRows = await this.prisma.$queryRaw<DbCreatedInternalUserRow[]>`
+      const createdRows = await this.prisma.$queryRaw<
+        DbCreatedInternalUserRow[]
+      >`
         INSERT INTO "User" (
           id,
           "userId",
@@ -218,10 +225,7 @@ export class InternalUsersService {
     };
   }
 
-  private async ensureUserIdIsUnique(
-    userId: string,
-    ignoreUserId?: string,
-  ) {
+  private async ensureUserIdIsUnique(userId: string, ignoreUserId?: string) {
     // Keep the failure deterministic and user-friendly before hitting the unique index.
     const existingUser = (this.prisma as any).user
       ? await this.prisma.user.findUnique({
@@ -318,27 +322,31 @@ export class InternalUsersService {
       const totalItems = Number(countRows[0]?.total ?? 0n);
       const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
-      const items = rows.map((row) => ({
-        ...row,
-        role: row.internalRole
-          ? normalizeInternalUserRole(row.internalRole)
-          : null,
-        permissions: row.internalRole
-          ? filterPermissionsForRole(
-              normalizeInternalUserRole(row.internalRole),
-              parseInternalPermissions(row.permissions),
-            )
-          : [],
-      })).map((row) => ({
-        id: row.id,
-        userId: row.userId,
-        internalRole: row.role,
-        internalStatus: normalizeInternalUserStatus(row.internalStatus),
-        permissions: row.permissions,
-        requiresItValidation: row.requiresItValidation,
-        isActive: row.isActive,
-        createdAt: row.createdAt,
-      }));
+      const items = rows
+        .map((row) => ({
+          ...row,
+          role: row.internalRole
+            ? normalizeInternalUserRole(row.internalRole)
+            : null,
+          permissions: row.internalRole
+            ? filterPermissionsForRole(
+                normalizeInternalUserRole(row.internalRole),
+                parseInternalPermissions(row.permissions),
+              )
+            : [],
+        }))
+        .map((row) => ({
+          id: row.id,
+          userId: row.userId,
+          internalRole: row.role,
+          internalStatus: (row.internalStatus === 'PENDING_IT_VALIDATION'
+            ? 'PENDING_IT_VALIDATION'
+            : 'ACTIVE') as InternalUserStatus,
+          permissions: row.permissions,
+          requiresItValidation: row.requiresItValidation,
+          isActive: row.isActive,
+          createdAt: row.createdAt,
+        }));
 
       this.logger.log(
         `Found ${items.length} internal users on page ${page} of ${totalPages}${searchTerm ? ` for search "${searchTerm}"` : ''}.`,
@@ -383,27 +391,31 @@ export class InternalUsersService {
     ]);
 
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-    const items = rows.map((row) => ({
-      ...row,
-      role: row.internalRole
-        ? normalizeInternalUserRole(row.internalRole as string)
-        : null,
-      permissions: row.internalRole
-        ? filterPermissionsForRole(
-            normalizeInternalUserRole(row.internalRole as string),
-            normalizeInternalPermissions(row.permissions as string[]),
-          )
-        : [],
-    })).map((row) => ({
-      id: row.id,
-      userId: row.userId,
-      internalRole: row.role,
-      internalStatus: normalizeInternalUserStatus(row.internalStatus as string),
-      permissions: row.permissions,
-      requiresItValidation: row.requiresItValidation,
-      isActive: row.isActive,
-      createdAt: row.createdAt,
-    }));
+    const items = rows
+      .map((row) => ({
+        ...row,
+        role: row.internalRole
+          ? normalizeInternalUserRole(row.internalRole as string)
+          : null,
+        permissions: row.internalRole
+          ? filterPermissionsForRole(
+              normalizeInternalUserRole(row.internalRole as string),
+              normalizeInternalPermissions(row.permissions as string[]),
+            )
+          : [],
+      }))
+      .map((row) => ({
+        id: row.id,
+        userId: row.userId,
+        internalRole: row.role,
+        internalStatus: normalizeInternalUserStatus(
+          row.internalStatus as string,
+        ),
+        permissions: row.permissions,
+        requiresItValidation: row.requiresItValidation,
+        isActive: row.isActive,
+        createdAt: row.createdAt,
+      }));
 
     this.logger.log(
       `Found ${items.length} internal users on page ${page} of ${totalPages}${searchTerm ? ` for search "${searchTerm}"` : ''}.`,
@@ -473,7 +485,8 @@ export class InternalUsersService {
         createdAt: user.createdAt,
         hasActiveReservations: user.createdReservations.some(
           (reservation) =>
-            reservation.status === 'CONFIRMED' || reservation.status === 'DRAFT',
+            reservation.status === 'CONFIRMED' ||
+            reservation.status === 'DRAFT',
         ),
         hasActiveRentals: user.createdRentals.some(
           (rental) => rental.status === 'OPEN',
@@ -895,9 +908,7 @@ export class InternalUsersService {
         internalRole: updatedUser.internalRole
           ? normalizeInternalUserRole(updatedUser.internalRole as string)
           : currentUser.internalRole,
-        internalStatus: normalizeInternalUserStatus(
-          updatedUser.internalStatus as string,
-        ),
+        internalStatus: normalizeInternalUserStatus(updatedUser.internalStatus),
         permissions: filterPermissionsForRole(
           updatedUser.internalRole
             ? normalizeInternalUserRole(updatedUser.internalRole as string)
@@ -962,20 +973,23 @@ export class InternalUsersService {
       );
     }
 
-    const hasActiveReservations = 'createdReservations' in user
-      ? user.createdReservations.some(
-          (res) => res.status === 'CONFIRMED' || res.status === 'DRAFT',
-        )
-      : user.hasActiveReservations;
-    const hasActiveRentals = 'createdRentals' in user
-      ? user.createdRentals.some((rental) => rental.status === 'OPEN')
-      : user.hasActiveRentals;
-    const hasActiveTransfers = 'createdTransfers' in user
-      ? user.createdTransfers.some(
-          (transfer) =>
-            transfer.status === 'PENDING' || transfer.status === 'IN_TRANSIT',
-        )
-      : user.hasActiveTransfers;
+    const hasActiveReservations =
+      'createdReservations' in user
+        ? user.createdReservations.some(
+            (res) => res.status === 'CONFIRMED' || res.status === 'DRAFT',
+          )
+        : user.hasActiveReservations;
+    const hasActiveRentals =
+      'createdRentals' in user
+        ? user.createdRentals.some((rental) => rental.status === 'OPEN')
+        : user.hasActiveRentals;
+    const hasActiveTransfers =
+      'createdTransfers' in user
+        ? user.createdTransfers.some(
+            (transfer) =>
+              transfer.status === 'PENDING' || transfer.status === 'IN_TRANSIT',
+          )
+        : user.hasActiveTransfers;
 
     if (hasActiveReservations || hasActiveRentals || hasActiveTransfers) {
       throw new ConflictException(
@@ -984,13 +998,12 @@ export class InternalUsersService {
     }
 
     const targetUserId = user.userId ?? id;
-    const hasHistory = 'createdReservations' in user
-      ?
-          user.createdReservations.length > 0 ||
+    const hasHistory =
+      'createdReservations' in user
+        ? user.createdReservations.length > 0 ||
           user.createdRentals.length > 0 ||
           user.createdTransfers.length > 0
-      :
-          user.historyReservations > 0 ||
+        : user.historyReservations > 0 ||
           user.historyRentals > 0 ||
           user.historyTransfers > 0;
 
@@ -1283,11 +1296,10 @@ function parseInternalPermissions(raw: string | null): InternalPermission[] {
     .slice(1, -1)
     .split(',')
     .map((permission) => permission.trim())
-    .filter(
-      (permission): permission is InternalPermission =>
-        Object.values(InternalPermission).includes(
-          permission as InternalPermission,
-        ),
+    .filter((permission): permission is InternalPermission =>
+      Object.values(InternalPermission).includes(
+        permission as InternalPermission,
+      ),
     );
 }
 
@@ -1310,9 +1322,7 @@ function getCreationMessage(role: InternalUserRole): string {
 function toDeletionAuditMode(
   mode: InternalUserDeletionMode,
 ): 'DEACTIVATED' | 'DELETED' {
-  return mode === 'DEACTIVATED'
-    ? 'DEACTIVATED'
-    : 'DELETED';
+  return mode === 'DEACTIVATED' ? 'DEACTIVATED' : 'DELETED';
 }
 
 function normalizePositiveInteger(
@@ -1350,13 +1360,9 @@ function normalizeInternalUserRole(value: string): InternalUserRole {
 }
 
 function normalizeInternalUserStatus(value: string): InternalUserStatus {
-  if (
-    Object.values(InternalUserStatus).includes(value as InternalUserStatus)
-  ) {
-    return value as InternalUserStatus;
-  }
-
-  return InternalUserStatus.ACTIVE;
+  return value === InternalUserStatus.PENDING_IT_VALIDATION
+    ? InternalUserStatus.PENDING_IT_VALIDATION
+    : InternalUserStatus.ACTIVE;
 }
 
 function normalizeInternalPermissions(values: string[]): InternalPermission[] {
