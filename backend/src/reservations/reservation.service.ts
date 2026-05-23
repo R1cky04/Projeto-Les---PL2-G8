@@ -167,7 +167,16 @@ export class ReservationService {
     const vehicles = await this.vehicleService.findAll();
     const availableVehicles = vehicles
       .filter((vehicle) => vehicle.status === 'AVAILABLE')
-      .filter((vehicle) =>
+      .map((vehicle) => ({
+        vehicle,
+        reservationStationId: this.resolveVehicleReservationStationId(
+          vehicle,
+          pickupAt,
+          expectedReturnAt,
+        ),
+      }))
+      .filter(({ reservationStationId }) => reservationStationId !== null)
+      .filter(({ vehicle }) =>
         this.isVehicleAvailableForPeriod(
           vehicle.id,
           pickupAt,
@@ -175,19 +184,11 @@ export class ReservationService {
           excludeReservationId,
         ),
       )
-      .filter(
-        (vehicle) =>
-          !this.isVehicleBlockedByImpro(
-            vehicle.id,
-            vehicle.stationId,
-            pickupAt,
-            expectedReturnAt,
-          ),
-      )
-      .map((vehicle) => ({
+      .map(({ vehicle, reservationStationId }) => ({
         ...vehicle,
+        stationId: reservationStationId!,
         stationName:
-          stationMap.get(vehicle.stationId) || 'Estacao desconhecida',
+          stationMap.get(reservationStationId!) || 'Estacao desconhecida',
       }));
 
     const localVehicles = availableVehicles.filter(
@@ -294,10 +295,23 @@ export class ReservationService {
 
     this.ensureValidPeriod(pickupAt, expectedReturnAt);
 
-    if (vehicle.stationId !== pickupStation.id) {
+    const reservationStationId = this.resolveVehicleReservationStationId(
+      vehicle,
+      pickupAt,
+      expectedReturnAt,
+    );
+
+    if (reservationStationId !== pickupStation.id) {
       throw new BadRequestException({
-        message: 'O veiculo selecionado nao pertence a estacao indicada.',
-        code: 'VEHICLE_WRONG_STATION',
+        message:
+          reservationStationId === null
+            ? 'O veiculo selecionado esta em transferencia impro no periodo indicado. Escolha outra viatura.'
+            : 'O veiculo selecionado nao pertence a estacao indicada.',
+        code:
+          reservationStationId === null
+            ? 'VEHICLE_IN_IMPRO_TRANSFER'
+            : 'VEHICLE_WRONG_STATION',
+        alternatives: [],
       });
     }
 
@@ -609,6 +623,23 @@ export class ReservationService {
         pickupAt,
         expectedReturnAt,
       ) ?? false
+    );
+  }
+
+  private resolveVehicleReservationStationId(
+    vehicle: Vehicle,
+    pickupAt: Date,
+    expectedReturnAt: Date,
+  ): number | null {
+    if (!this.improService) {
+      return vehicle.stationId;
+    }
+
+    return this.improService.resolveReservationStationId(
+      vehicle.id,
+      vehicle.stationId,
+      pickupAt,
+      expectedReturnAt,
     );
   }
 

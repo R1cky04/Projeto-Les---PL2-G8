@@ -167,7 +167,7 @@ describe('ReservationService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('excludes vehicles with scheduled impro transfers from origin station availability after departure', async () => {
+  it('moves scheduled impro vehicles from origin to destination availability after arrival', async () => {
     await improService.create(
       {
         vehicleId: 1,
@@ -188,15 +188,28 @@ describe('ReservationService', () => {
       pickupAt: '2026-09-08T09:00:00.000Z',
       expectedReturnAt: '2026-09-09T09:00:00.000Z',
     });
-    const afterTransfer = await service.getAvailability({
+    const duringTransfer = await service.getAvailability({
       pickupStationId: '1',
+      pickupAt: '2026-09-10T10:00:00.000Z',
+      expectedReturnAt: '2026-09-10T11:00:00.000Z',
+    });
+    const afterArrivalAtOrigin = await service.getAvailability({
+      pickupStationId: '1',
+      pickupAt: '2026-09-11T09:00:00.000Z',
+      expectedReturnAt: '2026-09-12T09:00:00.000Z',
+    });
+    const afterArrivalAtDestination = await service.getAvailability({
+      pickupStationId: '2',
       pickupAt: '2026-09-11T09:00:00.000Z',
       expectedReturnAt: '2026-09-12T09:00:00.000Z',
     });
 
     expect(beforeTransfer.availableVehicles.some((vehicle) => vehicle.id === 1)).toBe(true);
-    expect(afterTransfer.availableVehicles.some((vehicle) => vehicle.id === 1)).toBe(false);
-    expect(afterTransfer.alternativeVehicles.some((vehicle) => vehicle.id === 1)).toBe(false);
+    expect(duringTransfer.availableVehicles.some((vehicle) => vehicle.id === 1)).toBe(false);
+    expect(duringTransfer.alternativeVehicles.some((vehicle) => vehicle.id === 1)).toBe(false);
+    expect(afterArrivalAtOrigin.availableVehicles.some((vehicle) => vehicle.id === 1)).toBe(false);
+    expect(afterArrivalAtOrigin.alternativeVehicles.some((vehicle) => vehicle.id === 1)).toBe(true);
+    expect(afterArrivalAtDestination.availableVehicles.some((vehicle) => vehicle.id === 1)).toBe(true);
 
     await expect(
       service.create(
@@ -205,8 +218,8 @@ describe('ReservationService', () => {
           returnStationId: 1,
           vehicleId: 1,
           customerId: 1,
-          pickupAt: '2026-09-11T09:00:00.000Z',
-          expectedReturnAt: '2026-09-12T09:00:00.000Z',
+          pickupAt: '2026-09-10T10:00:00.000Z',
+          expectedReturnAt: '2026-09-10T11:00:00.000Z',
         },
         buildActor(),
       ),

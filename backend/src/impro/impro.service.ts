@@ -141,6 +141,44 @@ export class ImproService {
     });
   }
 
+  resolveReservationStationId(
+    vehicleId: number,
+    currentStationId: number,
+    pickupAt: Date,
+    expectedReturnAt: Date,
+  ): number | null {
+    const activeImpro = this.impros
+      .filter((impro) => impro.vehicleId === vehicleId && impro.status !== 'CLOSED')
+      .sort((left, right) => left.transferDate.getTime() - right.transferDate.getTime())[0];
+
+    if (!activeImpro) {
+      return currentStationId;
+    }
+
+    if (activeImpro.status === 'IN_TRANSFER') {
+      return null;
+    }
+
+    if (activeImpro.status !== 'SCHEDULED') {
+      return currentStationId;
+    }
+
+    const transferStartsAt = activeImpro.transferDate.getTime();
+    const availableAtDestination = (
+      activeImpro.plannedArrivalDate || activeImpro.transferDate
+    ).getTime();
+
+    if (expectedReturnAt.getTime() <= transferStartsAt) {
+      return activeImpro.originStationId;
+    }
+
+    if (pickupAt.getTime() >= availableAtDestination) {
+      return activeImpro.destinationStationId;
+    }
+
+    return null;
+  }
+
   async create(
     payload: CreateImproDto,
     actor: AuthenticatedUserDto,

@@ -245,7 +245,7 @@ describe('Reservations HTTP contract', () => {
     });
   });
 
-  it('omits vehicles blocked by impro transfer from reservation availability contract', async () => {
+  it('moves scheduled impro vehicles to destination availability after arrival', async () => {
     await improService.create(
       {
         vehicleId: 1,
@@ -269,7 +269,7 @@ describe('Reservations HTTP contract', () => {
     const availabilityResponse = await request(app.getHttpServer())
       .get('/reservations/availability')
       .query({
-        pickupStationId: 1,
+        pickupStationId: 2,
         pickupAt: '2026-09-11T09:00:00.000Z',
         expectedReturnAt: '2026-09-12T09:00:00.000Z',
       })
@@ -280,13 +280,10 @@ describe('Reservations HTTP contract', () => {
       availabilityResponse.body as ReservationAvailabilityBody;
 
     expect(
-      availabilityBody.availableVehicles.some((vehicle) => vehicle.id === 1),
-    ).toBe(false);
-    expect(
-      availabilityBody.alternativeVehicles.some(
-        (vehicle: { id: number }) => vehicle.id === 1,
+      availabilityBody.availableVehicles.some(
+        (vehicle) => vehicle.id === 1 && vehicle.stationId === 2,
       ),
-    ).toBe(false);
+    ).toBe(true);
 
     const createResponse = await request(app.getHttpServer())
       .post('/reservations')
@@ -296,8 +293,8 @@ describe('Reservations HTTP contract', () => {
         returnStationId: 1,
         vehicleId: 1,
         customerId: 1,
-        pickupAt: '2026-09-11T09:00:00.000Z',
-        expectedReturnAt: '2026-09-12T09:00:00.000Z',
+        pickupAt: '2026-09-10T10:00:00.000Z',
+        expectedReturnAt: '2026-09-10T11:00:00.000Z',
       })
       .expect(400);
 
