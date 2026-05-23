@@ -10,7 +10,10 @@
       </div>
 
       <div class="rental-stats">
-        <!-- Clientes stat removed: UI hidden -->
+        <article class="rental-stat-card">
+          <span>Clientes</span>
+          <strong>{{ context.customers.length }}</strong>
+        </article>
         <article class="rental-stat-card">
           <span>Viaturas disponiveis</span>
           <strong>{{ filteredVehicles.length }}</strong>
@@ -27,15 +30,76 @@
     </p>
 
     <div class="rental-layout">
-      <!-- Clientes UI removed (unstable) -->
       <aside class="rental-sidebar rental-card">
         <div class="rental-card-head">
           <div>
             <span class="rental-card-eyebrow">Clientes</span>
-            <h3>Removido</h3>
+            <h3>{{ customerMode === 'existing' ? 'Selecionar cliente' : 'Novo cliente' }}</h3>
           </div>
-          <p class="rental-note">Selecao de clientes desativada temporariamente.</p>
+
+          <button class="rental-ghost-button" type="button" @click="toggleCustomerMode">
+            {{ customerMode === 'existing' ? 'Criar cliente' : 'Selecionar existente' }}
+          </button>
         </div>
+
+        <div v-if="customerMode === 'existing'" class="rental-sidebar-content">
+          <label class="rental-field rental-field-inline">
+            <span>Pesquisar cliente</span>
+            <input v-model.trim="customerSearch" type="search" placeholder="Nome, email ou documento" />
+          </label>
+
+          <div class="rental-list">
+            <button
+              v-for="customer in filteredCustomers"
+              :key="customer.id"
+              type="button"
+              class="rental-list-card"
+              :class="{ 'is-selected': selectedCustomerId === customer.id }"
+              @click="selectCustomer(customer.id)"
+            >
+              <strong>{{ customer.firstName }} {{ customer.lastName }}</strong>
+              <span>{{ customer.email || 'Sem email' }}</span>
+              <small>{{ customer.documentNumber || 'Sem documento' }}</small>
+            </button>
+
+            <div v-if="filteredCustomers.length === 0" class="rental-empty">
+              Nenhum cliente corresponde ao filtro atual.
+            </div>
+          </div>
+        </div>
+
+        <form v-else class="rental-form rental-new-customer" @submit.prevent>
+          <div class="rental-field-grid">
+            <label class="rental-field">
+              <span>Nome</span>
+              <input v-model.trim="newCustomer.firstName" type="text" placeholder="Primeiro nome" />
+            </label>
+            <label class="rental-field">
+              <span>Apelido</span>
+              <input v-model.trim="newCustomer.lastName" type="text" placeholder="Ultimo nome" />
+            </label>
+          </div>
+
+          <label class="rental-field">
+            <span>Email</span>
+            <input v-model.trim="newCustomer.email" type="email" placeholder="cliente@exemplo.com" />
+          </label>
+
+          <div class="rental-field-grid">
+            <label class="rental-field">
+              <span>Telefone</span>
+              <input v-model.trim="newCustomer.phone" type="text" placeholder="+351..." />
+            </label>
+            <label class="rental-field">
+              <span>Documento</span>
+              <input v-model.trim="newCustomer.documentNumber" type="text" placeholder="Numero fiscal ou BI" />
+            </label>
+          </div>
+
+          <p class="rental-note">
+            Se o email ou documento ja existir, o sistema reutiliza automaticamente o cliente associado.
+          </p>
+        </form>
       </aside>
 
       <main class="rental-main">
