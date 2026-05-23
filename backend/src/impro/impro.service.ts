@@ -101,6 +101,46 @@ export class ImproService {
     return this.stationService.findAll();
   }
 
+  blocksVehicleReservation(
+    vehicleId: number,
+    pickupStationId: number,
+    pickupAt: Date,
+    expectedReturnAt: Date,
+  ): boolean {
+    return this.impros.some((impro) => {
+      if (impro.vehicleId !== vehicleId || impro.status === 'CLOSED') {
+        return false;
+      }
+
+      if (impro.status === 'IN_TRANSFER') {
+        return true;
+      }
+
+      if (impro.status !== 'SCHEDULED') {
+        return false;
+      }
+
+      const transferStartsAt = impro.transferDate.getTime();
+
+      if (expectedReturnAt.getTime() <= transferStartsAt) {
+        return false;
+      }
+
+      if (pickupStationId === impro.originStationId) {
+        return true;
+      }
+
+      if (pickupStationId === impro.destinationStationId) {
+        const availableAtDestination = (
+          impro.plannedArrivalDate || impro.transferDate
+        ).getTime();
+        return pickupAt.getTime() < availableAtDestination;
+      }
+
+      return true;
+    });
+  }
+
   async create(
     payload: CreateImproDto,
     actor: AuthenticatedUserDto,

@@ -9,6 +9,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { AuthSessionGuard } from '../src/auth/auth-session.guard';
 import type { AuthenticatedRequest } from '../src/auth/auth.types';
+import { ImproService } from '../src/impro/impro.service';
 import {
   InternalPermission,
   InternalUserRole,
@@ -21,6 +22,7 @@ import { ReservationService } from '../src/reservations/reservation.service';
 describe('Reservations HTTP contract', () => {
   let app: INestApplication<App>;
   let reservationService: ReservationService;
+  let improService: ImproService;
 
   interface ReservationContextBody {
     customers: Array<{
@@ -120,6 +122,7 @@ describe('Reservations HTTP contract', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
     reservationService = app.get(ReservationService);
+    improService = app.get(ImproService);
   });
 
   afterEach(async () => {
@@ -238,6 +241,70 @@ describe('Reservations HTTP contract', () => {
       message:
         'O veiculo selecionado ja nao esta disponivel no periodo indicado. Escolha outra viatura.',
       code: 'VEHICLE_UNAVAILABLE',
+      alternatives: expect.any(Array),
+    });
+  });
+
+  it('omits vehicles blocked by impro transfer from reservation availability contract', async () => {
+    await improService.create(
+      {
+        vehicleId: 1,
+        originStationId: 1,
+        destinationStationId: 2,
+        transferDate: '2026-09-10T09:00:00.000Z',
+        plannedArrivalDate: '2026-09-10T12:00:00.000Z',
+      },
+      {
+        id: 'fleet-contract-1',
+        userId: 'fleet.contract',
+        fullName: 'Fleet Contract',
+        role: InternalUserRole.FLEET,
+        status: InternalUserStatus.ACTIVE,
+        isActive: true,
+        accessLevel: 'FULL',
+        permissions: [InternalPermission.TRANSFER_WRITE],
+      },
+    );
+
+    const availabilityResponse = await request(app.getHttpServer())
+      .get('/reservations/availability')
+      .query({
+        pickupStationId: 1,
+        pickupAt: '2026-09-11T09:00:00.000Z',
+        expectedReturnAt: '2026-09-12T09:00:00.000Z',
+      })
+      .set('Authorization', 'Bearer contract-token')
+      .expect(200);
+
+    const availabilityBody =
+      availabilityResponse.body as ReservationAvailabilityBody;
+
+    expect(
+      availabilityBody.availableVehicles.some((vehicle) => vehicle.id === 1),
+    ).toBe(false);
+    expect(
+      availabilityBody.alternativeVehicles.some(
+        (vehicle: { id: number }) => vehicle.id === 1,
+      ),
+    ).toBe(false);
+
+    const createResponse = await request(app.getHttpServer())
+      .post('/reservations')
+      .set('Authorization', 'Bearer contract-token')
+      .send({
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-09-11T09:00:00.000Z',
+        expectedReturnAt: '2026-09-12T09:00:00.000Z',
+      })
+      .expect(400);
+
+    expect(createResponse.body).toMatchObject({
+      message:
+        'O veiculo selecionado esta em transferencia impro no periodo indicado. Escolha outra viatura.',
+      code: 'VEHICLE_IN_IMPRO_TRANSFER',
       alternatives: expect.any(Array),
     });
   });

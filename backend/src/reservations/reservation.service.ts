@@ -3,9 +3,11 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { AuthenticatedUserDto } from '../auth/auth.types';
+import { ImproService } from '../impro/impro.service';
 import { InternalUserRole } from '../internal-users/internal-user.enums';
 import { RentalService, type RentalCustomer } from '../rentals/rental.service';
 import { StationService } from '../station/station.service';
@@ -120,6 +122,7 @@ export class ReservationService {
     private readonly stationService: StationService,
     private readonly vehicleService: VehicleService,
     private readonly rentalService: RentalService,
+    @Optional() private readonly improService?: ImproService,
   ) {}
 
   async getContext(): Promise<ReservationContextResponse> {
@@ -171,6 +174,15 @@ export class ReservationService {
           expectedReturnAt,
           excludeReservationId,
         ),
+      )
+      .filter(
+        (vehicle) =>
+          !this.isVehicleBlockedByImpro(
+            vehicle.id,
+            vehicle.stationId,
+            pickupAt,
+            expectedReturnAt,
+          ),
       )
       .map((vehicle) => ({
         ...vehicle,
@@ -294,6 +306,22 @@ export class ReservationService {
         message:
           'O veiculo selecionado ja nao esta disponivel no periodo indicado. Escolha outra viatura.',
         code: 'VEHICLE_UNAVAILABLE',
+        alternatives: [],
+      });
+    }
+
+    if (
+      this.isVehicleBlockedByImpro(
+        vehicle.id,
+        pickupStation.id,
+        pickupAt,
+        expectedReturnAt,
+      )
+    ) {
+      throw new BadRequestException({
+        message:
+          'O veiculo selecionado esta em transferencia impro no periodo indicado. Escolha outra viatura.',
+        code: 'VEHICLE_IN_IMPRO_TRANSFER',
         alternatives: [],
       });
     }
@@ -566,6 +594,22 @@ export class ReservationService {
         reservation.expectedReturnAt,
       );
     });
+  }
+
+  private isVehicleBlockedByImpro(
+    vehicleId: number,
+    pickupStationId: number,
+    pickupAt: Date,
+    expectedReturnAt: Date,
+  ): boolean {
+    return (
+      this.improService?.blocksVehicleReservation(
+        vehicleId,
+        pickupStationId,
+        pickupAt,
+        expectedReturnAt,
+      ) ?? false
+    );
   }
 
   private periodsOverlap(
