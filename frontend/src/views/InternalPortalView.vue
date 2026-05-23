@@ -468,15 +468,9 @@ export default {
     },
     setStationModuleView(view) {
       this.stationModuleView = view
-      this.$nextTick(() => {
-        this.scrollToModuleTop()
-      })
     },
     setVehicleModuleView(view) {
       this.vehicleModuleView = view
-      this.$nextTick(() => {
-        this.scrollToModuleTop()
-      })
     },
     scrollToModuleTop() {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' })

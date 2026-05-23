@@ -40,6 +40,10 @@ export class CreateVehicleDto {
   @ApiPropertyOptional({ example: 'Compacto' })
   @IsOptional()
   @IsString()
+  submodel?: string;
+
+  @IsOptional()
+  @IsString()
   category?: string;
 
   @ApiPropertyOptional({ example: 2021, minimum: 1980 })

@@ -177,6 +177,14 @@ export default {
     },
   },
   emits: ['logout', 'open-feature'],
+  computed: {
+    // Hide modules that are handled elsewhere or are not ready for the workspace panel.
+    visibleFeatures() {
+      return (this.authState?.features || []).filter(
+        (f) => f.key !== 'CUSTOMERS' && f.key !== 'RESERVATIONS',
+      )
+    },
+  },
   methods: {
     handleLocaleChange(event) {
       this.$setLocale(event.target.value)
@@ -226,12 +234,6 @@ export default {
     },
     canManageReservations() {
       return ['IT', 'ADMIN', 'STAFF', 'FLEET'].includes(this.authState?.user?.role)
-    },
-  },
-  computed: {
-    // Hide CUSTOMER feature from the workspace panel — it's currently non-functional.
-    visibleFeatures() {
-      return (this.authState?.features || []).filter((f) => f.key !== 'CUSTOMERS' && f.key !== 'RESERVATIONS')
     },
   },
 }
