@@ -470,6 +470,7 @@ const TRANSLATIONS = {
     csvActualArrival: 'Chegada Real',
     csvNotes: 'Notas',
     csvFilenamePrefix: 'historico-impros',
+    invalidPlateFormat: 'Formato de matricula invalido. Use AA-11-BB.',
     initError: 'Falha ao inicializar modulo de impros.',
     searchVehiclesError: 'Nao foi possivel pesquisar veiculos.',
     loadImprosError: 'Nao foi possivel carregar os impros.',
@@ -560,6 +561,7 @@ const TRANSLATIONS = {
     csvActualArrival: 'Actual Arrival',
     csvNotes: 'Notes',
     csvFilenamePrefix: 'impro-history',
+    invalidPlateFormat: 'Invalid plate format. Use AA-11-BB.',
     initError: 'Failed to initialize impro module.',
     searchVehiclesError: 'Unable to search vehicles.',
     loadImprosError: 'Unable to load impros.',
@@ -650,6 +652,7 @@ const TRANSLATIONS = {
     csvActualArrival: 'Llegada Real',
     csvNotes: 'Notas',
     csvFilenamePrefix: 'historial-impros',
+    invalidPlateFormat: 'Formato de matricula invalido. Use AA-11-BB.',
     initError: 'No fue posible inicializar el modulo de impros.',
     searchVehiclesError: 'No fue posible buscar vehiculos.',
     loadImprosError: 'No fue posible cargar los impros.',
@@ -798,6 +801,13 @@ export default {
     await this.bootstrap()
   },
   methods: {
+    // Plate format rule: two letters, dash, two digits, dash, two letters (e.g. AA-11-BB)
+    isValidPlateFormat(plate) {
+      if (!plate) return true
+      const normalized = String(plate).toUpperCase().trim()
+      const PLATE_REGEX = /^[A-Z]{2}-\d{2}-[A-Z]{2}$/
+      return PLATE_REGEX.test(normalized)
+    },
     tr(key, params = {}) {
       const locale = this.localeState.locale
       const template =
@@ -866,9 +876,16 @@ export default {
       }
     },
     buildHistoryFiltersPayload() {
+      // Normalize and validate plate filter before building payload
+      const plate = this.historyFilters.vehiclePlate ? String(this.historyFilters.vehiclePlate).toUpperCase().trim() : ''
+      if (plate && !this.isValidPlateFormat(plate)) {
+        this.showBanner(this.tr('invalidPlateFormat'), 'error')
+        return null
+      }
+
       return {
         search: this.historySearchDraft,
-        vehiclePlate: this.historyFilters.vehiclePlate,
+        vehiclePlate: plate || undefined,
         stationId: this.historyFilters.stationId > 0 ? this.historyFilters.stationId : undefined,
         status: this.historyFilters.status || undefined,
         fromDate: toIsoDateTime(this.historyFilters.fromDate),
@@ -879,7 +896,13 @@ export default {
       this.loading.history = true
 
       try {
-        const response = await fetchImpros(this.sessionToken, this.buildHistoryFiltersPayload())
+        const payload = this.buildHistoryFiltersPayload()
+        if (payload === null) {
+          // invalid input (e.g. bad plate format) — abort
+          this.loading.history = false
+          return
+        }
+        const response = await fetchImpros(this.sessionToken, payload)
         this.historyItems = Array.isArray(response?.items) ? response.items : []
       } catch (error) {
         this.showBanner(error.message || this.tr('loadHistoryError'), 'error')
