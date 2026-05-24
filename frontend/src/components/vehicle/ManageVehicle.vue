@@ -96,7 +96,15 @@
               <div class="input-row">
                 <div class="input-block flex-2">
                   <label>{{ tr('plate') }}</label>
-                  <input v-model="editForm.plateNumber" @input="formatPlateEditInput" type="text" />
+                  <input
+                    v-model="editForm.plateNumber"
+                    @input="formatPlateEditInput"
+                    type="text"
+                    maxlength="8"
+                    inputmode="text"
+                    autocapitalize="characters"
+                    placeholder="AA-11-BB"
+                  />
                 </div>
                 <div class="input-block flex-1">
                   <label>{{ tr('status') }}</label>
@@ -195,14 +203,14 @@
 
 <script>
 import axios from 'axios'
-import { getDateLocale, getLocaleState } from '../services/i18n'
+import { getDateLocale, getLocaleState } from '../../services/i18n'
 import {
   getCatalogBrands,
   getCatalogModels,
   getCatalogSubmodels,
   getCatalogSummary,
-} from '../constants/vehicleCatalog'
-import { formatPlateForDisplay, isValidPortuguesePlate } from '../utils/plateFormatting'
+} from '../../constants/vehicleCatalog'
+import { formatPlateForDisplay, isValidPortuguesePlate } from '../../utils/plateFormatting'
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:3000'
 
@@ -390,6 +398,15 @@ export default {
     selectedModelSubmodels() {
       return getCatalogSubmodels(this.editForm.brand, this.editForm.model)
     },
+    visibleVehicles() {
+      return this.vehicles.filter((vehicle) => {
+        if (!this.statusFilter) {
+          return true
+        }
+
+        return vehicle.status === this.statusFilter
+      })
+    },
   },
   methods: {
     tr(key, params = {}) {
@@ -565,9 +582,9 @@ export default {
         return
       }
 
-      // Validate plate format XX-99-ZZ
+      // Validate plate format AA-11-BB
       if (!isValidPortuguesePlate(this.editForm.plateNumber)) {
-        this.showToast('Matricula inválida — use o formato XX-99-ZZ', 'error')
+        this.showToast('Matricula inválida — use o formato AA-11-BB', 'error')
         return
       }
 
@@ -663,4 +680,4 @@ export default {
 }
 </script>
 
-<style scoped src="../styles/manage-station.css"></style>
+<style scoped src="../../styles/manage-station.css"></style>

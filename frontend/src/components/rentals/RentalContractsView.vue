@@ -82,13 +82,25 @@
 
           <label class="rental-field">
             <span>Email</span>
-            <input v-model.trim="newCustomer.email" type="email" placeholder="cliente@exemplo.com" />
+            <input
+              v-model.trim="newCustomer.email"
+              type="email"
+              inputmode="email"
+              autocomplete="email"
+              placeholder="cliente@exemplo.com"
+            />
           </label>
 
           <div class="rental-field-grid">
             <label class="rental-field">
               <span>Telefone</span>
-              <input v-model.trim="newCustomer.phone" type="text" placeholder="+351..." />
+              <input
+                v-model.trim="newCustomer.phone"
+                type="tel"
+                inputmode="tel"
+                autocomplete="tel"
+                placeholder="912345678"
+              />
             </label>
             <label class="rental-field">
               <span>Documento</span>
@@ -292,6 +304,12 @@ import { createRentalContract, fetchRentalContext } from '../../services/rentals
 import ActiveRentalManagementPanel from './ActiveRentalManagementPanel.vue'
 import RentalHistoryPanel from './RentalHistoryPanel.vue'
 import {
+  isValidEmail,
+  isValidPhoneNumber,
+  normalizeEmail,
+  normalizePhoneNumber,
+} from '../../utils/contactValidation'
+import {
   formatRentalCurrency,
   formatRentalDateTimeLocal,
   formatRentalDisplayDate,
@@ -442,6 +460,18 @@ export default {
     formatMoney(value) {
       return formatRentalCurrency(value)
     },
+    normalizeEmail(value) {
+      return normalizeEmail(value)
+    },
+    normalizePhoneNumber(value) {
+      return normalizePhoneNumber(value)
+    },
+    isValidEmail(value) {
+      return isValidEmail(value)
+    },
+    isValidPhoneNumber(value) {
+      return isValidPhoneNumber(value)
+    },
     extractApiError(error, fallbackMessage) {
       const details = error?.errors
       if (Array.isArray(details) && details.length > 0) {
@@ -590,8 +620,8 @@ export default {
         notes: this.form.notes,
         customerFirstName: this.newCustomer.firstName,
         customerLastName: this.newCustomer.lastName,
-        customerEmail: this.newCustomer.email,
-        customerPhone: this.newCustomer.phone,
+        customerEmail: this.normalizeEmail(this.newCustomer.email),
+        customerPhone: this.normalizePhoneNumber(this.newCustomer.phone),
         customerDocumentNumber: this.newCustomer.documentNumber,
       }
     },
@@ -611,6 +641,14 @@ export default {
       if (this.customerMode === 'new') {
         if (!this.newCustomer.firstName.trim() || !this.newCustomer.lastName.trim()) {
           return 'Preencha o nome e apelido do novo cliente.'
+        }
+
+        if (!this.isValidEmail(this.newCustomer.email)) {
+          return 'Indique um email valido para o novo cliente.'
+        }
+
+        if (!this.isValidPhoneNumber(this.newCustomer.phone)) {
+          return 'Indique um numero de telefone valido para o novo cliente.'
         }
       }
 

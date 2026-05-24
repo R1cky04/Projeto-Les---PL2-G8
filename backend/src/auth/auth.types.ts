@@ -12,7 +12,6 @@ export const FEATURE_KEYS = [
   'RESERVATIONS',
   'RENTALS',
   'VEHICLES',
-  'FLEET_OPERATIONS',
 ] as const;
 
 export type InternalFeatureKey = (typeof FEATURE_KEYS)[number];

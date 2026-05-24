@@ -310,6 +310,12 @@ import {
   formatRentalDateTimeLocal,
   formatRentalDisplayDate,
 } from '../../utils/rentalFormatting'
+import {
+  isValidEmail,
+  isValidPhoneNumber,
+  normalizeEmail,
+  normalizePhoneNumber,
+} from '../../utils/contactValidation'
 
 function createEditForm() {
   return {
@@ -535,8 +541,16 @@ export default {
       return String(value || '').trim()
     },
     normalizeEmail(value) {
-      const normalized = this.normalizeText(value)
-      return normalized ? normalized.toLowerCase() : ''
+      return normalizeEmail(value)
+    },
+    normalizePhoneNumber(value) {
+      return normalizePhoneNumber(value)
+    },
+    isValidEmail(value) {
+      return isValidEmail(value)
+    },
+    isValidPhoneNumber(value) {
+      return isValidPhoneNumber(value)
     },
     buildUpdatePayload() {
       if (!this.selectedRental) {
@@ -592,14 +606,14 @@ export default {
         this.normalizeEmail(this.editForm.customerEmail) !==
         this.normalizeEmail(selectedRental.customerEmail)
       ) {
-        payload.customerEmail = this.normalizeText(this.editForm.customerEmail)
+        payload.customerEmail = this.normalizeEmail(this.editForm.customerEmail)
       }
 
       if (
         this.normalizeText(this.editForm.customerPhone) !==
         this.normalizeText(selectedRental.customerPhone)
       ) {
-        payload.customerPhone = this.normalizeText(this.editForm.customerPhone)
+        payload.customerPhone = this.normalizePhoneNumber(this.editForm.customerPhone)
       }
 
       if (
@@ -635,6 +649,14 @@ export default {
 
       if (this.editForm.returnStationId < 1) {
         return 'Selecione uma estacao de devolucao valida.'
+      }
+
+      if (!this.isValidEmail(this.editForm.customerEmail)) {
+        return 'Indique um email valido para o cliente.'
+      }
+
+      if (!this.isValidPhoneNumber(this.editForm.customerPhone)) {
+        return 'Indique um numero de telefone valido para o cliente.'
       }
 
       if (!this.hasChanges) {

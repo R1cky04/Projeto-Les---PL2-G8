@@ -108,9 +108,11 @@
             v-model.trim="form.plateNumber"
             @input="formatPlateInput"
             type="text"
-            maxlength="20"
+            maxlength="8"
+            inputmode="text"
+            autocapitalize="characters"
             required
-            placeholder=" "
+            placeholder="AA-11-BB"
           />
           <label for="plateNumber">{{ tr('plateLabel') }}</label>
           <span class="highlight"></span>
@@ -161,14 +163,14 @@
 
 <script>
 import axios from 'axios'
-import { getLocaleState } from '../services/i18n'
+import { getLocaleState } from '../../services/i18n'
 import {
   VEHICLE_CATALOG_YEAR,
   getCatalogBrands,
   getCatalogModels,
   getCatalogSubmodels,
-} from '../constants/vehicleCatalog'
-import { formatPlateForDisplay, isValidPortuguesePlate } from '../utils/plateFormatting'
+} from '../../constants/vehicleCatalog'
+import { formatPlateForDisplay, isValidPortuguesePlate } from '../../utils/plateFormatting'
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:3000'
 
@@ -402,9 +404,9 @@ export default {
         return
       }
 
-      // Validate Portuguese plate format: XX-99-ZZ
+      // Validate Portuguese plate format: AA-11-BB
       if (!isValidPortuguesePlate(this.form.plateNumber)) {
-        this.showFeedback('Matricula inválida — use o formato XX-99-ZZ', 'error')
+        this.showFeedback('Matricula inválida — use o formato AA-11-BB', 'error')
         return
       }
 
@@ -456,7 +458,7 @@ export default {
 }
 </script>
 
-<style scoped src="../styles/create-station.css"></style>
+<style scoped src="../../styles/create-station.css"></style>
 
 <style scoped>
 .vehicle-builder {

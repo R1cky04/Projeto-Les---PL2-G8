@@ -58,6 +58,8 @@ powershell -ExecutionPolicy Bypass -File .\run-electron-dev.ps1 -SkipInstall
 └── frontend/
 ```
 
+Para uma visão mais clara da hierarquia por dominio, consulta [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md).
+
 ## Backend (NestJS + Prisma)
 
 Se fores correr localmente fora do Docker, garante primeiro que tens uma base de dados PostgreSQL ativa.

@@ -85,6 +85,8 @@ describe('reservationCreation helpers', () => {
     ).toEqual({
       customerFirstName: 'Indica o nome do novo cliente.',
       customerLastName: 'Indica o apelido do novo cliente.',
+      customerEmail: 'Indica um email valido.',
+      customerPhone: 'Indica um numero de telefone valido.',
       period:
         'A data de devolucao tem de ser posterior a data de levantamento.',
     })
@@ -125,7 +127,7 @@ describe('reservationCreation helpers', () => {
           firstName: '  Maria ',
           lastName: ' Santos  ',
           email: '  Maria.Santos@Example.com ',
-          phone: ' +351912000000 ',
+          phone: ' 912000000 ',
           documentNumber: ' 123123123 ',
         },
         form: {
@@ -147,7 +149,7 @@ describe('reservationCreation helpers', () => {
       customerFirstName: 'Maria',
       customerLastName: 'Santos',
       customerEmail: 'maria.santos@example.com',
-      customerPhone: '+351912000000',
+      customerPhone: '912000000',
       customerDocumentNumber: '123123123',
     })
   })

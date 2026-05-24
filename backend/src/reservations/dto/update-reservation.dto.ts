@@ -2,6 +2,11 @@ import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateReservationDto {
+  @ApiPropertyOptional({ example: '2026-09-16T09:00:00.000Z' })
+  @IsOptional()
+  @IsString()
+  pickupAt?: string;
+
   @ApiPropertyOptional({ example: '2026-09-18T09:00:00.000Z' })
   @IsOptional()
   @IsString()

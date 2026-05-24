@@ -45,13 +45,27 @@
               @input="handleVehicleSearchInput"
             />
 
+            <label class="impro-field">
+              <span>{{ tr('originStation') }}</span>
+              <select v-model.number="createForm.originStationId" required @change="handleOriginChange">
+                <option :value="0" disabled>{{ tr('selectOrigin') }}</option>
+                <option
+                  v-for="station in stations"
+                  :key="`origin-${station.id}`"
+                  :value="station.id"
+                >
+                  {{ station.name }}
+                </option>
+              </select>
+            </label>
+
             <div v-if="createForm.vehicleId" class="impro-selected-vehicle">
               <strong>{{ tr('selectedVehicle') }}</strong>
               <span>
                 #{{ selectedCreateVehicle.id }} | {{ selectedCreateVehicle.plate }} | {{ selectedCreateVehicle.model }}
               </span>
               <small>
-                {{ tr('automaticOrigin') }}: {{ getStationName(selectedCreateVehicle.currentStationId) }}
+                {{ tr('originStation') }}: {{ getStationName(createForm.originStationId) }}
               </small>
             </div>
 
@@ -415,7 +429,8 @@ const TRANSLATIONS = {
     tabHistory: 'Historico de Impros',
     searchVehicleByPlate: 'Pesquisar veiculo por matricula',
     selectedVehicle: 'Veiculo selecionado:',
-    automaticOrigin: 'Origem automatica',
+    originStation: 'Estacao de origem',
+    selectOrigin: 'Selecionar origem',
     noVehicleForSearch: 'Nenhum veiculo disponivel para a matricula pesquisada.',
     destinationStation: 'Estacao de destino',
     selectDestination: 'Selecionar destino',
@@ -440,9 +455,9 @@ const TRANSLATIONS = {
     creating: 'A criar...',
     confirmImproCreation: 'Confirmar criacao do impro',
     ruleSearchByPlate: 'Pesquisa do veiculo por matricula.',
-    ruleAutomaticOrigin: 'Origem definida automaticamente pela estacao atual do veiculo.',
-    ruleOnlyDestination: 'Apenas selecao da estacao de destino.',
-    ruleDifferentDestination: 'Destino deve ser diferente da origem automatica.',
+    ruleAutomaticOrigin: 'Escolha a estacao de origem e depois a estacao de destino.',
+    ruleOnlyDestination: 'A selecao da origem vem primeiro; depois escolhe o destino.',
+    ruleDifferentDestination: 'Destino deve ser diferente da origem selecionada.',
     updateMovement: 'Atualizar movimento',
     destination: 'Destino',
     noChange: 'Sem alteracao',
@@ -479,8 +494,9 @@ const TRANSLATIONS = {
     historyExported: 'Historico exportado com sucesso.',
     stationFallback: 'Estacao #{stationId}',
     selectVehicle: 'Selecione um veiculo para criar o impro.',
+    selectOriginError: 'Selecione uma estacao de origem.',
     selectDestinationError: 'Selecione uma estacao de destino.',
-    destinationMustDiffer: 'A estacao de destino deve ser diferente da origem automatica.',
+    destinationMustDiffer: 'A estacao de destino deve ser diferente da origem selecionada.',
     createError: 'Nao foi possivel criar o impro.',
     updateMissingSelection: 'Selecione um impro para atualizar.',
     updateSuccess: 'Impro atualizado com sucesso.',
@@ -506,7 +522,8 @@ const TRANSLATIONS = {
     tabHistory: 'Impro History',
     searchVehicleByPlate: 'Search vehicle by plate',
     selectedVehicle: 'Selected vehicle:',
-    automaticOrigin: 'Automatic origin',
+    originStation: 'Origin station',
+    selectOrigin: 'Select origin',
     noVehicleForSearch: 'No available vehicle for the searched plate.',
     destinationStation: 'Destination station',
     selectDestination: 'Select destination',
@@ -531,9 +548,9 @@ const TRANSLATIONS = {
     creating: 'Creating...',
     confirmImproCreation: 'Confirm impro creation',
     ruleSearchByPlate: 'Vehicle search by plate number.',
-    ruleAutomaticOrigin: 'Origin is set automatically from current vehicle station.',
-    ruleOnlyDestination: 'Only destination station is selected manually.',
-    ruleDifferentDestination: 'Destination must differ from automatic origin.',
+    ruleAutomaticOrigin: 'Select the origin station and then the destination station.',
+    ruleOnlyDestination: 'The origin is chosen first; then you choose the destination.',
+    ruleDifferentDestination: 'Destination must differ from the selected origin.',
     updateMovement: 'Update movement',
     destination: 'Destination',
     noChange: 'No change',
@@ -570,8 +587,9 @@ const TRANSLATIONS = {
     historyExported: 'History exported successfully.',
     stationFallback: 'Station #{stationId}',
     selectVehicle: 'Select a vehicle to create the impro.',
+    selectOriginError: 'Select an origin station.',
     selectDestinationError: 'Select a destination station.',
-    destinationMustDiffer: 'Destination station must differ from the automatic origin.',
+    destinationMustDiffer: 'Destination station must differ from the selected origin.',
     createError: 'Unable to create impro.',
     updateMissingSelection: 'Select an impro to update.',
     updateSuccess: 'Impro updated successfully.',
@@ -597,7 +615,8 @@ const TRANSLATIONS = {
     tabHistory: 'Historial de Impros',
     searchVehicleByPlate: 'Buscar vehiculo por matricula',
     selectedVehicle: 'Vehiculo seleccionado:',
-    automaticOrigin: 'Origen automatico',
+    originStation: 'Estacion de origen',
+    selectOrigin: 'Seleccionar origen',
     noVehicleForSearch: 'Ningun vehiculo disponible para la matricula buscada.',
     destinationStation: 'Estacion de destino',
     selectDestination: 'Seleccionar destino',
@@ -622,9 +641,9 @@ const TRANSLATIONS = {
     creating: 'Creando...',
     confirmImproCreation: 'Confirmar creacion del impro',
     ruleSearchByPlate: 'Busqueda del vehiculo por matricula.',
-    ruleAutomaticOrigin: 'Origen definido automaticamente por la estacion actual del vehiculo.',
-    ruleOnlyDestination: 'Solo se selecciona la estacion de destino.',
-    ruleDifferentDestination: 'El destino debe ser distinto del origen automatico.',
+    ruleAutomaticOrigin: 'Seleccione la estacion de origen y luego la estacion de destino.',
+    ruleOnlyDestination: 'La seleccion de la estacion de origen va primero; luego el destino.',
+    ruleDifferentDestination: 'El destino debe ser distinto del origen seleccionado.',
     updateMovement: 'Actualizar movimiento',
     destination: 'Destino',
     noChange: 'Sin cambios',
@@ -661,8 +680,9 @@ const TRANSLATIONS = {
     historyExported: 'Historial exportado con exito.',
     stationFallback: 'Estacion #{stationId}',
     selectVehicle: 'Seleccione un vehiculo para crear el impro.',
+    selectOriginError: 'Seleccione una estacion de origen.',
     selectDestinationError: 'Seleccione una estacion de destino.',
-    destinationMustDiffer: 'La estacion de destino debe ser distinta del origen automatico.',
+    destinationMustDiffer: 'La estacion de destino debe ser distinta del origen seleccionado.',
     createError: 'No fue posible crear el impro.',
     updateMissingSelection: 'Seleccione un impro para actualizar.',
     updateSuccess: 'Impro actualizado con exito.',
@@ -737,6 +757,7 @@ export default {
         history: false,
       },
       createForm: {
+        originStationId: 0,
         vehicleId: 0,
         destinationStationId: 0,
         transferDate: '',
@@ -782,19 +803,27 @@ export default {
       return this.vehicles.filter((vehicle) => vehicle.status === 'AVAILABLE')
     },
     filteredAvailableVehicles() {
-      return this.availableVehicles
+      const originStationId = this.createForm.originStationId
+
+      return this.availableVehicles.filter((vehicle) => {
+        if (!originStationId) {
+          return true
+        }
+
+        return vehicle.currentStationId === originStationId
+      })
     },
     selectedCreateVehicle() {
-      return this.availableVehicles.find((vehicle) => vehicle.id === this.createForm.vehicleId) || null
+      return this.filteredAvailableVehicles.find((vehicle) => vehicle.id === this.createForm.vehicleId) || null
     },
     createDestinationStations() {
-      if (!this.selectedCreateVehicle) {
+      const originStationId = this.createForm.originStationId
+
+      if (!originStationId) {
         return this.stations
       }
 
-      return this.stations.filter(
-        (station) => station.id !== this.selectedCreateVehicle.currentStationId,
-      )
+      return this.stations.filter((station) => station.id !== originStationId)
     },
   },
   async created() {
@@ -817,6 +846,20 @@ export default {
         (result, [paramKey, value]) => result.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(value)),
         template,
       )
+    },
+    isPlannedArrivalBeforeTransfer(transferDate, plannedArrivalDate) {
+      if (!transferDate || !plannedArrivalDate) {
+        return false
+      }
+
+      const transfer = new Date(transferDate)
+      const plannedArrival = new Date(plannedArrivalDate)
+
+      if (Number.isNaN(transfer.getTime()) || Number.isNaN(plannedArrival.getTime())) {
+        return false
+      }
+
+      return plannedArrival.getTime() < transfer.getTime()
     },
     async bootstrap() {
       this.loading.bootstrap = true
@@ -845,7 +888,7 @@ export default {
 
         if (
           this.createForm.vehicleId &&
-          !this.vehicles.some((vehicle) => vehicle.id === this.createForm.vehicleId)
+          !this.filteredAvailableVehicles.some((vehicle) => vehicle.id === this.createForm.vehicleId)
         ) {
           this.createForm.vehicleId = 0
           this.createForm.destinationStationId = 0
@@ -853,6 +896,10 @@ export default {
       } catch (error) {
         this.showBanner(error.message || this.tr('searchVehiclesError'), 'error')
       }
+    },
+    handleOriginChange() {
+      this.createForm.vehicleId = 0
+      this.createForm.destinationStationId = 0
     },
     async refreshImpros() {
       try {
@@ -996,9 +1043,15 @@ export default {
     },
     selectVehicle(vehicleId) {
       this.createForm.vehicleId = vehicleId
+
+      const selectedVehicle = this.filteredAvailableVehicles.find((vehicle) => vehicle.id === vehicleId)
+      if (selectedVehicle) {
+        this.createForm.originStationId = selectedVehicle.currentStationId
+      }
+
       if (
-        this.selectedCreateVehicle &&
-        this.createForm.destinationStationId === this.selectedCreateVehicle.currentStationId
+        selectedVehicle &&
+        this.createForm.destinationStationId === selectedVehicle.currentStationId
       ) {
         this.createForm.destinationStationId = 0
       }
@@ -1047,13 +1100,28 @@ export default {
         return
       }
 
+      if (!this.createForm.originStationId) {
+        this.showBanner(this.tr('selectOriginError'), 'error')
+        return
+      }
+
       if (!this.createForm.destinationStationId) {
         this.showBanner(this.tr('selectDestinationError'), 'error')
         return
       }
 
-      if (this.createForm.destinationStationId === this.selectedCreateVehicle.currentStationId) {
+      if (this.createForm.destinationStationId === this.createForm.originStationId) {
         this.showBanner(this.tr('destinationMustDiffer'), 'error')
+        return
+      }
+
+      if (
+        this.isPlannedArrivalBeforeTransfer(
+          this.createForm.transferDate,
+          this.createForm.plannedArrivalDate,
+        )
+      ) {
+        this.showBanner('A data prevista nao pode ser anterior a data de transferencia.', 'error')
         return
       }
 
@@ -1062,7 +1130,7 @@ export default {
         const created = await createImpro(
           {
             vehicleId: this.createForm.vehicleId,
-            originStationId: this.selectedCreateVehicle.currentStationId,
+            originStationId: this.createForm.originStationId,
             destinationStationId: this.createForm.destinationStationId,
             transferDate: toIsoDateTime(this.createForm.transferDate),
             plannedArrivalDate: toIsoDateTime(this.createForm.plannedArrivalDate),
@@ -1084,6 +1152,7 @@ export default {
         }
 
         this.createForm = {
+          originStationId: 0,
           vehicleId: 0,
           destinationStationId: 0,
           transferDate: '',
@@ -1103,6 +1172,16 @@ export default {
     async handleUpdateImpro() {
       if (!this.selectedImproId) {
         this.showBanner(this.tr('updateMissingSelection'), 'error')
+        return
+      }
+
+      if (
+        this.isPlannedArrivalBeforeTransfer(
+          this.updateForm.transferDate,
+          this.updateForm.plannedArrivalDate,
+        )
+      ) {
+        this.showBanner('A data prevista nao pode ser anterior a data de transferencia.', 'error')
         return
       }
 
@@ -1150,6 +1229,7 @@ export default {
 
         this.showBanner(this.tr('closeSuccess'), 'success')
         await this.refreshImpros()
+        await this.refreshHistory()
         this.selectImpro(this.selectedImproId)
       } catch (error) {
         this.showBanner(error.message || this.tr('closeError'), 'error')

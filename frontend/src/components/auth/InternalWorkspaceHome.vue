@@ -204,7 +204,7 @@ export default {
     // Hide modules that are not ready for the workspace panel.
     visibleFeatures() {
       return (this.authState?.features || []).filter(
-        (f) => f.key !== 'CUSTOMERS',
+        (f) => f.key !== 'CUSTOMERS' && f.key !== 'RESERVATIONS' && f.key !== 'VEHICLES',
       )
     },
   },

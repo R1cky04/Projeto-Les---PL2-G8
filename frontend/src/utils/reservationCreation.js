@@ -1,3 +1,10 @@
+import {
+  isValidEmail,
+  isValidPhoneNumber,
+  normalizeEmail,
+  normalizePhoneNumber,
+} from './contactValidation'
+
 function normalizeText(value) {
   return String(value || '').trim()
 }
@@ -51,6 +58,14 @@ export function validateReservationCreateForm({
 
     if (!normalizeText(newCustomer?.lastName)) {
       errors.customerLastName = 'Indica o apelido do novo cliente.'
+    }
+
+    if (!isValidEmail(newCustomer?.email)) {
+      errors.customerEmail = 'Indica um email valido.'
+    }
+
+    if (!isValidPhoneNumber(newCustomer?.phone)) {
+      errors.customerPhone = 'Indica um numero de telefone valido.'
     }
   }
 
@@ -121,8 +136,8 @@ export function buildCreateReservationPayload({
     ...payload,
     customerFirstName: normalizeText(newCustomer.firstName),
     customerLastName: normalizeText(newCustomer.lastName),
-    customerEmail: normalizeText(newCustomer.email).toLowerCase(),
-    customerPhone: normalizeText(newCustomer.phone),
+    customerEmail: normalizeEmail(newCustomer.email),
+    customerPhone: normalizePhoneNumber(newCustomer.phone),
     customerDocumentNumber: normalizeText(newCustomer.documentNumber),
   }
 }

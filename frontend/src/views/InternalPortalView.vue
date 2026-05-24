@@ -290,10 +290,10 @@ import {
   mapLoginApiErrors,
   validateLoginForm,
 } from '../utils/loginForm'
-import CreateVehicle from '../components/CreateVehicle.vue'
-import CreateStation from '../components/CreateStation.vue'
-import ManageVehicle from '../components/ManageVehicle.vue'
-import ManageStation from '../components/ManageStation.vue'
+import CreateVehicle from '../components/vehicle/CreateVehicle.vue'
+import CreateStation from '../components/station/CreateStation.vue'
+import ManageVehicle from '../components/vehicle/ManageVehicle.vue'
+import ManageStation from '../components/station/ManageStation.vue'
 import RentalContractsView from '../components/rentals/RentalContractsView.vue'
 import InternalUsersView from './InternalUsersView.vue'
 import ManageReservations from '../components/reservations/ManageReservations.vue'
@@ -398,14 +398,11 @@ export default {
           featureKey === 'STATION_MANAGEMENT' ||
           featureKey === 'IMPRO_MANAGEMENT' ||
           featureKey === 'RENTALS' ||
-          featureKey === 'FLEET_OPERATIONS' ||
           featureKey === 'VEHICLE_MANAGEMENT' ||
           featureKey === 'VEHICLES'
         ) {
         const normalizedFeatureKey =
-          featureKey === 'FLEET_OPERATIONS'
-            ? 'IMPRO_MANAGEMENT'
-            : featureKey === 'VEHICLES'
+            featureKey === 'VEHICLES'
               ? 'VEHICLE_MANAGEMENT'
               : featureKey
 

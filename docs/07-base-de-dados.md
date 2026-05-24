@@ -31,13 +31,9 @@ O schema gera:
 
 ## Entidades principais
 
-### Tenant
-
-Representa uma entidade/empresa no sistema. Relaciona utilizadores, clientes, estacoes, veiculos, reservas, alugueres, pagamentos, manutencoes, transferencias e impros.
-
 ### User
 
-Representa utilizadores internos e/ou utilizadores associados a tenants. Inclui:
+Representa utilizadores internos. Inclui:
 
 - `userId`
 - `email`

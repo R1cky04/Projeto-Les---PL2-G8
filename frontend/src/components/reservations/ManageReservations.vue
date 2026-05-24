@@ -128,6 +128,8 @@
             <input
               v-model.trim="newCustomer.email"
               type="email"
+                inputmode="email"
+                autocomplete="email"
               placeholder="cliente@exemplo.com"
             />
           </label>
@@ -137,8 +139,10 @@
               <span>Telefone</span>
               <input
                 v-model.trim="newCustomer.phone"
-                type="text"
-                placeholder="+351..."
+                type="tel"
+                inputmode="tel"
+                autocomplete="tel"
+                placeholder="912345678"
               />
             </label>
 
@@ -412,10 +416,10 @@
       <div class="rental-card-head">
         <div class="rental-management-copy">
           <span class="rental-card-eyebrow">Gerir Reserva</span>
-          <h3>Cancelar reserva existente</h3>
+          <h3>Alterar ou cancelar reserva existente</h3>
           <p class="rental-note">
-            Pesquise, selecione a reserva e confirme o cancelamento. Reservas ja
-            convertidas em contrato ficam bloqueadas para cancelamento.
+            Pesquise e selecione uma reserva ativa para alterar as datas.
+            A viatura associada nao pode ser substituida.
           </p>
         </div>
 
@@ -545,13 +549,76 @@
               {{ selectedManageReservation.cancellationWarnings.join(" ") }}
             </p>
 
+            <form
+              v-if="canEditReservation(selectedManageReservation)"
+              class="rental-form rental-edit-form"
+              @submit.prevent="submitUpdateReservation"
+            >
+              <div class="rental-field-grid rental-field-grid-2">
+                <label class="rental-field">
+                  <span>Data de levantamento</span>
+                  <input
+                    v-model="editForm.pickupAt"
+                    type="datetime-local"
+                    @change="loadEditAvailability"
+                  />
+                </label>
+
+                <label class="rental-field">
+                  <span>Data de devolucao</span>
+                  <input
+                    v-model="editForm.expectedReturnAt"
+                    type="datetime-local"
+                    @change="loadEditAvailability"
+                  />
+                </label>
+              </div>
+
+              <p v-if="isLoadingEditAvailability" class="rental-note">
+                A validar disponibilidade para a alteracao...
+              </p>
+              <p
+                v-else-if="!isEditVehicleAvailable"
+                class="rental-banner rental-banner-error"
+              >
+                A viatura desta reserva nao esta disponivel neste periodo.
+                Altere as datas.
+              </p>
+
+              <div class="rental-actions rental-form-actions">
+                <button
+                  type="button"
+                  class="rental-ghost-button"
+                  @click="resetEditForm"
+                >
+                  Repor dados
+                </button>
+
+                <button
+                  class="rental-submit-button"
+                  type="submit"
+                  :disabled="
+                    isUpdatingReservation ||
+                    isLoadingEditAvailability ||
+                    !isEditVehicleAvailable
+                  "
+                >
+                  {{
+                    isUpdatingReservation
+                      ? "A guardar..."
+                      : "Guardar alteracoes"
+                  }}
+                </button>
+              </div>
+            </form>
+
             <div class="rental-actions rental-form-actions">
               <button
                 type="button"
                 class="rental-ghost-button"
                 @click="loadReservations"
               >
-                Atualizar lista
+                Recarregar lista
               </button>
 
               <button
@@ -741,6 +808,7 @@ import {
   fetchReservationAvailability,
   fetchReservationContext,
   fetchReservations,
+  updateReservation,
 } from "../../services/reservationsApi";
 import {
   buildCreateReservationPayload,
@@ -805,6 +873,14 @@ export default {
       },
       selectedManageReservationId: 0,
       isCancellingReservation: false,
+      editForm: createReservationForm(),
+      editAvailability: {
+        availableVehicles: [],
+        alternativeVehicles: [],
+        suggestionMessage: null,
+      },
+      isLoadingEditAvailability: false,
+      isUpdatingReservation: false,
     };
   },
   computed: {
@@ -947,6 +1023,11 @@ export default {
         ) || null
       );
     },
+    isEditVehicleAvailable() {
+      return this.editAvailability.availableVehicles.some(
+        (vehicle) => vehicle.id === this.editForm.vehicleId,
+      );
+    },
     bannerTitle() {
       if (this.banner.type === "success") {
         return "Operacao concluida";
@@ -1066,6 +1147,7 @@ export default {
       try {
         this.reservations = await fetchReservations(this.sessionToken);
         this.reconcileManagedReservation();
+        await this.resetEditForm();
       } catch (error) {
         this.showBanner(
           this.extractApiError(error, "Nao foi possivel carregar as reservas."),
@@ -1086,11 +1168,143 @@ export default {
       this.selectedManageReservationId =
         this.reservationManagementList[0]?.id || this.reservations[0]?.id || 0;
     },
-    selectManageReservation(reservation) {
+    async selectManageReservation(reservation) {
       this.selectedManageReservationId = reservation.id;
+      await this.resetEditForm();
+    },
+    canEditReservation(reservation) {
+      return reservation?.status === "CONFIRMED";
     },
     canCancelReservation(reservation) {
       return reservation?.status === "CONFIRMED";
+    },
+    async resetEditForm() {
+      const reservation = this.selectedManageReservation;
+
+      if (!reservation || !this.canEditReservation(reservation)) {
+        this.editForm = createReservationForm();
+        this.editAvailability = {
+          availableVehicles: [],
+          alternativeVehicles: [],
+          suggestionMessage: null,
+        };
+        return;
+      }
+
+      this.editForm = {
+        pickupStationId: reservation.stationId,
+        returnStationId: reservation.returnStationId,
+        vehicleId: reservation.vehicleId,
+        pickupAt: formatRentalDateTimeLocal(new Date(reservation.pickupAt)),
+        expectedReturnAt: formatRentalDateTimeLocal(
+          new Date(reservation.expectedReturnAt),
+        ),
+        notes: reservation.notes || "",
+      };
+      await this.loadEditAvailability();
+    },
+    async loadEditAvailability() {
+      if (
+        !this.selectedManageReservation ||
+        !isReservationAvailabilityReady(this.editForm)
+      ) {
+        this.editAvailability = {
+          availableVehicles: [],
+          alternativeVehicles: [],
+          suggestionMessage: null,
+        };
+        return;
+      }
+
+      this.isLoadingEditAvailability = true;
+
+      try {
+        this.editAvailability = await fetchReservationAvailability(
+          this.sessionToken,
+          {
+            pickupStationId: this.editForm.pickupStationId,
+            pickupAt: new Date(this.editForm.pickupAt).toISOString(),
+            expectedReturnAt: new Date(
+              this.editForm.expectedReturnAt,
+            ).toISOString(),
+            excludeReservationId: this.selectedManageReservation.id,
+          },
+        );
+      } catch (error) {
+        this.editAvailability = {
+          availableVehicles: [],
+          alternativeVehicles: [],
+          suggestionMessage: null,
+        };
+        this.showBanner(
+          this.extractApiError(
+            error,
+            "Nao foi possivel validar a disponibilidade para a alteracao.",
+          ),
+          "error",
+        );
+      } finally {
+        this.isLoadingEditAvailability = false;
+      }
+    },
+    async submitUpdateReservation() {
+      if (!this.selectedManageReservation) {
+        this.showBanner("Selecione uma reserva para alterar.", "error");
+        return;
+      }
+
+      const validationErrors = validateReservationCreateForm({
+        customerMode: "existing",
+        selectedCustomerId: this.selectedManageReservation.customerId,
+        newCustomer: createReservationCustomerForm(),
+        form: this.editForm,
+      });
+
+      if (Object.keys(validationErrors).length > 0) {
+        this.showBanner(Object.values(validationErrors)[0], "error");
+        return;
+      }
+
+      if (!this.isEditVehicleAvailable) {
+        this.showBanner(
+          "A viatura desta reserva nao esta disponivel no periodo indicado.",
+          "error",
+        );
+        return;
+      }
+
+      this.isUpdatingReservation = true;
+
+      try {
+        const updated = await updateReservation(
+          this.selectedManageReservation.id,
+          {
+            pickupAt: new Date(this.editForm.pickupAt).toISOString(),
+            expectedReturnAt: new Date(
+              this.editForm.expectedReturnAt,
+            ).toISOString(),
+          },
+          this.sessionToken,
+        );
+
+        this.reservations = this.reservations.map((reservation) =>
+          reservation.id === updated.id ? updated : reservation,
+        );
+        await this.resetEditForm();
+        await this.loadAvailability();
+        this.showBanner(
+          `Reserva ${updated.reservationNumber} atualizada com sucesso.`,
+          "success",
+        );
+      } catch (error) {
+        await this.loadEditAvailability();
+        this.showBanner(
+          this.extractApiError(error, "Nao foi possivel atualizar a reserva."),
+          "error",
+        );
+      } finally {
+        this.isUpdatingReservation = false;
+      }
     },
     async submitCancelReservation() {
       if (!this.selectedManageReservation) {

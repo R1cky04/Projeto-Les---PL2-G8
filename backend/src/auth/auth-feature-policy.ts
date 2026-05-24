@@ -55,17 +55,6 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
     isEntitled: (user) =>
       user.permissions.includes(InternalPermission.VEHICLE_READ),
   },
-  {
-    key: 'FLEET_OPERATIONS',
-    label: 'Fleet Operations',
-    description:
-      'Operacoes de frota, manutencao, transferencias e gestao de incidentes.',
-    isEntitled: (user) =>
-      user.permissions.includes(InternalPermission.VEHICLE_WRITE) ||
-      user.permissions.includes(InternalPermission.MAINTENANCE_WRITE) ||
-      user.permissions.includes(InternalPermission.TRANSFER_WRITE) ||
-      user.permissions.includes(InternalPermission.INCIDENT_WRITE),
-  },
 ];
 //teste
 const LIMITED_ACCESS_REASON =
