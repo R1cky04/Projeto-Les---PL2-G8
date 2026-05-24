@@ -67,8 +67,7 @@ frontend/src/
 These folders are kept for compatibility or historical reasons and are not part of the day-to-day flow:
 
 - `backend-simple/` is currently empty.
-- `backend/src/prisma.bak/` is a legacy Prisma backup.
-- `backend/src/generated/prisma/` and `backend/generated/prisma/` are generated clients.
+- `backend/generated/prisma/` is the generated client loaded by the backend runtime.
 - `frontend/dist_electron/` and `frontend/dist/` are build outputs.
 - `frontend/src/components/HelloWorld.vue` has been removed because it was unused.
 

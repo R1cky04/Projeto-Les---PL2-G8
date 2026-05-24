@@ -13,6 +13,7 @@ import {
 import { RentalService } from '../rentals/rental.service';
 import { StationService } from '../station/station.service';
 import { VehicleService } from '../vehicle/vehicle.service';
+import { UpdateReservationDto } from './dto/update-reservation.dto';
 import { ReservationService } from './reservation.service';
 
 function buildActor(): AuthenticatedUserDto {
@@ -165,6 +166,101 @@ describe('ReservationService', () => {
         buildActor(),
       ),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('updates a reservation period while excluding its own existing slot', async () => {
+    const reservation = await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-07-20T09:00:00.000Z',
+        expectedReturnAt: '2026-07-21T09:00:00.000Z',
+      },
+      buildActor(),
+    );
+
+    const updated = await service.update(
+      reservation.id,
+      {
+        pickupAt: '2026-07-20T10:00:00.000Z',
+        expectedReturnAt: '2026-07-21T10:00:00.000Z',
+      },
+      buildActor(),
+    );
+
+    expect(updated.vehicleId).toBe(1);
+    expect(updated.pickupAt.toISOString()).toBe('2026-07-20T10:00:00.000Z');
+    expect(updated.expectedReturnAt.toISOString()).toBe(
+      '2026-07-21T10:00:00.000Z',
+    );
+  });
+
+  it('rejects moving a reservation onto another active booking for the same vehicle', async () => {
+    const first = await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-07-24T09:00:00.000Z',
+        expectedReturnAt: '2026-07-25T09:00:00.000Z',
+      },
+      buildActor(),
+    );
+    await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 2,
+        pickupAt: '2026-07-25T09:00:00.000Z',
+        expectedReturnAt: '2026-07-26T09:00:00.000Z',
+      },
+      buildActor(),
+    );
+
+    await expect(
+      service.update(
+        first.id,
+        {
+          pickupAt: '2026-07-25T09:00:00.000Z',
+          expectedReturnAt: '2026-07-26T09:00:00.000Z',
+        },
+        buildActor(),
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'VEHICLE_UNAVAILABLE',
+      }),
+    });
+  });
+
+  it('rejects replacing the vehicle assigned to a reservation', async () => {
+    const reservation = await service.create(
+      {
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-07-27T09:00:00.000Z',
+        expectedReturnAt: '2026-07-28T09:00:00.000Z',
+      },
+      buildActor(),
+    );
+
+    await expect(
+      service.update(
+        reservation.id,
+        { vehicleId: 2 } as unknown as UpdateReservationDto,
+        buildActor(),
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'RESERVATION_VEHICLE_IMMUTABLE',
+      }),
+    });
   });
 
   it('moves scheduled impro vehicles from origin to destination availability after arrival', async () => {

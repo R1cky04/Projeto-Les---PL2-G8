@@ -430,9 +430,28 @@ export class ReservationService {
       });
     }
 
-    const returnStation = payload.returnStationId
-      ? await this.stationService.findOne(payload.returnStationId)
-      : null;
+    const requestedVehicleId = (
+      payload as UpdateReservationDto & { vehicleId?: number }
+    ).vehicleId;
+
+    if (
+      requestedVehicleId !== undefined &&
+      requestedVehicleId !== current.vehicleId
+    ) {
+      throw new BadRequestException({
+        message: 'A viatura associada a uma reserva nao pode ser alterada.',
+        code: 'RESERVATION_VEHICLE_IMMUTABLE',
+      });
+    }
+
+    const pickupStation = await this.stationService.findOne(current.stationId);
+    const returnStation = await this.stationService.findOne(
+      payload.returnStationId ?? current.returnStationId,
+    );
+    const vehicle = await this.vehicleService.findOne(current.vehicleId);
+    const nextPickupAt = payload.pickupAt
+      ? this.parseDate(payload.pickupAt, 'A data de levantamento e invalida.')
+      : current.pickupAt;
     const nextExpectedReturnAt = payload.expectedReturnAt
       ? this.parseDate(
           payload.expectedReturnAt,
@@ -440,28 +459,82 @@ export class ReservationService {
         )
       : current.expectedReturnAt;
 
-    this.ensureValidPeriod(current.pickupAt, nextExpectedReturnAt);
+    this.ensureValidPeriod(nextPickupAt, nextExpectedReturnAt);
 
-    if (
-      !this.isVehicleAvailableForPeriod(
-        current.vehicleId,
-        current.pickupAt,
-        nextExpectedReturnAt,
-        current.id,
-      )
-    ) {
+    const reservationStationId = this.resolveVehicleReservationStationId(
+      vehicle,
+      nextPickupAt,
+      nextExpectedReturnAt,
+    );
+
+    if (reservationStationId !== pickupStation.id) {
+      throw new BadRequestException({
+        message:
+          reservationStationId === null
+            ? 'O veiculo selecionado esta em transferencia impro no periodo indicado. Escolha outra viatura.'
+            : 'O veiculo selecionado nao pertence a estacao indicada.',
+        code:
+          reservationStationId === null
+            ? 'VEHICLE_IN_IMPRO_TRANSFER'
+            : 'VEHICLE_WRONG_STATION',
+        alternatives: [],
+      });
+    }
+
+    if (vehicle.status !== 'AVAILABLE') {
       throw new BadRequestException({
         message:
           'A reserva ja nao pode usar a viatura selecionada no periodo indicado.',
         code: 'VEHICLE_UNAVAILABLE',
+        alternatives: [],
+      });
+    }
+
+    if (
+      this.isVehicleBlockedByImpro(
+        vehicle.id,
+        pickupStation.id,
+        nextPickupAt,
+        nextExpectedReturnAt,
+      )
+    ) {
+      throw new BadRequestException({
+        message:
+          'O veiculo selecionado esta em transferencia impro no periodo indicado. Escolha outra viatura.',
+        code: 'VEHICLE_IN_IMPRO_TRANSFER',
+        alternatives: [],
+      });
+    }
+
+    if (
+      !this.isVehicleAvailableForPeriod(
+        vehicle.id,
+        nextPickupAt,
+        nextExpectedReturnAt,
+        current.id,
+      )
+    ) {
+      const availability = await this.getAvailability({
+        pickupStationId: String(pickupStation.id),
+        pickupAt: nextPickupAt.toISOString(),
+        expectedReturnAt: nextExpectedReturnAt.toISOString(),
+        excludeReservationId: String(current.id),
+      });
+
+      throw new BadRequestException({
+        message:
+          'A reserva ja nao pode usar a viatura selecionada no periodo indicado.',
+        code: 'VEHICLE_UNAVAILABLE',
+        alternatives: availability.alternativeVehicles,
       });
     }
 
     const updated: ReservationRecord = {
       ...current,
+      pickupAt: nextPickupAt,
       expectedReturnAt: nextExpectedReturnAt,
-      returnStationId: returnStation?.id || current.returnStationId,
-      returnStationName: returnStation?.name || current.returnStationName,
+      returnStationId: returnStation.id,
+      returnStationName: returnStation.name,
       notes:
         payload.notes !== undefined
           ? this.normalizeNullableText(payload.notes)

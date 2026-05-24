@@ -245,6 +245,73 @@ describe('Reservations HTTP contract', () => {
     });
   });
 
+  it('updates dates but rejects booking conflicts and vehicle replacement', async () => {
+    const firstResponse = await request(app.getHttpServer())
+      .post('/reservations')
+      .set('Authorization', 'Bearer contract-token')
+      .send({
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 1,
+        pickupAt: '2026-09-24T09:00:00.000Z',
+        expectedReturnAt: '2026-09-25T09:00:00.000Z',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/reservations')
+      .set('Authorization', 'Bearer contract-token')
+      .send({
+        pickupStationId: 1,
+        returnStationId: 1,
+        vehicleId: 1,
+        customerId: 2,
+        pickupAt: '2026-09-25T09:00:00.000Z',
+        expectedReturnAt: '2026-09-26T09:00:00.000Z',
+      })
+      .expect(201);
+
+    const conflictResponse = await request(app.getHttpServer())
+      .patch(`/reservations/${firstResponse.body.id}`)
+      .set('Authorization', 'Bearer contract-token')
+      .send({
+        pickupAt: '2026-09-25T09:00:00.000Z',
+        expectedReturnAt: '2026-09-26T09:00:00.000Z',
+      })
+      .expect(400);
+
+    expect(conflictResponse.body).toMatchObject({
+      code: 'VEHICLE_UNAVAILABLE',
+    });
+
+    const vehicleReplacementResponse = await request(app.getHttpServer())
+      .patch(`/reservations/${firstResponse.body.id}`)
+      .set('Authorization', 'Bearer contract-token')
+      .send({ vehicleId: 2 })
+      .expect(400);
+
+    expect(vehicleReplacementResponse.body).toMatchObject({
+      code: 'RESERVATION_VEHICLE_IMMUTABLE',
+    });
+
+    const updateResponse = await request(app.getHttpServer())
+      .patch(`/reservations/${firstResponse.body.id}`)
+      .set('Authorization', 'Bearer contract-token')
+      .send({
+        pickupAt: '2026-09-23T09:00:00.000Z',
+        expectedReturnAt: '2026-09-24T09:00:00.000Z',
+      })
+      .expect(200);
+
+    expect(updateResponse.body).toMatchObject({
+      id: firstResponse.body.id,
+      vehicleId: 1,
+      status: 'CONFIRMED',
+    });
+    expect(updateResponse.body.pickupAt).toBe('2026-09-23T09:00:00.000Z');
+  });
+
   it('moves scheduled impro vehicles to destination availability after arrival', async () => {
     await improService.create(
       {
