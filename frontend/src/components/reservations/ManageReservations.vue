@@ -128,6 +128,8 @@
             <input
               v-model.trim="newCustomer.email"
               type="email"
+                inputmode="email"
+                autocomplete="email"
               placeholder="cliente@exemplo.com"
             />
           </label>
@@ -137,8 +139,10 @@
               <span>Telefone</span>
               <input
                 v-model.trim="newCustomer.phone"
-                type="text"
-                placeholder="+351..."
+                type="tel"
+                inputmode="tel"
+                autocomplete="tel"
+                placeholder="912345678"
               />
             </label>
 

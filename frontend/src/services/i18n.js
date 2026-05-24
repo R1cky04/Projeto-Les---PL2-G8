@@ -96,7 +96,7 @@ const messages = {
           description: 'Consulte, atualize e crie estacoes da rede operacional.',
         },
         VEHICLES: {
-          title: 'Veiculos',
+          title: 'Gerir Veiculos',
           description: 'Consulta do parque automovel e disponibilidade das viaturas.',
         },
         VEHICLE_MANAGEMENT: {
@@ -106,10 +106,6 @@ const messages = {
         RENTALS: {
           title: 'Gerir Contratos',
           description: 'Crie e acompanhe contratos de aluguer.',
-        },
-        FLEET_OPERATIONS: {
-          title: 'Operacoes de Frota',
-          description: 'Operacoes de frota, manutencao, transferencias e gestao de incidentes.',
         },
         IMPRO_MANAGEMENT: {
           title: 'Gerir Impros',
@@ -293,10 +289,6 @@ const messages = {
           title: 'Manage Contracts',
           description: 'Create and track rental contracts.',
         },
-        FLEET_OPERATIONS: {
-          title: 'Fleet Operations',
-          description: 'Fleet operations, maintenance, transfers and incident handling.',
-        },
         IMPRO_MANAGEMENT: {
           title: 'Manage Impros',
           description: 'Create and track transfers between stations.',
@@ -478,10 +470,6 @@ const messages = {
         RENTALS: {
           title: 'Gestionar Contratos',
           description: 'Cree y acompanhe contratos de alquiler.',
-        },
-        FLEET_OPERATIONS: {
-          title: 'Operaciones de Flota',
-          description: 'Operaciones de flota, mantenimiento, transferencias y gestion de incidentes.',
         },
         IMPRO_MANAGEMENT: {
           title: 'Gestionar Impros',

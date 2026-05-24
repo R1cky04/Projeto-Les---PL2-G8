@@ -69,7 +69,7 @@
 
 <script>
 import axios from 'axios';
-import { getLocaleState } from '../services/i18n';
+import { getLocaleState } from '../../services/i18n';
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:3000';
 
@@ -194,5 +194,4 @@ export default {
 };
 </script>
 
-<style scoped src="../styles/components/create-station.css"></style>
-
+<style scoped src="../../styles/components/create-station.css"></style>

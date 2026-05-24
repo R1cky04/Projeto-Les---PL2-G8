@@ -2,7 +2,7 @@
 import { formatPlateForDisplay, isValidPortuguesePlate } from './plateFormatting'
 
 describe('plateFormatting', () => {
-  it('formats loose input into XX-99-ZZ pattern', () => {
+  it('formats loose input into AA-11-BB pattern', () => {
     expect(formatPlateForDisplay('ab12cd')).toBe('AB-12-CD')
     expect(formatPlateForDisplay('aB12cD')).toBe('AB-12-CD')
     expect(formatPlateForDisplay('ab123cd')).toBe('AB-12-CD')

@@ -36,12 +36,6 @@ export const CONTRACT_FEATURES: AuthenticatedFeatureDto[] = [
     description: 'Gestao da frota',
     status: 'AVAILABLE',
   },
-  {
-    key: 'FLEET_OPERATIONS',
-    label: 'Operacoes de frota',
-    description: 'Transferencias e disponibilidade',
-    status: 'AVAILABLE',
-  },
 ];
 
 export function buildContractUser(
